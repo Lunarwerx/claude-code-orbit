@@ -1,0 +1,44 @@
+{
+  "name": "claude-code-orbit",
+  "displayName": "Claude Code Orbit",
+  "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
+  "version": "1.1.4",
+  "publisher": "LunarWerx",
+  "license": "MIT",
+  "icon": "media/claude-code-orbit.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Testingfor333/claude-code-orbit"
+  },
+  "bugs": {
+    "url": "https://github.com/Testingfor333/claude-code-orbit/issues"
+  },
+  "homepage": "https://github.com/Testingfor333/claude-code-orbit#readme",
+  "keywords": ["claude", "claude-code", "anthropic", "sessions", "yolo", "patch", "ai"],
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudeCodeOrbit",
+          "title": "Claude Code Orbit",
+          "icon": "media/claude-code-orbit.png"
+        }
+      ]
+    },
+    "views": {
+      "claudeCodeOrbit": [
+        {
+          "type": "webview",
+          "id": "claudeCodeOrbit.sidebar",
+          "name": "Claude Code Orbit",
+          "icon": "media/claude-code-orbit.png"
+        }
+      ]
+    }
+  }
+}
