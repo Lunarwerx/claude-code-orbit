@@ -8,12 +8,12 @@
   "icon": "media/claude-code-orbit.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Testingfor333/claude-code-orbit"
+    "url": "https://github.com/Lunarwerx/claude-code-orbit"
   },
   "bugs": {
-    "url": "https://github.com/Testingfor333/claude-code-orbit/issues"
+    "url": "https://github.com/Lunarwerx/claude-code-orbit/issues"
   },
-  "homepage": "https://github.com/Testingfor333/claude-code-orbit#readme",
+  "homepage": "https://github.com/Lunarwerx/claude-code-orbit#readme",
   "keywords": ["claude", "claude-code", "anthropic", "sessions", "yolo", "patch", "ai"],
   "engines": {
     "vscode": "^1.94.0"

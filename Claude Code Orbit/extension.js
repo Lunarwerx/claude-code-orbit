@@ -3,12 +3,22 @@ const path = require("path");
 const fs = require("fs");
 const cp = require("child_process");
 const os = require("os");
+const https = require("https");
 
 const STOCK_ID = "anthropic.claude-code";
-// Last Claude Code version verified against the current patch set. If "newest"
-// fails (Anthropic shipped a breaking change), Orbit offers to install this
-// specific version instead — all 50 patch anchors are guaranteed to match.
+// Last-known-good Claude Code version. Used only as a fallback when the OTA
+// fetch from OTA_STABLE_VERSION_URL fails (offline, GitHub down). The OTA
+// txt is the source of truth — bump it in the repo and every installed
+// Orbit picks up the new pin on the next Enable click.
 const STABLE_CLAUDE_VERSION = "2.1.150";
+
+// OTA: Orbit fetches the patcher + stable-version pin from this public repo
+// on every Enable click. Means we can push patcher fixes without making
+// users re-install the VSIX. Bundled copies still ship as offline fallback.
+const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main";
+const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
+const OTA_STABLE_VERSION_URL = OTA_BASE + "/stable_version.txt";
+const OTA_TIMEOUT_MS = 8000;
 
 function activate(context) {
   const provider = new SidebarProvider(context);
@@ -94,7 +104,10 @@ class SidebarProvider {
     this.log("Using Python: " + python);
 
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
-    const patcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
+    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
+    const otaPatcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    const patcher = otaPatcher || bundledPatcher;
+    const patcherSource = otaPatcher ? "OTA" : "bundled";
     const out = path.join(work, "patched.vsix");
 
     // Pass our bundled version so the patcher stamps it as ccPatchBuildVersion
@@ -103,10 +116,12 @@ class SidebarProvider {
     const patcherVersion = readBundledPatcherVersion(this.context) || "dev";
     const args = [STOCK_ID, "--out", out, "--download-dir", work, "--patcher-version", patcherVersion];
     if (useStable) {
-      args.push("--version", STABLE_CLAUDE_VERSION);
-      this.log("Downloading + patching stable " + STOCK_ID + " v" + STABLE_CLAUDE_VERSION + " (patcher v" + patcherVersion + ")");
+      const otaStable = await fetchOtaStableVersion((l) => this.log(l));
+      const stable = otaStable || STABLE_CLAUDE_VERSION;
+      args.push("--version", stable);
+      this.log("Downloading + patching stable " + STOCK_ID + " v" + stable + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     } else {
-      this.log("Downloading + patching latest " + STOCK_ID + " (patcher v" + patcherVersion + ")");
+      this.log("Downloading + patching latest " + STOCK_ID + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     }
     await runPython(python, patcher, args, (line) => this.log(line));
 
@@ -124,7 +139,12 @@ class SidebarProvider {
     this.log("Using Python: " + python);
 
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
-    const patcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
+    // For disable we only need the marketplace download logic; both OTA and
+    // bundled patchers do that identically. Prefer OTA for consistency, but
+    // failure is harmless.
+    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
+    const otaPatcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    const patcher = otaPatcher || bundledPatcher;
 
     this.log("Downloading original " + STOCK_ID);
     let downloadedPath = null;
@@ -690,6 +710,69 @@ window.addEventListener("message", (ev) => {
 vscode.postMessage({ type: "refresh" });
 </script>
 </body></html>`;
+  }
+}
+
+// Lightweight GET that follows one redirect and gives up after OTA_TIMEOUT_MS.
+// Doesn't pull in node-fetch or axios — keeps the wrapper VSIX dependency-free.
+function httpsGet(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { "User-Agent": "claude-code-orbit-vscode" } }, (res) => {
+      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+        res.resume();
+        resolve(httpsGet(res.headers.location, timeoutMs));
+        return;
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        reject(new Error("HTTP " + res.statusCode));
+        return;
+      }
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      res.on("error", reject);
+    });
+    req.on("error", reject);
+    req.setTimeout(timeoutMs, () => { req.destroy(new Error("timeout after " + timeoutMs + "ms")); });
+  });
+}
+
+// Pull the latest patcher from the public OTA repo. Sanity-checks the payload
+// looks like our patcher (must contain `patch_webview_js`) so a misconfigured
+// raw URL doesn't silently write garbage. Returns the cached file path on
+// success, or null to signal the caller should use the bundled fallback.
+async function fetchOtaPatcher(context, log) {
+  try {
+    log("Fetching OTA patcher: " + OTA_PATCHER_URL);
+    const body = await httpsGet(OTA_PATCHER_URL, OTA_TIMEOUT_MS);
+    if (body.indexOf("def patch_webview_js") === -1) {
+      throw new Error("payload missing patch_webview_js marker (got " + body.length + " bytes)");
+    }
+    const dir = context.globalStorageUri.fsPath;
+    fs.mkdirSync(dir, { recursive: true });
+    const outPath = path.join(dir, "patch_claude_ota.py");
+    fs.writeFileSync(outPath, body, "utf8");
+    log("OTA patcher loaded (" + body.length + " bytes)");
+    return outPath;
+  } catch (err) {
+    log("OTA patcher unavailable (" + (err && err.message ? err.message : err) + ") — using bundled");
+    return null;
+  }
+}
+
+// Pull the OTA stable-version pin. Falls back to STABLE_CLAUDE_VERSION when
+// the file doesn't exist or isn't reachable.
+async function fetchOtaStableVersion(log) {
+  try {
+    const body = await httpsGet(OTA_STABLE_VERSION_URL, OTA_TIMEOUT_MS);
+    const v = body.trim().split(/\s+/)[0];
+    if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
+    log("OTA stable version pin: " + v);
+    return v;
+  } catch (err) {
+    log("OTA stable version unavailable (" + (err && err.message ? err.message : err) + ") — using bundled " + STABLE_CLAUDE_VERSION);
+    return null;
   }
 }
 
