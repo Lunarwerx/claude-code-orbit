@@ -191,9 +191,9 @@ function ccPatchYoloApplyArr(arr,on){if(!arr)return;arr.forEach(function(s){try{
 // silent desync: button looked ON, prompts still appeared. Starting OFF means
 // the visual state and functional state can only change together via the toggle.
 function ccPatchYoloToggle($){var on=!ccPatchYoloOn();document.documentElement.classList.toggle(`ccPatchYoloMode`,on);if($){try{ccPatchYoloApplyArr($.sessions&&$.sessions.value,on)}catch(e){}try{ccPatchYoloApplyArr($.remoteSessions&&$.remoteSessions.value,on)}catch(e){}}}
-function ccPatchCmdUriOpen(ctx,filePath){let cmd="command:workbench.action.files.openFile?"+encodeURIComponent(JSON.stringify([filePath]));try{if(ctx&&ctx.openURL){ctx.openURL(cmd);return}}catch(e){}try{let a=document.createElement("a");a.href=cmd;a.style.display="none";document.body.appendChild(a);a.click();document.body.removeChild(a)}catch(e){}}
-function ccPatchInstructionsMenu(e,ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();let t=e.currentTarget;if(!t)return;t.classList.add("ccPatchFilterButtonOpen");let n=t.getBoundingClientRect(),r=document.createElement("div");r.className="claudePatchContextMenu";r.style.top=Math.round(n.bottom+4)+"px";r.style.left=Math.min(Math.round(n.left),window.innerWidth-220)+"px";let a=function(label,fn){let b=document.createElement("button");b.textContent=label;b.onmousedown=function(ev){ev.preventDefault();ev.stopPropagation();r.remove();fn()};b.onclick=b.onmousedown;r.appendChild(b)};let cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";let projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";a("\u{1F4C4} Project CLAUDE.md",function(){ccPatchCmdUriOpen(ctx,projPath)});a("\u{1F3E0} Global CLAUDE.md",function(){ccPatchCmdUriOpen(ctx,"${userHome}/.claude/CLAUDE.md")});document.body.appendChild(r);setTimeout(function(){var h=function(ev){if(!r.contains(ev.target)&&!t.contains(ev.target)){r.remove();t.classList.remove("ccPatchFilterButtonOpen")}};r._ccPatchOutsideHandler=h;document.addEventListener("mousedown",h)},0)}catch(err){}}
-Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchCmdUriOpen,ccPatchInstructionsMenu});
+function ccPatchOpenClaudeMd(ctx,filePath,title){try{if(ctx&&ctx.sendRequest){ctx.sendRequest({type:"open_claude_md",filePath:filePath,title:title||"CLAUDE.md"}).catch(function(e){console.error(e)});return}}catch(e){}try{if(ctx&&ctx.openFile){ctx.openFile(filePath);return}}catch(e){}}
+function ccPatchInstructionsMenu(e,ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();let t=e.currentTarget;if(!t)return;t.classList.add("ccPatchFilterButtonOpen");let n=t.getBoundingClientRect(),r=document.createElement("div");r.className="claudePatchContextMenu";r.style.top=Math.round(n.bottom+4)+"px";r.style.left=Math.min(Math.round(n.left),window.innerWidth-220)+"px";let a=function(label,fn){let b=document.createElement("button");b.textContent=label;b.onmousedown=function(ev){ev.preventDefault(),ev.stopPropagation(),r.remove(),fn()};b.onclick=b.onmousedown;r.appendChild(b)};let cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";let projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";a("\u{1F4C4} Project CLAUDE.md",function(){ccPatchOpenClaudeMd(ctx,projPath,"Project CLAUDE.md")});a("\u{1F3E0} Global CLAUDE.md",function(){ccPatchOpenClaudeMd(ctx,"${userHome}/.claude/CLAUDE.md","Global CLAUDE.md")});document.body.appendChild(r);setTimeout(function(){var h=function(ev){if(!r.contains(ev.target)&&!t.contains(ev.target)){r.remove();t.classList.remove("ccPatchFilterButtonOpen")}};r._ccPatchOutsideHandler=h;document.addEventListener("mousedown",h)},0)}catch(err){}}
+Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchOpenClaudeMd,ccPatchInstructionsMenu});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1755,10 +1755,14 @@ def patch_webview_css(webview_css: Path) -> bool:
 
 def patch_extension_dir(extension_dir: Path) -> bool:
     changed = False
+    extension_js = extension_dir / "extension.js"
     webview_js = extension_dir / "webview" / "index.js"
     webview_css = extension_dir / "webview" / "index.css"
     if not webview_js.exists() or not webview_css.exists():
         raise RuntimeError("Could not find Claude webview index.js / index.css")
+    if extension_js.exists():
+        log("Patching Claude extension host JS")
+        changed |= patch_extension_host_js(extension_js)
     log("Patching Claude webview JS")
     changed |= patch_webview_js(webview_js)
     log("Patching Claude webview CSS")
@@ -1767,7 +1771,41 @@ def patch_extension_dir(extension_dir: Path) -> bool:
     return changed
 
 
+def patch_extension_host_js(path: Path) -> bool:
+    text = read(path)
+    if "open_claude_md_response" in text:
+        return False
+    ids = re.search(
+        rf"openConfigFile\({JS_ID}\)\{{[\s\S]{{0,700}}?(?P<path>{JS_ID})\.join\([\s\S]{{0,300}}?(?P<fs>{JS_ID})\.writeFileSync",
+        text,
+    )
+    if not ids:
+        raise RuntimeError("Could not locate host fs/path identifiers for CLAUDE.md editor patch")
+    path_id = ids.group("path")
+    fs_id = ids.group("fs")
+    anchor_re = re.compile(
+        rf'case"open_config_file":return this\.openConfigFile\((?P<msg>{JS_ID})\.request\.configType\),'
+        r'\{type:"open_config_file_response"\};'
+    )
+    match = anchor_re.search(text)
+    if not match:
+        raise RuntimeError("Could not find open_config_file host request anchor")
+    msg = match.group("msg")
+    insert = (
+        f'case"open_claude_md":{{let ccP={msg}.request.filePath,ccT={msg}.request.title||"CLAUDE.md",ccC="";'
+        f'try{{if({fs_id}.existsSync(ccP))ccC={fs_id}.readFileSync(ccP,"utf8");'
+        f'let ccR=await this.openContent(ccC,ccT,!0);'
+        f'if(ccR&&typeof ccR.updatedContent==="string"){{{fs_id}.mkdirSync({path_id}.dirname(ccP),{{recursive:!0}});'
+        f'{fs_id}.writeFileSync(ccP,ccR.updatedContent,"utf8")}}'
+        f'return{{type:"open_claude_md_response"}}}}catch(ccE){{this.output?.error?.(`Failed to edit ${{ccP}}: ${{ccE}}`);throw ccE}}}}'
+    )
+    text = text[:match.start()] + insert + text[match.start():]
+    write(path, text)
+    return True
+
+
 def verify_extension_dir(extension_dir: Path) -> None:
+    host = read(extension_dir / "extension.js") if (extension_dir / "extension.js").exists() else ""
     js = read(extension_dir / "webview" / "index.js")
     css = read(extension_dir / "webview" / "index.css")
     checks = {
@@ -1819,6 +1857,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "yolo on state css": ".ccPatchYoloMode .ccPatchYoloBtn" in css,
         "usage button": "ccPatchUsageBtn" in js and ".ccPatchUsageBtn" in css,
         "instructions btn": "ccPatchInstructionsMenu" in js and ".ccPatchInstructionsBtn" in css,
+        "instructions request": "open_claude_md" in js and "open_claude_md_response" in host,
         "built-in search hide": '[class*="searchRow_"]' in css,
         "root wrapper class": "claudePatchRoot" in js and ".claudePatchRoot" in css,
         "header wrapper class": "claudePatchHeader" in js and ".claudePatchHeader" in css,
