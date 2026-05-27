@@ -2,7 +2,7 @@
   "name": "claude-code-orbit",
   "displayName": "Claude Code Orbit",
   "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "publisher": "LunarWerx",
   "license": "MIT",
   "icon": "media/claude-code-orbit.png",

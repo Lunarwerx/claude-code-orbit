@@ -280,7 +280,10 @@ class SidebarProvider {
         else if (msg.action === "disable") await this.disable();
         else if (msg.action === "checkUpdates") {
           let resultMsg = "";
+          let resultSub = "";
+          let updateAvailable = false;
           try {
+            this.log("Checking GitHub experimental patcher version");
             const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
             if (!remoteVersion) {
               throw new Error("Could not reach GitHub (HTTP 404). Check your connection or the repository URL.");
@@ -288,12 +291,19 @@ class SidebarProvider {
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
             const installedVersion = readInstalledPatcherVersion();
             const wrapperVersion = readBundledWrapperVersion(this.context);
+            this.log("Reading installed Claude Code patcher version: " + (installedVersion || "not patched"));
+            this.log("Comparing installed patcher against GitHub experimental");
             if (!installedVersion) {
-              resultMsg = "Claude Code is not patched yet. Orbit wrapper v" + wrapperVersion + " is installed.";
+              updateAvailable = true;
+              resultMsg = "Claude Code is not patched yet.";
+              resultSub = "GitHub experimental patcher is v" + remoteVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install experimental now?";
             } else if (cmpVer(installedVersion, remoteVersion) < 0) {
-              resultMsg = "Experimental patcher update available: v" + remoteVersion + " (Claude Code has v" + installedVersion + "). Click Use experimental to update.";
+              updateAvailable = true;
+              resultMsg = "Experimental patcher v" + remoteVersion + " is available.";
+              resultSub = "Installed Claude Code has patcher v" + installedVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install experimental now?";
             } else {
-              resultMsg = "Experimental patcher v" + installedVersion + " is current. Orbit wrapper v" + wrapperVersion + " is installed.";
+              resultMsg = "No experimental update found.";
+              resultSub = "GitHub experimental patcher: v" + remoteVersion + ". Installed Claude Code patcher: v" + installedVersion + ". Orbit wrapper UI: v" + wrapperVersion + ".";
             }
           } catch (err) {
             this.send("phase", {
@@ -305,7 +315,13 @@ class SidebarProvider {
             this.pushState();
             return;
           }
-          this.send("phase", { phase: "done", action: msg.action, message: resultMsg });
+          this.send("phase", {
+            phase: "done",
+            action: msg.action,
+            message: resultMsg,
+            subMessage: resultSub,
+            updateAvailable,
+          });
           this.busy = false;
           this.pushState();
           return;
@@ -657,7 +673,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     <div class="statePane" data-pane="done">
       <p class="doneMsg" id="doneMsg">All set.</p>
       <p class="doneSub" id="doneSub">Restart Claude Code for the change to take effect.</p>
-      <button class="btn primary" data-action="restart">
+      <button class="btn primary" id="donePrimaryBtn" data-action="restart">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
         Restart Claude Code
       </button>
@@ -704,6 +720,7 @@ const stepLabelEl = document.getElementById("stepLabel");
 const stepSubEl = document.getElementById("stepSub");
 const progressFillEl = document.getElementById("progressFill");
 const doneMsgEl = document.getElementById("doneMsg");
+const donePrimaryBtn = document.getElementById("donePrimaryBtn");
 const errorSubEl = document.getElementById("errorSub");
 const logEl = document.getElementById("log");
 const detailsToggle = document.getElementById("detailsToggle");
@@ -792,7 +809,7 @@ function applyIdleState(state, info) {
       patchedSub.textContent = line + ".";
     }
     enableBtnIcon.innerHTML = ICON_REFRESH;
-    enableBtnLabel.textContent = "Use experimental";
+    enableBtnLabel.textContent = "Update experimental";
     enableBtn.classList.add("primary");
     enableBtn.title = "Download Claude Code and patch it with the current experimental GitHub patcher (v" + (bundledVersion || "?") + ").";
     checkUpdatesBtn.hidden = false;
@@ -846,6 +863,7 @@ document.querySelectorAll("[data-action]").forEach(btn => {
     }
     if (action === "checkUpdates") {
       resetWorkingState();
+      setCheckProgress(1, "Checking GitHub");
       setPane("working");
       vscode.postMessage({ type: "action", action: "checkUpdates" });
       return;
@@ -883,10 +901,20 @@ function resetWorkingState() {
   logoEl.style.transform = "";
 }
 
+function setCheckProgress(idx, label) {
+  currentStep = idx;
+  stepLabelEl.textContent = label + "...";
+  stepSubEl.textContent = "Step " + idx + " of 3";
+  progressFillEl.style.width = (idx / 3 * 100) + "%";
+}
+
 // Map raw log lines to friendly progress steps.
 // Keyed by first-match wins. Only update when the new step >= current step
 // (so a late "Patching..." line doesn't go backwards from "Installing").
 const STEPS = [
+  { match: /Checking GitHub experimental/i, idx: 1, label: "Checking GitHub", check: true },
+  { match: /Reading installed Claude Code patcher/i, idx: 2, label: "Reading installed patcher", check: true },
+  { match: /Comparing installed patcher/i, idx: 3, label: "Comparing versions", check: true },
   { match: /Downloading anthropic|Downloading marketplace|Downloading \\+ patching|Downloading original/i, idx: 1, label: "Downloading Claude Code" },
   { match: /Extracting VSIX/i, idx: 2, label: "Extracting" },
   { match: /Patching Claude webview/i, idx: 2, label: "Applying patches" },
@@ -913,6 +941,11 @@ let currentAction = null;
 function updateProgress(line) {
   for (const s of STEPS) {
     if (s.match.test(line)) {
+      if (currentAction === "checkUpdates" && s.check) {
+        if (s.idx >= currentStep) setCheckProgress(s.idx, s.label);
+        return;
+      }
+      if (currentAction === "checkUpdates") return;
       if (s.idx >= currentStep) {
         currentStep = s.idx;
         const label = (currentAction === "disable" && REVERT_LABELS[s.idx])
@@ -935,7 +968,7 @@ window.addEventListener("message", (ev) => {
     lastIdleState = m.state;
     const labels = {
       patched: ["patched", "Orbit patched"],
-      outdated: ["outdated", "Update available"],
+      outdated: ["outdated", "Experimental update available"],
       stock: ["stock", "Original Claude Code"],
       none: ["none", "Claude Code not installed"],
     };
@@ -960,17 +993,24 @@ window.addEventListener("message", (ev) => {
       currentStep = 0;
       currentAction = m.action || null;
       actionStartState = lastIdleState;
+      if (currentAction === "checkUpdates") setCheckProgress(1, "Checking GitHub");
       setPane("working");
     } else if (m.phase === "done") {
       progressFillEl.style.width = "100%";
       doneMsgEl.textContent = m.message || "All set.";
-      const restartBtn = document.querySelector('[data-action="restart"]');
-      restartBtn.hidden = m.action === "checkUpdates";
-      document.getElementById("doneSub").textContent = m.action === "checkUpdates"
-        ? ""
-        : (m.subMessage || "Reload VS Code for the change to take effect.");
-      if (m.action === "checkUpdates") {
-        restartBtn.hidden = true;
+      const doneSub = document.getElementById("doneSub");
+      doneSub.textContent = m.subMessage || "";
+      donePrimaryBtn.hidden = false;
+      donePrimaryBtn.disabled = false;
+      donePrimaryBtn.dataset.action = "restart";
+      donePrimaryBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>Restart Claude Code';
+      if (m.action === "checkUpdates" && m.updateAvailable) {
+        donePrimaryBtn.dataset.action = "enable";
+        donePrimaryBtn.innerHTML = "Install experimental";
+      } else if (m.action === "checkUpdates") {
+        donePrimaryBtn.hidden = true;
+      } else if (!doneSub.textContent) {
+        doneSub.textContent = "Reload VS Code for the change to take effect.";
       }
       setPane("done");
     } else if (m.phase === "error") {
