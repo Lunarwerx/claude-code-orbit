@@ -60,6 +60,7 @@ CONTENT_TYPES = """<?xml version="1.0" encoding="utf-8"?>
 INCLUDED_PATHS = [
     Path("package.json"),
     Path("extension.js"),
+    Path("STABLE_VERSION.txt"),
     Path("media/claude-code-orbit.png"),
     Path("media/rec-saydeploy.png"),
     Path("media/rec-copilot-suite.png"),

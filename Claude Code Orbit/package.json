@@ -2,7 +2,7 @@
   "name": "claude-code-orbit",
   "displayName": "Claude Code Orbit",
   "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
-  "version": "1.1.4",
+  "version": "1.2.1",
   "publisher": "LunarWerx",
   "license": "MIT",
   "icon": "media/claude-code-orbit.png",
@@ -21,6 +21,16 @@
   "categories": ["Other"],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Claude Code Orbit",
+      "properties": {
+        "claudeCodeOrbit.devMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Developer mode: uses the bundled patcher instead of fetching from GitHub. Poll interval reduced to 60s for rapid testing. Enable this when testing patcher changes locally."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

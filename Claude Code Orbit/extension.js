@@ -5,12 +5,23 @@ const cp = require("child_process");
 const os = require("os");
 const https = require("https");
 
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  🚫 VERSION PROTECTION: Do NOT bump any version number (package.json,   ║
+// ║     patcher_version.txt, stable_version.txt, STABLE_CLAUDE_VERSION, or  ║
+// ║     any other version pin) without Jacob's explicit permission.         ║
+// ║     Rebuilding the VSIX for local testing does NOT require a bump.      ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
 const STOCK_ID = "anthropic.claude-code";
-// Last-known-good Claude Code version. Used only as a fallback when the OTA
-// fetch from OTA_STABLE_VERSION_URL fails (offline, GitHub down). The OTA
-// txt is the source of truth — bump it in the repo and every installed
-// Orbit picks up the new pin on the next Enable click.
-const STABLE_CLAUDE_VERSION = "2.1.150";
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  STABLE VERSION: The canonical source of truth is STABLE_VERSION.txt   ║
+// ║  shipped inside this VSIX. Do NOT modify the hardcoded fallback below  ║
+// ║  without explicit permission — update the .txt file instead.           ║
+// ║  The OTA stable_version.txt on GitHub overrides both at runtime.       ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+// Hardcoded fallback — only used if the bundled STABLE_VERSION.txt is
+// somehow missing or unreadable. The OTA txt is the source of truth.
+const STABLE_CLAUDE_VERSION_FALLBACK = "2.1.152";
 
 // OTA: Orbit fetches the patcher + stable-version pin from this public repo
 // on every Enable click. Means we can push patcher fixes without making
@@ -19,6 +30,21 @@ const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/
 const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
 const OTA_STABLE_VERSION_URL = OTA_BASE + "/stable_version.txt";
 const OTA_TIMEOUT_MS = 8000;
+
+// OTA patcher-version pin — separate from stable_version.txt (which pins the
+// Claude Code version). This file contains just the patcher version (e.g. "1.1.4").
+// Orbit polls this in the background so users get notified the moment a new
+// patcher lands on GitHub — no VSIX reinstall needed.
+const OTA_PATCHER_VERSION_URL = OTA_BASE + "/patcher_version.txt";
+
+// Background polling: how often to check GitHub for a new patcher version.
+const POLL_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const STARTUP_DELAY_MS = 30 * 1000;           // wait 30s before first check
+
+// globalState keys for cross-session persistence of the remote version and
+// notification deduplication.
+const GS_REMOTE_PATCHER_VERSION = "claudeCodeOrbit.remotePatcherVersion";
+const GS_LAST_NOTIFIED_VERSION = "claudeCodeOrbit.lastNotifiedVersion";
 
 function activate(context) {
   const provider = new SidebarProvider(context);
@@ -32,7 +58,160 @@ function activate(context) {
   context.subscriptions.push(
     vscode.extensions.onDidChange(() => provider.pushState())
   );
+
+  // --- Status bar item ---
+  // Shows a subtle indicator in the bottom bar. When an update is available
+  // it turns into a highlighted "Orbit Update" badge; when everything is
+  // current it shows a quiet checkmark. Click opens the Orbit sidebar.
+  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  statusBarItem.command = "claudeCodeOrbit.focusSidebar";
+  statusBarItem.tooltip = "Claude Code Orbit";
+  statusBarItem.hide();
+  context.subscriptions.push(statusBarItem);
+
+  // Register a command so the status bar item can open the Orbit sidebar.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claudeCodeOrbit.focusSidebar", () => {
+      try { vscode.commands.executeCommand("workbench.view.extension.claudeCodeOrbit"); } catch (_) {}
+    })
+  );
+
+  // --- Background patcher-version polling ---
+  startBackgroundPolling(context, provider, statusBarItem);
 }
+
+// ---------------------------------------------------------------------------
+//  Background patcher-version polling
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the latest patcher version from the OTA repo on GitHub.
+ * Returns the version string on success, or null on any failure (offline,
+ * GitHub down, file not found). This is intentionally silent — the caller
+ * handles user-visible state.
+ */
+async function fetchRemotePatcherVersion(log) {
+  try {
+    const body = await httpsGet(OTA_PATCHER_VERSION_URL, OTA_TIMEOUT_MS);
+    const v = body.trim().split(/\s+/)[0];
+    if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
+    if (log) log("Remote patcher version: " + v);
+    return v;
+  } catch (err) {
+    if (log) log("Remote patcher version check failed (" + (err && err.message ? err.message : err) + ")");
+    return null;
+  }
+}
+
+/**
+ * Read the currently-installed patcher version from the patched Claude Code
+ * webview. Returns the version string or null if Claude Code isn't installed
+ * or isn't patched.
+ */
+function readInstalledPatcherVersion() {
+  try {
+    const ext = vscode.extensions.getExtension(STOCK_ID);
+    if (!ext) return null;
+    const jsPath = path.join(ext.extensionUri.fsPath, "webview", "index.js");
+    if (!fs.existsSync(jsPath)) return null;
+    const text = fs.readFileSync(jsPath, "utf8");
+    const m = text.match(/ccPatchBuildVersion="([^"]+)"/);
+    return m ? m[1] : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Core update check: fetch the remote patcher version from GitHub, compare
+ * against what's installed, update status bar, and show a VS Code notification
+ * when the remote is newer. Runs silently on failure (offline, etc.).
+ */
+async function checkForPatcherUpdate(context, provider, statusBarItem) {
+  try {
+    const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
+    if (devMode) {
+      // In dev mode, still fetch the remote version so you can test
+      // the notification flow, but mark the status bar clearly.
+      statusBarItem.text = "$(beaker) Orbit Dev";
+      statusBarItem.tooltip = "Claude Code Orbit — DEV MODE (bundled patcher, fast polling)";
+      statusBarItem.backgroundColor = undefined;
+      statusBarItem.show();
+    }
+
+    const remoteVersion = await fetchRemotePatcherVersion();
+    if (!remoteVersion) {
+      statusBarItem.hide();
+      return;
+    }
+
+    // Persist the latest remote version so detectState() can use it without
+    // making its own network call (detectState is synchronous).
+    await context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
+
+    const installedVersion = readInstalledPatcherVersion();
+    if (!installedVersion) {
+      // Claude Code isn't patched yet — nothing to compare against.
+      statusBarItem.text = "$(check) Orbit";
+      statusBarItem.backgroundColor = undefined;
+      statusBarItem.show();
+      return;
+    }
+
+    if (cmpVer(installedVersion, remoteVersion) < 0) {
+      // --- Update available ---
+      statusBarItem.text = "$(cloud-download) Orbit Update";
+      statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+      statusBarItem.show();
+
+      // Only notify once per version (dedup via globalState).
+      const lastNotified = context.globalState.get(GS_LAST_NOTIFIED_VERSION);
+      if (lastNotified !== remoteVersion) {
+        await context.globalState.update(GS_LAST_NOTIFIED_VERSION, remoteVersion);
+        const action = await vscode.window.showInformationMessage(
+          `Claude Code Orbit: Patcher v${remoteVersion} is available (you have v${installedVersion}). Update now?`,
+          "Update", "Later"
+        );
+        if (action === "Update") {
+          provider.triggerEnable();
+        }
+      }
+    } else {
+      // --- Up to date ---
+      statusBarItem.text = "$(check) Orbit";
+      statusBarItem.backgroundColor = undefined;
+      statusBarItem.show();
+    }
+  } catch (_) {
+    // Offline / unexpected error — silently skip this cycle.
+    statusBarItem.hide();
+  }
+}
+
+/**
+ * Start periodic background checks for patcher updates.
+ * First check runs after STARTUP_DELAY_MS so VS Code finishes loading.
+ * Subsequent checks run every POLL_INTERVAL_MS.
+ */
+function startBackgroundPolling(context, provider, statusBarItem) {
+  const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
+  const interval = devMode ? 60 * 1000 : POLL_INTERVAL_MS;     // 1 min vs 4 hours
+  const delay = devMode ? 5 * 1000 : STARTUP_DELAY_MS;          // 5 sec vs 30 sec
+
+  const initialTimer = setTimeout(() => {
+    checkForPatcherUpdate(context, provider, statusBarItem);
+  }, delay);
+
+  const intervalTimer = setInterval(() => {
+    checkForPatcherUpdate(context, provider, statusBarItem);
+  }, interval);
+
+  context.subscriptions.push({
+    dispose: () => { clearTimeout(initialTimer); clearInterval(intervalTimer); }
+  });
+}
+
+// ---------------------------------------------------------------------------
 
 class SidebarProvider {
   constructor(context) {
@@ -60,6 +239,15 @@ class SidebarProvider {
     if (this.view) this.send("state", detectState(this.context));
   }
 
+  /**
+   * Called by the background poller when the user clicks "Update" in the
+   * VS Code notification. Routes through the same enable flow as the
+   * sidebar button so the webview stays in sync.
+   */
+  triggerEnable() {
+    this.onMessage({ type: "action", action: "enable" });
+  }
+
   async onMessage(msg) {
     if (msg.type === "refresh") return this.pushState();
     if (msg.type === "restart") {
@@ -81,6 +269,37 @@ class SidebarProvider {
         if (msg.action === "enable") await this.enable(false);
         else if (msg.action === "enableStable") await this.enable(true);
         else if (msg.action === "disable") await this.disable();
+        else if (msg.action === "checkUpdates") {
+          let resultMsg = "";
+          try {
+            const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
+            if (!remoteVersion) {
+              throw new Error("Could not reach GitHub (HTTP 404). Check your connection or the repository URL.");
+            }
+            await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
+            const installedVersion = readInstalledPatcherVersion();
+            if (!installedVersion) {
+              resultMsg = "Claude Code is not patched yet. Click Enable Orbit to get started.";
+            } else if (cmpVer(installedVersion, remoteVersion) < 0) {
+              resultMsg = "Update available! Patcher v" + remoteVersion + " (you have v" + installedVersion + "). Click Enable Orbit to update.";
+            } else {
+              resultMsg = "You're up to date. Patcher v" + installedVersion + " is current.";
+            }
+          } catch (err) {
+            this.send("phase", {
+              phase: "error",
+              message: "Check failed: " + (err && err.message ? err.message : err),
+            });
+            this.send("log", { line: "Check failed: " + (err && err.message ? err.message : err) });
+            this.busy = false;
+            this.pushState();
+            return;
+          }
+          this.send("phase", { phase: "done", action: msg.action, message: resultMsg });
+          this.busy = false;
+          this.pushState();
+          return;
+        }
         this.send("phase", {
           phase: "done",
           action: msg.action,
@@ -103,21 +322,30 @@ class SidebarProvider {
     if (!python) throw new Error("Python not found on PATH. Install Python 3 and retry.");
     this.log("Using Python: " + python);
 
+    const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
     const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
-    const otaPatcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
+    if (devMode) this.log("[DEV] Skipping OTA patcher — using bundled");
     const patcher = otaPatcher || bundledPatcher;
     const patcherSource = otaPatcher ? "OTA" : "bundled";
     const out = path.join(work, "patched.vsix");
 
-    // Pass our bundled version so the patcher stamps it as ccPatchBuildVersion
+    // Pass the active patcher version so the patcher stamps it as ccPatchBuildVersion
     // in the patched webview. detectState() reads it back later to know whether
     // an installed patch is current or behind a newer Orbit release.
-    const patcherVersion = readBundledPatcherVersion(this.context) || "dev";
+    let patcherVersion = readBundledPatcherVersion(this.context) || "dev";
+    if (otaPatcher) {
+      const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
+      if (remoteVersion) {
+        patcherVersion = remoteVersion;
+        await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
+      }
+    }
     const args = [STOCK_ID, "--out", out, "--download-dir", work, "--patcher-version", patcherVersion];
     if (useStable) {
-      const otaStable = await fetchOtaStableVersion((l) => this.log(l));
-      const stable = otaStable || STABLE_CLAUDE_VERSION;
+      const otaStable = devMode ? null : await fetchOtaStableVersion((l) => this.log(l));
+      const stable = otaStable || readBundledStableVersion(this.context);
       args.push("--version", stable);
       this.log("Downloading + patching stable " + STOCK_ID + " v" + stable + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     } else {
@@ -138,12 +366,12 @@ class SidebarProvider {
     if (!python) throw new Error("Python not found on PATH. Install Python 3 and retry.");
     this.log("Using Python: " + python);
 
+    const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
     // For disable we only need the marketplace download logic; both OTA and
-    // bundled patchers do that identically. Prefer OTA for consistency, but
-    // failure is harmless.
+    // bundled patchers do that identically. In dev mode skip OTA.
     const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
-    const otaPatcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
     const patcher = otaPatcher || bundledPatcher;
 
     this.log("Downloading original " + STOCK_ID);
@@ -201,6 +429,9 @@ class SidebarProvider {
         path.join(this.context.extensionUri.fsPath, "package.json"), "utf8"
       )).version || "";
     } catch (_) {}
+    // Read stable version from bundled file for display in the HTML.
+    // Falls back to the hardcoded constant if the bundled file is missing.
+    const stableVersion = readBundledStableVersion(this.context);
     return `<!doctype html>
 <html><head>
 <meta charset="utf-8"/>
@@ -384,9 +615,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/></svg>
         Restore original
       </button>
+      <button class="btn" id="checkUpdatesBtn" data-action="checkUpdates">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
+        Check for updates
+      </button>
       <button class="altAction" id="stableBtn" data-action="enableStable" hidden
               title="Pin to a known-good Claude Code build instead of the very latest from the Marketplace.">
-        Use stable v${STABLE_CLAUDE_VERSION} instead
+        Use stable v${stableVersion} instead
       </button>
       <div class="hint" id="idleHint"></div>
     </div>
@@ -404,7 +639,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     <!-- DONE -->
     <div class="statePane" data-pane="done">
       <p class="doneMsg" id="doneMsg">All set.</p>
-      <p class="doneSub">Restart Claude Code for the change to take effect.</p>
+      <p class="doneSub" id="doneSub">Restart Claude Code for the change to take effect.</p>
       <button class="btn primary" data-action="restart">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
         Restart Claude Code
@@ -419,7 +654,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       </div>
       <p class="errorMsg">Something went wrong.</p>
       <p class="errorSub" id="errorSub"></p>
-      <button class="btn primary" data-action="enableStable">Try stable v${STABLE_CLAUDE_VERSION}</button>
+      <button class="btn primary" data-action="enableStable">Try stable v${stableVersion}</button>
       <button class="btn" data-action="back">Back</button>
     </div>
 
@@ -440,7 +675,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
-const STABLE_CLAUDE_VERSION = "${STABLE_CLAUDE_VERSION}";
+const STABLE_CLAUDE_VERSION = "${stableVersion}";
 const panes = {
   idle: document.querySelector('[data-pane="idle"]'),
   working: document.querySelector('[data-pane="working"]'),
@@ -460,6 +695,7 @@ const enableBtn = document.getElementById("enableBtn");
 const enableBtnIcon = document.getElementById("enableBtnIcon");
 const enableBtnLabel = document.getElementById("enableBtnLabel");
 const disableBtn = document.getElementById("disableBtn");
+const checkUpdatesBtn = document.getElementById("checkUpdatesBtn");
 const idleHint = document.getElementById("idleHint");
 const patchedHero = document.getElementById("patchedHero");
 const patchedTitle = document.getElementById("patchedTitle");
@@ -492,6 +728,8 @@ function applyIdleState(state, info) {
   disableBtn.disabled = false;
   enableBtn.hidden = false;
   disableBtn.hidden = false;
+  // Check for updates: only relevant when patches are already applied
+  checkUpdatesBtn.hidden = true;
   // Stable alt-action: shown whenever Claude Code is installed.
   // We don't hide it when onStable — "Enable Orbit" always pulls newest, so the
   // user needs both buttons present to choose between newest vs. pinned-stable.
@@ -515,6 +753,7 @@ function applyIdleState(state, info) {
         : "Claude Code is running with the patches applied.";
     }
     enableBtn.hidden = true;               // hide entirely — patched hero already says "enabled"
+    checkUpdatesBtn.hidden = false;
     disableBtn.classList.add("primary");
     disableBtn.title = "";
     idleHint.innerHTML = 'To re-apply after a Claude Code update, restore original first, then enable again.';
@@ -535,6 +774,7 @@ function applyIdleState(state, info) {
     enableBtnLabel.textContent = "Update patches";
     enableBtn.classList.add("primary");
     enableBtn.title = "Re-download and re-patch Claude Code with the latest Orbit patcher (v" + (bundledVersion || "?") + ").";
+    checkUpdatesBtn.hidden = false;
     disableBtn.title = "";
     idleHint.innerHTML = 'Click Update patches to download the latest Claude Code and apply the newest patch set.';
   } else if (state === "stock") {
@@ -581,6 +821,12 @@ document.querySelectorAll("[data-action]").forEach(btn => {
       vscode.postMessage({ type: "restart" });
       btn.disabled = true;
       btn.innerHTML = '<span style="opacity:.7">Restarting…</span>';
+      return;
+    }
+    if (action === "checkUpdates") {
+      resetWorkingState();
+      setPane("working");
+      vscode.postMessage({ type: "action", action: "checkUpdates" });
       return;
     }
     logBuf = "";
@@ -697,6 +943,10 @@ window.addEventListener("message", (ev) => {
     } else if (m.phase === "done") {
       progressFillEl.style.width = "100%";
       doneMsgEl.textContent = m.message || "All set.";
+      if (m.action === "checkUpdates") {
+        document.getElementById("doneSub").textContent = "";
+        document.querySelector('[data-action="restart"]').hidden = true;
+      }
       setPane("done");
     } else if (m.phase === "error") {
       errorSubEl.textContent = m.message || "Unknown error.";
@@ -744,8 +994,9 @@ function httpsGet(url, timeoutMs) {
 // success, or null to signal the caller should use the bundled fallback.
 async function fetchOtaPatcher(context, log) {
   try {
-    log("Fetching OTA patcher: " + OTA_PATCHER_URL);
-    const body = await httpsGet(OTA_PATCHER_URL, OTA_TIMEOUT_MS);
+    const url = OTA_PATCHER_URL + "?t=" + Date.now();
+    log("Fetching OTA patcher: " + url);
+    const body = await httpsGet(url, OTA_TIMEOUT_MS);
     if (body.indexOf("def patch_webview_js") === -1) {
       throw new Error("payload missing patch_webview_js marker (got " + body.length + " bytes)");
     }
@@ -771,17 +1022,34 @@ async function fetchOtaStableVersion(log) {
     log("OTA stable version pin: " + v);
     return v;
   } catch (err) {
-    log("OTA stable version unavailable (" + (err && err.message ? err.message : err) + ") — using bundled " + STABLE_CLAUDE_VERSION);
+    log("OTA stable version unavailable (" + (err && err.message ? err.message : err) + ") — using bundled " + (readBundledStableVersion({ extensionUri: { fsPath: '' } }) || STABLE_CLAUDE_VERSION_FALLBACK));
     return null;
   }
 }
 
+// Read the patcher version shipped inside this VSIX (patch_version.txt).
+// detectState() uses this as an offline fallback when the remote patcher
+// version from GitHub is unavailable.
 function readBundledPatcherVersion(context) {
   try {
     const p = path.join(context.extensionUri.fsPath, "patch_version.txt");
     return fs.readFileSync(p, "utf8").trim() || null;
   } catch (_) {
     return null;
+  }
+}
+
+// Read the stable Claude Code version shipped inside this VSIX.
+// Returns the version string, or the hardcoded fallback if the file is
+// missing / unreadable.
+function readBundledStableVersion(context) {
+  try {
+    const p = path.join(context.extensionUri.fsPath, "STABLE_VERSION.txt");
+    const v = fs.readFileSync(p, "utf8").trim().split(/\s+/)[0];
+    if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
+    return v;
+  } catch (_) {
+    return STABLE_CLAUDE_VERSION_FALLBACK;
   }
 }
 
@@ -798,8 +1066,12 @@ function cmpVer(a, b) {
 
 function detectState(context) {
   const bundledVersion = readBundledPatcherVersion(context);
+  // Read the remote patcher version cached by the background poller into
+  // globalState. This is the PRIMARY source of truth for "is my patcher
+  // outdated?" — the bundled version only serves as an offline fallback.
+  const remoteVersion = context.globalState.get(GS_REMOTE_PATCHER_VERSION);
   const ext = vscode.extensions.getExtension(STOCK_ID);
-  if (!ext) return { state: "none", installedVersion: null, bundledVersion, claudeCodeVersion: null };
+  if (!ext) return { state: "none", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion: null };
 
   // Claude Code's own version, read straight from its package.json via the
   // Extensions API. Lets us show "Patches active on Claude Code v2.1.150"
@@ -817,19 +1089,26 @@ function detectState(context) {
       if (isPatched) {
         const m = text.match(/ccPatchBuildVersion="([^"]+)"/);
         const installedVersion = m ? m[1] : null;
-        // No marker => pre-versioning build, treat as outdated.
-        // Marker present but older than bundled => outdated.
-        const isOutdated = !installedVersion || (bundledVersion && cmpVer(installedVersion, bundledVersion) < 0);
+        // Determine "outdated" status:
+        //   1. Primary: compare installed vs remote (fetched from GitHub by the
+        //      background poller and cached in globalState).
+        //   2. Fallback: if no remote version cached (offline / first launch),
+        //      compare installed vs bundled (shipped in the Orbit VSIX).
+        //   3. No marker at all => pre-versioning build, always treat as outdated.
+        const isOutdated = !installedVersion
+          || (remoteVersion && cmpVer(installedVersion, remoteVersion) < 0)
+          || (!remoteVersion && bundledVersion && cmpVer(installedVersion, bundledVersion) < 0);
         return {
           state: isOutdated ? "outdated" : "patched",
           installedVersion,
           bundledVersion,
+          remoteVersion,
           claudeCodeVersion,
         };
       }
     }
   } catch (_) {}
-  return { state: "stock", installedVersion: null, bundledVersion, claudeCodeVersion };
+  return { state: "stock", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion };
 }
 
 async function findPython() {

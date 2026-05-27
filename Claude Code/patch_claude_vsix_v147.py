@@ -1193,7 +1193,7 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("circle",{{cx:7,cy:7,r:5.5}}),'
         f'{p0}.default.createElement("path",{{d:"M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"}}),'
         f'{p0}.default.createElement("line",{{x1:7,y1:3.4,x2:7,y2:4.4}}),'
-        f'{p0}.default.createElement("line",{{x1:7,y1:9.6,x2:7,y2:10.6}})))),'
+        f'{p0}.default.createElement("line",{{x1:7,y1:9.6,x2:7,y2:10.6}}))),'
         # Instructions — manage CLAUDE.md custom instructions
         f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchInstructionsBtn",title:"Custom instructions \\u2014 edit CLAUDE.md",'
         f"onClick:function(e){{ccPatchInstructionsMenu(e,{fe1['Z']})}}}},"
