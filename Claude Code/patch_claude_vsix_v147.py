@@ -27,8 +27,10 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import platform
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import urllib.parse
@@ -78,7 +80,26 @@ def marketplace_item_from_target(target: str) -> str | None:
     return None
 
 
-def download_marketplace_vsix(item: str, dest_dir: Path, version: str | None = None) -> Path:
+def detect_target_platform() -> str | None:
+    system = sys.platform
+    machine = platform.machine().lower()
+    arch = "arm64" if machine in ("arm64", "aarch64") else "x64"
+    if system.startswith("win"):
+        return f"win32-{arch}"
+    if system == "darwin":
+        return f"darwin-{arch}"
+    if system.startswith("linux"):
+        return f"linux-{arch}"
+    return None
+
+
+def download_marketplace_vsix(
+    item: str,
+    dest_dir: Path,
+    version: str | None = None,
+    target_platform: str | None = None,
+) -> Path:
+    target_platform = target_platform or detect_target_platform()
     body = {"filters": [{"criteria": [{"filterType": 7, "value": item}]}], "flags": 914}
     req = urllib.request.Request(
         MARKETPLACE_QUERY_URL,
@@ -88,7 +109,17 @@ def download_marketplace_vsix(item: str, dest_dir: Path, version: str | None = N
     with urllib.request.urlopen(req, timeout=60) as response:
         data = json.load(response)
     extension = data["results"][0]["extensions"][0]
-    selected = next((v for v in extension["versions"] if not version or v["version"] == version), None)
+    candidates = [v for v in extension["versions"] if not version or v["version"] == version]
+    selected = next(
+        (v for v in candidates if target_platform and v.get("targetPlatform") == target_platform),
+        None,
+    )
+    if selected is None and target_platform:
+        log(f"No {target_platform} VSIX found for {item} {version or 'latest'}; trying platform-neutral package")
+    if selected is None:
+        selected = next((v for v in candidates if not v.get("targetPlatform")), None)
+    if selected is None and candidates:
+        selected = candidates[0]
     if selected is None:
         if version:
             raise RuntimeError(f"Version {version} not found for {item}")
@@ -99,8 +130,10 @@ def download_marketplace_vsix(item: str, dest_dir: Path, version: str | None = N
     publisher = extension["publisher"]["publisherName"]
     name = extension["extensionName"]
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / f"{publisher}.{name}-{selected['version']}.vsix"
-    log(f"Downloading {publisher}.{name} {selected['version']} to {dest}")
+    selected_platform = selected.get("targetPlatform")
+    platform_suffix = f"-{selected_platform}" if selected_platform else ""
+    dest = dest_dir / f"{publisher}.{name}-{selected['version']}{platform_suffix}.vsix"
+    log(f"Downloading {publisher}.{name} {selected['version']} {selected_platform or 'platform-neutral'} to {dest}")
     urllib.request.urlretrieve(package["source"], dest)
     log(f"Downloaded VSIX size: {dest.stat().st_size} bytes")
     return dest
@@ -1818,6 +1851,7 @@ def main() -> int:
     parser.add_argument("target", nargs="?", default=DEFAULT_MARKETPLACE_ITEM)
     parser.add_argument("--out", default="")
     parser.add_argument("--version", default="")
+    parser.add_argument("--target-platform", default="", help="VS Code target platform, e.g. win32-x64.")
     parser.add_argument("--download-dir", default=".")
     parser.add_argument("--log", default="claude-vsix-patch.log")
     parser.add_argument(
@@ -1855,6 +1889,7 @@ def main() -> int:
             item,
             Path(args.download_dir).expanduser().resolve(),
             args.version or None,
+            args.target_platform or None,
         )
 
     if args.download_only:
