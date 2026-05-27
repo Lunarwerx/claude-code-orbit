@@ -8,6 +8,11 @@ Better session management, status indicators, search, filters, and a one-click Y
 
 > **Architecture:** Orbit is a thin wrapper VSIX that ships a Python patcher. The patcher uses regex-based dynamic capture to identify minified identifiers at runtime, making it resilient to upstream minifier changes. Patcher updates are delivered OTA from this repo — users click "Enable Orbit" or "Update patches" and get the latest without reinstalling the VSIX. A hardcoded fallback and `stable_version.txt` ensure users can always pin to a known-good Claude Code version if a new upstream release breaks compatibility.
 
+> **Release rule:** Experimental fixes are pushed to GitHub so users can click
+> **Check experimental updates** and install them from Orbit. Stable is bundled
+> in the VSIX and is not promoted until a tested production pair is explicitly
+> approved.
+
 <img src="https://res.cloudinary.com/dicsgc72e/image/upload/f_auto,q_auto:best,w_960,r_12/v1779639822/Seasions_f1joam.png" alt="Claude Code Orbit — patched sessions panel" />
 
 </div>
@@ -46,6 +51,23 @@ Orbit downloads the official `anthropic.claude-code` VSIX from the Marketplace, 
 5. Click **Restart Claude Code** when prompted
 
 **Requirements:** VS Code 1.94+ and Python 3 on `PATH` (the patcher runs locally on your machine).
+
+---
+
+## Updates
+
+Orbit has two update paths:
+
+- **Experimental:** pulled from GitHub. This is the fast-moving patcher track for
+  new Claude Code releases and urgent fixes. Use **Check experimental updates**
+  in the Orbit sidebar.
+- **Stable:** bundled into the Orbit VSIX. Stable is the known-good fallback and
+  is only updated when a tested Claude Code + patcher pair is intentionally
+  promoted.
+
+Wrapper/sidebar fixes are also published through GitHub as
+`latest/claude-code-orbit.vsix`, so the sidebar can offer an Orbit wrapper
+update instead of requiring a manual local VSIX reinstall.
 
 ---
 
