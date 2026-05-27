@@ -985,6 +985,14 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{S0}.default.createElement("line",{{x1:6,y1:6,x2:6,y2:8.5}}),'
         f'{S0}.default.createElement("polyline",{{points:"4.5,7 6,8.5 7.5,7"}}))'
     )
+    icon_unarchive = (
+        f'{S0}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.2,strokeLinecap:"round","aria-hidden":true}},'
+        f'{S0}.default.createElement("rect",{{x:1,y:2,width:10,height:2.5,rx:0.5}}),'
+        f'{S0}.default.createElement("path",{{d:"M2 4.5v5h8v-5"}}),'
+        f'{S0}.default.createElement("line",{{x1:6,y1:8.5,x2:6,y2:6}}),'
+        f'{S0}.default.createElement("polyline",{{points:"4.5,7.5 6,6 7.5,7.5"}}))'
+    )
     icon_trash = (
         f'{S0}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.2,strokeLinecap:"round","aria-hidden":true}},'
@@ -1026,6 +1034,12 @@ def patch_webview_js(webview_js: Path) -> bool:
         f"className:`${{{w2}.actionButton}} ccPatchActionBtn ccPatchPinBtn`,"
         f"onClick:(M)=>{{M.stopPropagation(),ccPatchTogglePin({Z})}},"
         f'title:ccPatchIsPinned({Z})?"Unpin":"Pin"}},' + icon_pin + "),"
+        # Unarchive button — only on archived sessions, sits left of delete
+        f"ccPatchIsArchived({Z})&&{S0}.default.createElement(" + '"span"'
+        f",{{role:" + '"button"' + ",tabIndex:0,"
+        f"className:`${{{w2}.actionButton}} ccPatchActionBtn ccPatchUnarchiveBtn`,"
+        f"onClick:(M)=>{{M.stopPropagation(),ccPatchToggleArchive({Z})}},"
+        f'title:"Unarchive"}},' + icon_unarchive + "),"
         f"(ccPatchIsArchived({Z})"
         f'?{H}&&{S0}.default.createElement("span",{{role:"button",tabIndex:0,'
         f"className:`${{{w2}.actionButton}} ccPatchActionBtn ccPatchDeleteBtn`,"
