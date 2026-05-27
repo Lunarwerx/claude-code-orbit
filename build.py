@@ -24,6 +24,9 @@ STABLE_PATCHER_VERSION_SRC = STABLE_DIR / "patcher_version.txt"
 STABLE_README_SRC = STABLE_DIR / "README.md"
 README_SRC = ROOT / "README.md"
 BUILDS_DIR = ROOT / "builds"
+LATEST_DIR = ROOT / "latest"
+LATEST_VSIX = LATEST_DIR / "claude-code-orbit.vsix"
+WRAPPER_VERSION_SRC = ROOT / "wrapper_version.txt"
 EXT_NAME = "claude-code-orbit"
 
 VSIX_MANIFEST = """<?xml version="1.0" encoding="utf-8"?>
@@ -186,6 +189,11 @@ def build(out: Path | None = None) -> Path:
         print(f"    + {f}")
     print(f"  output:  {out}")
     print(f"  size:    {size_kb:.1f} KB")
+    LATEST_DIR.mkdir(exist_ok=True)
+    shutil.copyfile(out, LATEST_VSIX)
+    WRAPPER_VERSION_SRC.write_text(str(manifest["version"]) + "\n", encoding="utf-8")
+    print(f"  latest:  {LATEST_VSIX}")
+    print(f"  wrapper: {WRAPPER_VERSION_SRC.name} = {manifest['version']}")
     return out
 
 

@@ -28,6 +28,8 @@ const STABLE_CLAUDE_VERSION_FALLBACK = "2.1.152";
 const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main";
 const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
 const OTA_STABLE_VERSION_URL = OTA_BASE + "/stable/stable_version.txt";
+const OTA_WRAPPER_VERSION_URL = OTA_BASE + "/wrapper_version.txt";
+const OTA_WRAPPER_VSIX_URL = OTA_BASE + "/latest/claude-code-orbit.vsix";
 const OTA_TIMEOUT_MS = 8000;
 
 // OTA patcher-version pin — separate from stable_version.txt (which pins the
@@ -128,6 +130,19 @@ function readBundledWrapperVersion(context) {
     return manifest.version || "unknown";
   } catch (_) {
     return "unknown";
+  }
+}
+
+async function fetchRemoteWrapperVersion(log) {
+  try {
+    const body = await httpsGet(OTA_WRAPPER_VERSION_URL + "?t=" + Date.now(), OTA_TIMEOUT_MS);
+    const v = body.trim().split(/\s+/)[0];
+    if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
+    if (log) log("GitHub Orbit wrapper version: " + v);
+    return v;
+  } catch (err) {
+    if (log) log("GitHub Orbit wrapper version unavailable (" + (err && err.message ? err.message : err) + ")");
+    return null;
   }
 }
 
@@ -278,22 +293,31 @@ class SidebarProvider {
         if (msg.action === "enable") await this.enable(false);
         else if (msg.action === "enableStable") await this.enable(true);
         else if (msg.action === "disable") await this.disable();
+        else if (msg.action === "updateWrapper") await this.updateWrapper();
         else if (msg.action === "checkUpdates") {
           let resultMsg = "";
           let resultSub = "";
           let updateAvailable = false;
+          let updateAction = "enable";
           try {
             this.log("Checking GitHub experimental patcher version");
             const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
             if (!remoteVersion) {
               throw new Error("Could not reach GitHub (HTTP 404). Check your connection or the repository URL.");
             }
+            this.log("Checking GitHub Orbit wrapper version");
+            const remoteWrapperVersion = await fetchRemoteWrapperVersion((l) => this.log(l));
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
             const installedVersion = readInstalledPatcherVersion();
             const wrapperVersion = readBundledWrapperVersion(this.context);
             this.log("Reading installed Claude Code patcher version: " + (installedVersion || "not patched"));
             this.log("Comparing installed patcher against GitHub experimental");
-            if (!installedVersion) {
+            if (remoteWrapperVersion && cmpVer(wrapperVersion, remoteWrapperVersion) < 0) {
+              updateAvailable = true;
+              updateAction = "updateWrapper";
+              resultMsg = "Orbit wrapper v" + remoteWrapperVersion + " is available.";
+              resultSub = "Installed Orbit wrapper is v" + wrapperVersion + ". This updates the sidebar/updater itself from GitHub. Install wrapper update now?";
+            } else if (!installedVersion) {
               updateAvailable = true;
               resultMsg = "Claude Code is not patched yet.";
               resultSub = "GitHub experimental patcher is v" + remoteVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install experimental now?";
@@ -321,6 +345,7 @@ class SidebarProvider {
             message: resultMsg,
             subMessage: resultSub,
             updateAvailable,
+            updateAction,
           });
           this.busy = false;
           this.pushState();
@@ -331,10 +356,14 @@ class SidebarProvider {
           action: msg.action,
           message: msg.action === "disable"
             ? "Original Claude Code restored."
+            : msg.action === "updateWrapper"
+              ? "Orbit wrapper updated."
             : msg.action === "enableStable"
               ? "Stable Orbit installed."
               : "Experimental Orbit installed.",
-          subMessage: msg.action === "enableStable"
+          subMessage: msg.action === "updateWrapper"
+            ? "Reload VS Code to start the updated Orbit sidebar."
+            : msg.action === "enableStable"
             ? "Reload VS Code to start Claude Code from the stable patched bundle."
             : "Reload VS Code for the change to take effect.",
         });
@@ -391,6 +420,15 @@ class SidebarProvider {
       await vscode.commands.executeCommand("workbench.extensions.uninstallExtension", STOCK_ID);
     }
     this.log("Installing patched VSIX");
+    await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(out));
+  }
+
+  async updateWrapper() {
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-wrapper-"));
+    const out = path.join(work, "claude-code-orbit-latest.vsix");
+    this.log("Downloading Orbit wrapper VSIX from GitHub");
+    await httpsDownload(OTA_WRAPPER_VSIX_URL + "?t=" + Date.now(), out, OTA_TIMEOUT_MS * 4);
+    this.log("Installing Orbit wrapper VSIX");
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(out));
   }
 
@@ -913,6 +951,7 @@ function setCheckProgress(idx, label) {
 // (so a late "Patching..." line doesn't go backwards from "Installing").
 const STEPS = [
   { match: /Checking GitHub experimental/i, idx: 1, label: "Checking GitHub", check: true },
+  { match: /Checking GitHub Orbit wrapper/i, idx: 1, label: "Checking wrapper", check: true },
   { match: /Reading installed Claude Code patcher/i, idx: 2, label: "Reading installed patcher", check: true },
   { match: /Comparing installed patcher/i, idx: 3, label: "Comparing versions", check: true },
   { match: /Downloading anthropic|Downloading marketplace|Downloading \\+ patching|Downloading original/i, idx: 1, label: "Downloading Claude Code" },
@@ -1005,8 +1044,8 @@ window.addEventListener("message", (ev) => {
       donePrimaryBtn.dataset.action = "restart";
       donePrimaryBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>Restart Claude Code';
       if (m.action === "checkUpdates" && m.updateAvailable) {
-        donePrimaryBtn.dataset.action = "enable";
-        donePrimaryBtn.innerHTML = "Install experimental";
+        donePrimaryBtn.dataset.action = m.updateAction || "enable";
+        donePrimaryBtn.innerHTML = m.updateAction === "updateWrapper" ? "Update Orbit wrapper" : "Install experimental";
       } else if (m.action === "checkUpdates") {
         donePrimaryBtn.hidden = true;
       } else if (!doneSub.textContent) {
@@ -1046,6 +1085,32 @@ function httpsGet(url, timeoutMs) {
       const chunks = [];
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      res.on("error", reject);
+    });
+    req.on("error", reject);
+    req.setTimeout(timeoutMs, () => { req.destroy(new Error("timeout after " + timeoutMs + "ms")); });
+  });
+}
+
+function httpsDownload(url, dest, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { "User-Agent": "claude-code-orbit-vscode" } }, (res) => {
+      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+        res.resume();
+        resolve(httpsDownload(res.headers.location, dest, timeoutMs));
+        return;
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        reject(new Error("HTTP " + res.statusCode));
+        return;
+      }
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        fs.writeFileSync(dest, Buffer.concat(chunks));
+        resolve(dest);
+      });
       res.on("error", reject);
     });
     req.on("error", reject);
