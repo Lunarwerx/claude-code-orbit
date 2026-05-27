@@ -191,9 +191,9 @@ function ccPatchYoloApplyArr(arr,on){if(!arr)return;arr.forEach(function(s){try{
 // silent desync: button looked ON, prompts still appeared. Starting OFF means
 // the visual state and functional state can only change together via the toggle.
 function ccPatchYoloToggle($){var on=!ccPatchYoloOn();document.documentElement.classList.toggle(`ccPatchYoloMode`,on);if($){try{ccPatchYoloApplyArr($.sessions&&$.sessions.value,on)}catch(e){}try{ccPatchYoloApplyArr($.remoteSessions&&$.remoteSessions.value,on)}catch(e){}}}
-function ccPatchCmdUriOpen(ctx,filePath){let cmd="command:workbench.action.files.openFile?"+encodeURIComponent(JSON.stringify([filePath]));try{if(ctx&&ctx.openURL){ctx.openURL(cmd);return}}catch(e){}try{let a=document.createElement("a");a.href=cmd;a.style.display="none";document.body.appendChild(a);a.click();document.body.removeChild(a)}catch(e){}}
-function ccPatchInstructionsMenu(e,ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();let t=e.currentTarget;if(!t)return;t.classList.add("ccPatchFilterButtonOpen");let n=t.getBoundingClientRect(),r=document.createElement("div");r.className="claudePatchContextMenu";r.style.top=Math.round(n.bottom+4)+"px";r.style.left=Math.min(Math.round(n.left),window.innerWidth-220)+"px";let a=function(label,fn){let b=document.createElement("button");b.textContent=label;b.onmousedown=function(ev){ev.preventDefault();ev.stopPropagation();r.remove();fn()};b.onclick=b.onmousedown;r.appendChild(b)};let cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";let projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";a("\u{1F4C4} Project CLAUDE.md",function(){ccPatchCmdUriOpen(ctx,projPath)});a("\u{1F3E0} Global CLAUDE.md",function(){ccPatchCmdUriOpen(ctx,"${userHome}/.claude/CLAUDE.md")});document.body.appendChild(r);setTimeout(function(){var h=function(ev){if(!r.contains(ev.target)&&!t.contains(ev.target)){r.remove();t.classList.remove("ccPatchFilterButtonOpen")}};r._ccPatchOutsideHandler=h;document.addEventListener("mousedown",h)},0)}catch(err){}}
-Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchCmdUriOpen,ccPatchInstructionsMenu});
+function ccPatchOpenClaudeMd(ctx,filePath,title){try{if(ctx&&ctx.sendRequest){ctx.sendRequest({type:"open_claude_md",filePath:filePath,title:title||"CLAUDE.md"}).catch(function(e){console.error(e)});return}}catch(e){}try{if(ctx&&ctx.openFile){ctx.openFile(filePath);return}}catch(e){}}
+function ccPatchInstructionsMenu(e,ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();let t=e.currentTarget;if(!t)return;t.classList.add("ccPatchFilterButtonOpen");let n=t.getBoundingClientRect(),r=document.createElement("div");r.className="claudePatchContextMenu";r.style.top=Math.round(n.bottom+4)+"px";r.style.left=Math.min(Math.round(n.left),window.innerWidth-220)+"px";let a=function(label,fn){let b=document.createElement("button");b.textContent=label;b.onmousedown=function(ev){ev.preventDefault(),ev.stopPropagation();r.remove(),fn()};b.onclick=b.onmousedown;r.appendChild(b)};let cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";let projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";a("\u{1F4C4} Project CLAUDE.md",function(){ccPatchOpenClaudeMd(ctx,projPath,"Project CLAUDE.md")});a("\u{1F3E0} Global CLAUDE.md",function(){ccPatchOpenClaudeMd(ctx,"${userHome}/.claude/CLAUDE.md","Global CLAUDE.md")});document.body.appendChild(r);setTimeout(function(){var h=function(ev){if(!r.contains(ev.target)&&!t.contains(ev.target)){r.remove();t.classList.remove("ccPatchFilterButtonOpen")}};r._ccPatchOutsideHandler=h;document.addEventListener("mousedown",h)},0)}catch(err){}}
+Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchOpenClaudeMd,ccPatchInstructionsMenu});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1160,8 +1160,10 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("rect",{{x:3,y:4,width:14,height:12,rx:1.5}}),'
         f'{p0}.default.createElement("line",{{x1:8,y1:4,x2:8,y2:16}})))'
     )
-    # Inject the pane-toggle button immediately before the history button.
-    text = text[: m_hist.start()] + pane_toggle + "," + text[m_hist.start() :]
+    # Remove the stock history popover button. The inline sessions sidebar is
+    # now the primary session browser, and the pane is controlled from inside
+    # the sessions panel itself.
+    text = text[: m_hist.start()] + "null" + text[m_hist.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
     # 12. Inline sessions panel — splice between h6.body and h6.content.
@@ -1238,6 +1240,13 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("line",{{x1:4.5,y1:4,x2:9.5,y2:4}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:6.5,x2:9.5,y2:6.5}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:9,x2:7.5,y2:9}})))),'
+        # Close/collapse lives on the right edge of the sessions panel itself.
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCloseBtn",title:"Hide sessions",'
+        f"onClick:ccPatchTogglePane}},"
+        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{p0}.default.createElement("path",{{d:"M9.5 2.5 5 7l4.5 4.5"}}),'
+        f'{p0}.default.createElement("path",{{d:"M4 2.5v9"}}))),'
         f'{p0}.default.createElement("div",{{className:"ccPatchSearchRow"}},'
         f'{p0}.default.createElement("input",{{type:"text",className:"ccPatchSearchInput",'
         f'placeholder:"Search sessions...",'
@@ -1263,6 +1272,12 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'authMethod:"local",'
         f"onRefresh:{inline_refresh},"
         f'onOpenURL:{inline_props["onOpenURL"]}}})),'
+        f'{p0}.default.createElement("button",{{className:"claudePatchPaneReopen",title:"Show sessions",'
+        f"onClick:ccPatchTogglePane}},"
+        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{p0}.default.createElement("path",{{d:"M4.5 2.5 9 7l-4.5 4.5"}}),'
+        f'{p0}.default.createElement("path",{{d:"M10 2.5v9"}}))),'
         f'{p0}.default.createElement("div",{{className:"claudePatchResizeHandle",onPointerDown:ccPatchStartResize}}),'
         f'{p0}.default.createElement("div",{{className:`${{{h6}.content}} claudePatchMainContent`}},'
     )
@@ -1564,9 +1579,9 @@ def patch_webview_css(webview_css: Path) -> bool:
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
         ".claudePatchRoot{min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
-        ".claudePatchHeader{min-width:0}"
+        ".claudePatchHeader{display:none!important}"
         # Inline sessions panel — absolutely positioned from root's top edge
-        ".claudePatchInlineSessions{order:2;position:relative;z-index:0;"
+        ".claudePatchInlineSessions{order:2;position:relative;z-index:3;"
         "flex:0 0 var(--claude-patch-sessions-width,min(44vw,360px));"
         "min-width:180px;max-width:75%;min-height:0;"
         "border-left:1px solid var(--app-primary-border-color);"
@@ -1577,6 +1592,7 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".claudePatchInlineSessions>div:last-child{flex:1;min-height:0;overflow:hidden}"
         # Resize handle — absolutely positioned along the left edge of the panel
         ".claudePatchResizeHandle{order:1;position:relative;z-index:0;flex:0 0 4px;"
+        "align-self:stretch;"
         "cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
         ".claudePatchResizeHandle:hover,.claudePatchResizeHandle:active{"
         "opacity:1;background:var(--vscode-sash-hoverBorder,var(--app-primary-border-color))}"
@@ -1584,6 +1600,14 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchPaneHidden .claudePatchInlineSessions"
         "{flex-basis:0!important;min-width:0!important;opacity:0;pointer-events:none}"
         ".ccPatchPaneHidden .claudePatchResizeHandle{display:none!important}"
+        ".claudePatchPaneReopen{order:3;display:none;align-items:center;justify-content:center;"
+        "flex:0 0 28px;align-self:stretch;"
+        "background:var(--app-primary-background);border:0;border-left:1px solid var(--app-primary-border-color);"
+        "color:var(--app-secondary-foreground);cursor:pointer;padding:0;opacity:.8}"
+        ".claudePatchPaneReopen:hover{opacity:1;color:var(--app-primary-foreground);"
+        "background:var(--app-list-hover-background,rgba(255,255,255,.06))}"
+        ".claudePatchPaneReopen svg{width:14px;height:14px;display:block}"
+        ".ccPatchPaneHidden .claudePatchPaneReopen{display:flex!important}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
@@ -1734,6 +1758,7 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchUsageBtn:hover{color:var(--vscode-charts-green,#10b981)!important}"
         # Instructions button
         ".ccPatchInstructionsBtn:hover{color:var(--vscode-charts-purple,#a855f7)!important}"
+        ".ccPatchPaneCloseBtn:hover{color:var(--vscode-charts-blue,#3b82f6)!important}"
     )
     css_marker = ".ccPatchHeaderBtn{display:inline-flex;"
     old_media_hide = (
@@ -1755,10 +1780,14 @@ def patch_webview_css(webview_css: Path) -> bool:
 
 def patch_extension_dir(extension_dir: Path) -> bool:
     changed = False
+    extension_js = extension_dir / "extension.js"
     webview_js = extension_dir / "webview" / "index.js"
     webview_css = extension_dir / "webview" / "index.css"
     if not webview_js.exists() or not webview_css.exists():
         raise RuntimeError("Could not find Claude webview index.js / index.css")
+    if extension_js.exists():
+        log("Patching Claude extension host JS")
+        changed |= patch_extension_host_js(extension_js)
     log("Patching Claude webview JS")
     changed |= patch_webview_js(webview_js)
     log("Patching Claude webview CSS")
@@ -1767,7 +1796,41 @@ def patch_extension_dir(extension_dir: Path) -> bool:
     return changed
 
 
+def patch_extension_host_js(path: Path) -> bool:
+    text = read(path)
+    if "open_claude_md_response" in text:
+        return False
+    ids = re.search(
+        rf"openConfigFile\({JS_ID}\)\{{[\s\S]{{0,700}}?(?P<path>{JS_ID})\.join\([\s\S]{{0,300}}?(?P<fs>{JS_ID})\.writeFileSync",
+        text,
+    )
+    if not ids:
+        raise RuntimeError("Could not locate host fs/path identifiers for CLAUDE.md editor patch")
+    path_id = ids.group("path")
+    fs_id = ids.group("fs")
+    anchor_re = re.compile(
+        rf'case"open_config_file":return this\.openConfigFile\((?P<msg>{JS_ID})\.request\.configType\),'
+        r'\{type:"open_config_file_response"\};'
+    )
+    match = anchor_re.search(text)
+    if not match:
+        raise RuntimeError("Could not find open_config_file host request anchor")
+    msg = match.group("msg")
+    insert = (
+        f'case"open_claude_md":{{let ccP={msg}.request.filePath,ccT={msg}.request.title||"CLAUDE.md",ccC="";'
+        f'try{{if({fs_id}.existsSync(ccP))ccC={fs_id}.readFileSync(ccP,"utf8");'
+        f'let ccR=await this.openContent(ccC,ccT,!0);'
+        f'if(ccR&&typeof ccR.updatedContent==="string"){{{fs_id}.mkdirSync({path_id}.dirname(ccP),{{recursive:!0}});'
+        f'{fs_id}.writeFileSync(ccP,ccR.updatedContent,"utf8")}}'
+        f'return{{type:"open_claude_md_response"}}}}catch(ccE){{this.output?.error?.(`Failed to edit ${{ccP}}: ${{ccE}}`);throw ccE}}}}'
+    )
+    text = text[:match.start()] + insert + text[match.start():]
+    write(path, text)
+    return True
+
+
 def verify_extension_dir(extension_dir: Path) -> None:
+    host = read(extension_dir / "extension.js") if (extension_dir / "extension.js").exists() else ""
     js = read(extension_dir / "webview" / "index.js")
     css = read(extension_dir / "webview" / "index.css")
     checks = {
@@ -1809,8 +1872,9 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "filter svg icons": "ccPatchFilterIconSVG" in js and ".ccPatchFilterItemIcon" in css,
         "waiting indicator": "ccPatchIsWaiting" in js and ".claudePatchStatusWaiting" in css,
         "pane toggle": "ccPatchTogglePane" in js
-        and 'ariaLabel:"Toggle session pane"' in js,
-        "history preserved": 'ariaLabel:"Session history"' in js,
+        and "ccPatchPaneCloseBtn" in js
+        and "claudePatchPaneReopen" in js,
+        "history removed": 'ariaLabel:"Session history"' not in js,
         "overlay fix": "z-index:10000!important;background-color:#000000e6!important" in css,
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
@@ -1819,9 +1883,12 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "yolo on state css": ".ccPatchYoloMode .ccPatchYoloBtn" in css,
         "usage button": "ccPatchUsageBtn" in js and ".ccPatchUsageBtn" in css,
         "instructions btn": "ccPatchInstructionsMenu" in js and ".ccPatchInstructionsBtn" in css,
+        "pane close css": ".ccPatchPaneCloseBtn" in css and ".claudePatchPaneReopen" in css,
+        "instructions request": "open_claude_md" in js and "open_claude_md_response" in host,
         "built-in search hide": '[class*="searchRow_"]' in css,
         "root wrapper class": "claudePatchRoot" in js and ".claudePatchRoot" in css,
         "header wrapper class": "claudePatchHeader" in js and ".claudePatchHeader" in css,
+        "native header hidden": ".claudePatchHeader{display:none!important}" in css,
         "build version marker": 'var ccPatchBuildVersion="' in js,
         "global helper exports": "Object.assign(globalThis" in js and 'Object.defineProperty(globalThis,"ccPatchSearchQ"' in js,
         "hide untitled": "ccPatchIsUntitledEmpty" in js and "hideUntitled" in js,
