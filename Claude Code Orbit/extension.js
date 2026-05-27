@@ -178,7 +178,7 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
       if (lastNotified !== remoteVersion) {
         await context.globalState.update(GS_LAST_NOTIFIED_VERSION, remoteVersion);
         const action = await vscode.window.showInformationMessage(
-          `Claude Code Orbit: Patcher v${remoteVersion} is available (you have v${installedVersion}). Update now?`,
+          `Claude Code Orbit: Experimental patcher v${remoteVersion} is available (you have v${installedVersion}). Update now?`,
           "Update", "Later"
         );
         if (action === "Update") {
@@ -291,9 +291,9 @@ class SidebarProvider {
             if (!installedVersion) {
               resultMsg = "Claude Code is not patched yet. Orbit wrapper v" + wrapperVersion + " is installed.";
             } else if (cmpVer(installedVersion, remoteVersion) < 0) {
-              resultMsg = "Patcher update available: v" + remoteVersion + " (Claude Code has v" + installedVersion + "). Click Enable Orbit to update.";
+              resultMsg = "Experimental patcher update available: v" + remoteVersion + " (Claude Code has v" + installedVersion + "). Click Use experimental to update.";
             } else {
-              resultMsg = "Patcher v" + installedVersion + " is current. Orbit wrapper v" + wrapperVersion + " is installed.";
+              resultMsg = "Experimental patcher v" + installedVersion + " is current. Orbit wrapper v" + wrapperVersion + " is installed.";
             }
           } catch (err) {
             this.send("phase", {
@@ -317,7 +317,7 @@ class SidebarProvider {
             ? "Original Claude Code restored."
             : msg.action === "enableStable"
               ? "Stable Orbit installed."
-              : "Orbit installed.",
+              : "Experimental Orbit installed.",
           subMessage: msg.action === "enableStable"
             ? "Reload VS Code to start Claude Code from the stable patched bundle."
             : "Reload VS Code for the change to take effect.",
@@ -366,7 +366,7 @@ class SidebarProvider {
       args.push("--version", stable);
       this.log("Downloading + patching stable " + STOCK_ID + " v" + stable + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     } else {
-      this.log("Downloading + patching latest " + STOCK_ID + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
+      this.log("Downloading + patching experimental " + STOCK_ID + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     }
     await runPython(python, patcher, args, (line) => this.log(line));
 
@@ -626,7 +626,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       </div>
       <button class="btn" id="enableBtn" data-action="enable">
         <span class="btnIcon" id="enableBtnIcon"></span>
-        <span class="btnLabel" id="enableBtnLabel">Enable Orbit</span>
+        <span class="btnLabel" id="enableBtnLabel">Use experimental</span>
       </button>
       <button class="btn" id="disableBtn" data-action="disable">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/></svg>
@@ -634,11 +634,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       </button>
       <button class="btn" id="checkUpdatesBtn" data-action="checkUpdates">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
-        Check for updates
+        Check experimental updates
       </button>
       <button class="altAction" id="stableBtn" data-action="enableStable" hidden
-              title="Pin to a known-good Claude Code build instead of the very latest from the Marketplace.">
-        Use stable v${stableVersion} instead
+              title="Use the bundled known-good production patcher and pinned Claude Code version.">
+        Use stable v${stableVersion}
       </button>
       <div class="hint" id="idleHint"></div>
     </div>
@@ -671,7 +671,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       </div>
       <p class="errorMsg">Something went wrong.</p>
       <p class="errorSub" id="errorSub"></p>
-      <button class="btn primary" data-action="enableStable">Try stable v${stableVersion}</button>
+      <button class="btn primary" data-action="enableStable">Use stable v${stableVersion}</button>
       <button class="btn" data-action="back">Back</button>
     </div>
 
@@ -734,9 +734,9 @@ function applyIdleState(state, info) {
   const claudeCodeVersion = info && info.claudeCodeVersion;
   const onStable = claudeCodeVersion && claudeCodeVersion === STABLE_CLAUDE_VERSION;
 
-  // Always render Enable Orbit + Restore original; gray the inapplicable one per state.
+  // Always render Use experimental + Restore original; gray the inapplicable one per state.
   enableBtnIcon.innerHTML = ICON_CHECK;
-  enableBtnLabel.textContent = "Enable Orbit";
+  enableBtnLabel.textContent = "Use experimental";
 
   // Reset both buttons + hero variant to neutral, then apply per-state styling.
   enableBtn.classList.remove("primary");
@@ -773,7 +773,7 @@ function applyIdleState(state, info) {
     checkUpdatesBtn.hidden = false;
     disableBtn.classList.add("primary");
     disableBtn.title = "";
-    idleHint.innerHTML = 'To re-apply after a Claude Code update, restore original first, then enable again.';
+    idleHint.innerHTML = 'Use experimental pulls the current GitHub patcher. Use stable installs the bundled production patcher.';
   } else if (state === "outdated") {
     patchedHero.hidden = false;
     patchedHero.classList.add("updateAvailable");
@@ -785,15 +785,19 @@ function applyIdleState(state, info) {
         ? "Patches v" + installedVersion + " → v" + (bundledVersion || "?")
         : "Legacy patches → v" + (bundledVersion || "?");
       if (claudeCodeVersion) line += " · Claude Code v" + claudeCodeVersion + (onStable ? " (Stable)" : "");
+      line = (installedVersion
+        ? "Experimental patcher v" + installedVersion + " -> v" + (bundledVersion || "?")
+        : "Legacy patches -> experimental v" + (bundledVersion || "?"))
+        + (claudeCodeVersion ? " - Claude Code v" + claudeCodeVersion + (onStable ? " (Stable)" : "") : "");
       patchedSub.textContent = line + ".";
     }
     enableBtnIcon.innerHTML = ICON_REFRESH;
-    enableBtnLabel.textContent = "Update patches";
+    enableBtnLabel.textContent = "Use experimental";
     enableBtn.classList.add("primary");
-    enableBtn.title = "Re-download and re-patch Claude Code with the latest Orbit patcher (v" + (bundledVersion || "?") + ").";
+    enableBtn.title = "Download Claude Code and patch it with the current experimental GitHub patcher (v" + (bundledVersion || "?") + ").";
     checkUpdatesBtn.hidden = false;
     disableBtn.title = "";
-    idleHint.innerHTML = 'Click Update patches to download the latest Claude Code and apply the newest patch set.';
+    idleHint.innerHTML = 'Experimental tracks the current GitHub patcher. Stable stays on the bundled known-good patcher.';
   } else if (state === "stock") {
     patchedHero.hidden = true;
     stockHero.hidden = false;
@@ -804,7 +808,7 @@ function applyIdleState(state, info) {
     enableBtn.classList.add("primary");
     enableBtn.title = "";
     disableBtn.hidden = true;              // hide entirely — nothing to restore
-    idleHint.innerHTML = 'Enable downloads the latest <code>anthropic.claude-code</code>, applies UI patches, and installs it.';
+    idleHint.innerHTML = 'Experimental downloads <code>anthropic.claude-code</code>, pulls the current GitHub patcher, and installs it.';
   } else {
     patchedHero.hidden = true;
     stockHero.hidden = true;
