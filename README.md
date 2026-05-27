@@ -6,6 +6,8 @@
 
 Better session management, status indicators, search, filters, and a one-click YOLO mode — applied on top of the official extension, not as a fork.
 
+> **Architecture:** Orbit is a thin wrapper VSIX that ships a Python patcher. The patcher uses regex-based dynamic capture to identify minified identifiers at runtime, making it resilient to upstream minifier changes. Patcher updates are delivered OTA from this repo — users click "Enable Orbit" or "Update patches" and get the latest without reinstalling the VSIX. A hardcoded fallback and `stable_version.txt` ensure users can always pin to a known-good Claude Code version if a new upstream release breaks compatibility.
+
 <img src="https://res.cloudinary.com/dicsgc72e/image/upload/f_auto,q_auto:best,w_960,r_12/v1779639822/Seasions_f1joam.png" alt="Claude Code Orbit — patched sessions panel" />
 
 </div>
