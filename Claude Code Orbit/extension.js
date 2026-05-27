@@ -17,18 +17,17 @@ const STOCK_ID = "anthropic.claude-code";
 // ║  STABLE VERSION: The canonical source of truth is STABLE_VERSION.txt   ║
 // ║  shipped inside this VSIX. Do NOT modify the hardcoded fallback below  ║
 // ║  without explicit permission — update the .txt file instead.           ║
-// ║  The OTA stable_version.txt on GitHub overrides both at runtime.       ║
+// ║  Stable mode never uses OTA; it uses the bundled stable/ folder only.  ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 // Hardcoded fallback — only used if the bundled STABLE_VERSION.txt is
 // somehow missing or unreadable. The OTA txt is the source of truth.
 const STABLE_CLAUDE_VERSION_FALLBACK = "2.1.152";
 
-// OTA: Orbit fetches the patcher + stable-version pin from this public repo
-// on every Enable click. Means we can push patcher fixes without making
-// users re-install the VSIX. Bundled copies still ship as offline fallback.
+// OTA: normal Enable fetches the latest working patcher from this public repo.
+// Stable mode does not use OTA; it runs the bundled production stable/ files.
 const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main";
 const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
-const OTA_STABLE_VERSION_URL = OTA_BASE + "/stable_version.txt";
+const OTA_STABLE_VERSION_URL = OTA_BASE + "/stable/stable_version.txt";
 const OTA_TIMEOUT_MS = 8000;
 
 // OTA patcher-version pin — separate from stable_version.txt (which pins the
@@ -324,10 +323,11 @@ class SidebarProvider {
 
     const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
-    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
-    const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
+    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "stable", "patch_claude.py");
+    const otaPatcher = (devMode || useStable) ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
     if (devMode) this.log("[DEV] Skipping OTA patcher — using bundled");
-    const patcher = otaPatcher || bundledPatcher;
+    if (useStable) this.log("[STABLE] Using bundled production patcher only");
+    const patcher = useStable ? bundledPatcher : (otaPatcher || bundledPatcher);
     const patcherSource = otaPatcher ? "OTA" : "bundled";
     const out = path.join(work, "patched.vsix");
 
@@ -335,7 +335,7 @@ class SidebarProvider {
     // in the patched webview. detectState() reads it back later to know whether
     // an installed patch is current or behind a newer Orbit release.
     let patcherVersion = readBundledPatcherVersion(this.context) || "dev";
-    if (otaPatcher) {
+    if (!useStable && otaPatcher) {
       const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
       if (remoteVersion) {
         patcherVersion = remoteVersion;
@@ -344,8 +344,7 @@ class SidebarProvider {
     }
     const args = [STOCK_ID, "--out", out, "--download-dir", work, "--patcher-version", patcherVersion];
     if (useStable) {
-      const otaStable = devMode ? null : await fetchOtaStableVersion((l) => this.log(l));
-      const stable = otaStable || readBundledStableVersion(this.context);
+      const stable = readBundledStableVersion(this.context);
       args.push("--version", stable);
       this.log("Downloading + patching stable " + STOCK_ID + " v" + stable + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     } else {
@@ -370,7 +369,7 @@ class SidebarProvider {
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
     // For disable we only need the marketplace download logic; both OTA and
     // bundled patchers do that identically. In dev mode skip OTA.
-    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "patcher", "patch_claude.py");
+    const bundledPatcher = path.join(this.context.extensionUri.fsPath, "stable", "patch_claude.py");
     const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
     const patcher = otaPatcher || bundledPatcher;
 
@@ -1027,12 +1026,14 @@ async function fetchOtaStableVersion(log) {
   }
 }
 
-// Read the patcher version shipped inside this VSIX (patch_version.txt).
+// Read the production patcher version shipped inside this VSIX.
 // detectState() uses this as an offline fallback when the remote patcher
 // version from GitHub is unavailable.
 function readBundledPatcherVersion(context) {
   try {
-    const p = path.join(context.extensionUri.fsPath, "patch_version.txt");
+    const stablePath = path.join(context.extensionUri.fsPath, "stable", "patcher_version.txt");
+    const legacyPath = path.join(context.extensionUri.fsPath, "patch_version.txt");
+    const p = fs.existsSync(stablePath) ? stablePath : legacyPath;
     return fs.readFileSync(p, "utf8").trim() || null;
   } catch (_) {
     return null;
@@ -1044,7 +1045,9 @@ function readBundledPatcherVersion(context) {
 // missing / unreadable.
 function readBundledStableVersion(context) {
   try {
-    const p = path.join(context.extensionUri.fsPath, "STABLE_VERSION.txt");
+    const stablePath = path.join(context.extensionUri.fsPath, "stable", "stable_version.txt");
+    const legacyPath = path.join(context.extensionUri.fsPath, "STABLE_VERSION.txt");
+    const p = fs.existsSync(stablePath) ? stablePath : legacyPath;
     const v = fs.readFileSync(p, "utf8").trim().split(/\s+/)[0];
     if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
     return v;

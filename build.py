@@ -3,9 +3,9 @@
 build.py — Package the Claude Code Orbit wrapper extension as a numbered VSIX.
 
 Output: builds/claude-code-orbit-N.vsix (auto-incremented N)
-Bundles only the wrapper + the latest patch_claude_vsix_v147.py script.
-The wrapper itself fetches the stock Claude Code VSIX from the marketplace
-at runtime and applies the bundled patcher.
+Bundles the wrapper plus the locked production files from stable/. The live
+working patcher is intentionally not bundled unless it has been explicitly
+promoted into stable/.
 """
 from __future__ import annotations
 
@@ -17,7 +17,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 WRAPPER_DIR = ROOT / "Claude Code Orbit"
-PATCHER_SRC = ROOT / "Claude Code" / "patch_claude_vsix_v147.py"
+STABLE_DIR = ROOT / "stable"
+PATCHER_SRC = STABLE_DIR / "patch_claude.py"
+STABLE_VERSION_SRC = STABLE_DIR / "stable_version.txt"
+STABLE_PATCHER_VERSION_SRC = STABLE_DIR / "patcher_version.txt"
+STABLE_README_SRC = STABLE_DIR / "README.md"
 README_SRC = ROOT / "README.md"
 BUILDS_DIR = ROOT / "builds"
 EXT_NAME = "claude-code-orbit"
@@ -60,7 +64,6 @@ CONTENT_TYPES = """<?xml version="1.0" encoding="utf-8"?>
 INCLUDED_PATHS = [
     Path("package.json"),
     Path("extension.js"),
-    Path("STABLE_VERSION.txt"),
     Path("media/claude-code-orbit.png"),
     Path("media/rec-saydeploy.png"),
     Path("media/rec-copilot-suite.png"),
@@ -95,9 +98,31 @@ def get_patcher_version(manifest: dict) -> str:
     return v
 
 
+def read_required_text(path: Path, label: str) -> str:
+    if not path.exists():
+        raise SystemExit(f"Missing stable {label}: {path}")
+    v = path.read_text(encoding="utf-8").strip()
+    if not v:
+        raise SystemExit(f"Stable {label} is empty: {path}")
+    return v
+
+
+def get_stable_patcher_version() -> str:
+    """Read the locked production patcher version. This intentionally does not
+    follow package.json; VSIX releases can happen without promoting a new
+    stable patcher."""
+    return read_required_text(STABLE_PATCHER_VERSION_SRC, "patcher version").split()[0]
+
+
+def get_stable_version() -> str:
+    return read_required_text(STABLE_VERSION_SRC, "Claude version").split()[0]
+
+
 def build(out: Path | None = None) -> Path:
     if not PATCHER_SRC.exists():
-        raise SystemExit(f"Patcher script not found: {PATCHER_SRC}")
+        raise SystemExit(f"Stable patcher script not found: {PATCHER_SRC}")
+    stable_version = get_stable_version()
+    patcher_version = get_stable_patcher_version()
     manifest = load_manifest()
     if out is None:
         n = next_build_number()
@@ -106,7 +131,9 @@ def build(out: Path | None = None) -> Path:
         out.unlink()
 
     print(f"Bundling Claude Code Orbit -> {out.name}")
-    print(f"  patcher: {PATCHER_SRC.relative_to(ROOT)}")
+    print(f"  stable patcher: {PATCHER_SRC.relative_to(ROOT)}")
+    print(f"  stable Claude:  {stable_version}")
+    print(f"  patcher ver:    {patcher_version}")
     files_added = []
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
         def add(src: Path, arc: str):
@@ -129,16 +156,20 @@ def build(out: Path | None = None) -> Path:
             if not src.exists():
                 raise SystemExit(f"Missing wrapper file: {rel}")
             add(src, f"extension/{rel.as_posix()}")
-        add(PATCHER_SRC, "extension/patcher/patch_claude.py")
+        add(PATCHER_SRC, "extension/stable/patch_claude.py")
+        add(STABLE_VERSION_SRC, "extension/stable/stable_version.txt")
+        add(STABLE_PATCHER_VERSION_SRC, "extension/stable/patcher_version.txt")
+        add(STABLE_README_SRC, "extension/stable/README.md")
 
         # patch_version.txt — Orbit reads this at runtime to know which patcher
         # version it ships with, then compares against the version baked into
         # the installed Claude Code's webview/index.js to detect outdated installs.
         # Pinned to package.json's version so the Marketplace version IS the
         # patcher version (one number to bump, not two).
-        patcher_version = get_patcher_version(manifest)
         zf.writestr("extension/patch_version.txt", patcher_version)
-        files_added.append(f"extension/patch_version.txt (v{patcher_version})")
+        zf.writestr("extension/STABLE_VERSION.txt", stable_version)
+        files_added.append(f"extension/patch_version.txt (stable v{patcher_version})")
+        files_added.append(f"extension/STABLE_VERSION.txt ({stable_version})")
 
         # README — copy with path rewrite so the GitHub-relative logo image
         # ("Claude Code Orbit/media/...") resolves inside the VSIX where the
