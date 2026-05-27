@@ -36,7 +36,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 # Pattern fragment for a minified JS identifier (e.g. `e`, `Nee`, `_Ye`).
 # The Claude webview is minified with single/short letter identifiers that
@@ -91,7 +91,7 @@ def download_marketplace_vsix(item: str, dest_dir: Path, version: str | None = N
     selected = next((v for v in extension["versions"] if not version or v["version"] == version), None)
     if selected is None:
         if version:
-            log(f"WARNING: Version {version} not found for {item} — falling back to latest")
+            raise RuntimeError(f"Version {version} not found for {item}")
         selected = extension["versions"][0] if extension["versions"] else None
         if selected is None:
             raise RuntimeError(f"No versions found for {item}")
@@ -1522,52 +1522,39 @@ def patch_webview_css(webview_css: Path) -> bool:
     old = text[anchor_idx:end_idx]
     new = old + (
         # Main content — shifts left by panel width so chat doesn't go under the sessions column
-        ".claudePatchMainContent{position:relative;overflow:hidden;min-width:0;min-height:0;"
-        "padding-right:min(var(--claude-patch-sessions-width,min(40%,340px)), 55%);"
-        "box-sizing:border-box}"
-        ".ccPatchPaneHidden .claudePatchMainContent{padding-right:0!important}"
-        "@media(max-width:400px){.claudePatchMainContent{padding-right:0!important}}"
+        ".claudePatchMainContent{position:relative;z-index:2;overflow:hidden;min-width:0;min-height:0}"
         # All modal overlay classes — raise above split-pane UI, opaque backdrop
         f"{overlay_selector}"
         "{z-index:10000!important;background-color:#000000e6!important}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
-        ".claudePatchRoot{position:relative}"
+        ".claudePatchRoot{min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
-        ".claudePatchHeader{padding-right:calc(min(var(--claude-patch-sessions-width,min(40%,340px)), 55%) + 8px)!important;"
-        "box-sizing:border-box}"
+        ".claudePatchHeader{min-width:0}"
         # Inline sessions panel — absolutely positioned from root's top edge
-        ".claudePatchInlineSessions{position:absolute;top:0;right:0;bottom:0;z-index:1;"
-        "width:var(--claude-patch-sessions-width,min(40%,340px));"
-        "min-width:140px;max-width:55%;min-height:0;"
+        ".claudePatchInlineSessions{order:2;position:relative;z-index:0;"
+        "flex:0 0 var(--claude-patch-sessions-width,min(44vw,360px));"
+        "min-width:180px;max-width:75%;min-height:0;"
         "border-left:1px solid var(--app-primary-border-color);"
         "display:flex;flex-direction:column;"
         "overflow:hidden;background:var(--app-primary-background);"
-        "transform:translateX(0);transition:transform .2s ease;"
-        "will-change:transform}"
+        "transition:flex-basis .22s ease,opacity .22s ease,min-width .22s ease}"
         # Rs component fills remaining height below header
         ".claudePatchInlineSessions>div:last-child{flex:1;min-height:0;overflow:hidden}"
         # Resize handle — absolutely positioned along the left edge of the panel
-        ".claudePatchResizeHandle{position:absolute;top:0;bottom:0;z-index:2;"
-        "right:min(var(--claude-patch-sessions-width,min(40%,340px)), 55%);"
-        "width:4px;cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
+        ".claudePatchResizeHandle{order:1;position:relative;z-index:0;flex:0 0 4px;"
+        "cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
         ".claudePatchResizeHandle:hover,.claudePatchResizeHandle:active{"
         "opacity:1;background:var(--vscode-sash-hoverBorder,var(--app-primary-border-color))}"
         # Pane-hidden: slide the panel off-screen with transform, snap header padding
         ".ccPatchPaneHidden .claudePatchInlineSessions"
-        "{transform:translateX(100%);pointer-events:none}"
-        ".ccPatchPaneHidden .claudePatchHeader{padding-right:8px!important}"
+        "{flex-basis:0!important;min-width:0!important;opacity:0;pointer-events:none}"
         ".ccPatchPaneHidden .claudePatchResizeHandle{display:none!important}"
-        # Responsive: only auto-hide when the panel area is genuinely tiny
-        "@media(max-width:400px){"
-        ".claudePatchInlineSessions{transform:translateX(100%);pointer-events:none}"
-        ".claudePatchHeader{padding-right:8px!important}"
-        ".claudePatchResizeHandle{display:none!important}}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
         "height:35px;box-sizing:border-box}"
         ".ccPatchSidebarTitle{flex:1;font-size:11px;font-weight:600;text-transform:uppercase;"
-        "letter-spacing:.06em;opacity:.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
+        "letter-spacing:.06em;opacity:.65;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
         ".ccPatchHeaderBtn{display:inline-flex;align-items:center;justify-content:center;"
         "background:transparent;border:0;cursor:pointer;width:24px;height:24px;"
         "border-radius:4px;color:var(--app-secondary-foreground);opacity:.7;padding:0;flex-shrink:0}"
