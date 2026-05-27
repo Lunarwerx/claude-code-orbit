@@ -56,6 +56,40 @@ The goal is that the user should normally click `Check experimental updates` and
 install the new update from Orbit. They should not need to manually install a new
 local VSIX after every fix.
 
+## Where Experimental Updates Must Be Pushed
+
+Orbit's live updater does not read from whatever the local Git `origin` happens
+to be. The extension code fetches OTA files from:
+
+`https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main`
+
+That means experimental releases must be pushed to:
+
+`https://github.com/Lunarwerx/claude-code-orbit.git`
+
+In this workspace, that remote is named `orbit`. `origin` may point at
+`Lunarwerx/claude-script`, which is not the repo checked by the Orbit updater.
+
+For patcher-only experimental releases:
+
+1. Edit `Claude Code/patch_claude_vsix_v147.py`.
+2. Bump root `patcher_version.txt`.
+3. Commit the patcher and version marker.
+4. Push to `orbit main`.
+5. Optionally push the same commit to `origin main` only to keep this workspace
+   mirrored, but do not treat that as the release.
+
+For wrapper/sidebar/updater releases:
+
+1. Edit the wrapper files under `Claude Code Orbit/`.
+2. Bump `Claude Code Orbit/package.json`.
+3. Run `python build.py`.
+4. Commit `wrapper_version.txt` and `latest/claude-code-orbit.vsix`.
+5. Push to `orbit main`.
+
+The release is not complete until `Lunarwerx/claude-code-orbit` contains the new
+version marker or wrapper artifact.
+
 ## Stable Is Different
 
 Stable is the production fallback shipped inside the Orbit VSIX.
@@ -66,6 +100,8 @@ Stable is the production fallback shipped inside the Orbit VSIX.
 - Stable must not be updated just because Anthropic released a new Claude Code.
 - Stable is promoted only after the exact Claude Code version and exact patcher
   have been tested together and Jacob explicitly approves the promotion.
+- Do not edit `stable/`, `stable_version.txt`, or stable patcher pins unless
+  Jacob explicitly asks for a stable promotion.
 
 Expected cadence:
 
@@ -85,4 +121,3 @@ Only promote stable when all of these are true:
 5. Copy the approved patcher and version files into `stable/`.
 6. Build a new Orbit VSIX.
 7. Commit and push the wrapper update path so users can update through Orbit.
-
