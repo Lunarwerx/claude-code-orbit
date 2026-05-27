@@ -93,7 +93,7 @@ function activate(context) {
  */
 async function fetchRemotePatcherVersion(log) {
   try {
-    const body = await httpsGet(OTA_PATCHER_VERSION_URL, OTA_TIMEOUT_MS);
+    const body = await httpsGet(OTA_PATCHER_VERSION_URL + "?t=" + Date.now(), OTA_TIMEOUT_MS);
     const v = body.trim().split(/\s+/)[0];
     if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error("not a version: " + JSON.stringify(v));
     if (log) log("Remote patcher version: " + v);
@@ -506,7 +506,7 @@ class SidebarProvider {
     return `<!doctype html>
 <html><head>
 <meta charset="utf-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this.view.webview.cspSource}; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this.view.webview.cspSource}; style-src 'unsafe-inline'; font-src 'self' https://*.vscode-cdn.net; script-src 'nonce-${nonce}';"/>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;padding:0}
