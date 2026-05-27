@@ -121,6 +121,16 @@ function readInstalledPatcherVersion() {
   }
 }
 
+function readBundledWrapperVersion(context) {
+  try {
+    const p = path.join(context.extensionUri.fsPath, "package.json");
+    const manifest = JSON.parse(fs.readFileSync(p, "utf8"));
+    return manifest.version || "unknown";
+  } catch (_) {
+    return "unknown";
+  }
+}
+
 /**
  * Core update check: fetch the remote patcher version from GitHub, compare
  * against what's installed, update status bar, and show a VS Code notification
@@ -277,12 +287,13 @@ class SidebarProvider {
             }
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
             const installedVersion = readInstalledPatcherVersion();
+            const wrapperVersion = readBundledWrapperVersion(this.context);
             if (!installedVersion) {
-              resultMsg = "Claude Code is not patched yet. Click Enable Orbit to get started.";
+              resultMsg = "Claude Code is not patched yet. Orbit wrapper v" + wrapperVersion + " is installed.";
             } else if (cmpVer(installedVersion, remoteVersion) < 0) {
-              resultMsg = "Update available! Patcher v" + remoteVersion + " (you have v" + installedVersion + "). Click Enable Orbit to update.";
+              resultMsg = "Patcher update available: v" + remoteVersion + " (Claude Code has v" + installedVersion + "). Click Enable Orbit to update.";
             } else {
-              resultMsg = "You're up to date. Patcher v" + installedVersion + " is current.";
+              resultMsg = "Patcher v" + installedVersion + " is current. Orbit wrapper v" + wrapperVersion + " is installed.";
             }
           } catch (err) {
             this.send("phase", {
@@ -302,7 +313,14 @@ class SidebarProvider {
         this.send("phase", {
           phase: "done",
           action: msg.action,
-          message: msg.action === "disable" ? "Original Claude Code restored." : "Orbit installed.",
+          message: msg.action === "disable"
+            ? "Original Claude Code restored."
+            : msg.action === "enableStable"
+              ? "Stable Orbit installed."
+              : "Orbit installed.",
+          subMessage: msg.action === "enableStable"
+            ? "Reload VS Code to start Claude Code from the stable patched bundle."
+            : "Reload VS Code for the change to take effect.",
         });
       } catch (err) {
         this.send("phase", {
@@ -942,9 +960,13 @@ window.addEventListener("message", (ev) => {
     } else if (m.phase === "done") {
       progressFillEl.style.width = "100%";
       doneMsgEl.textContent = m.message || "All set.";
+      const restartBtn = document.querySelector('[data-action="restart"]');
+      restartBtn.hidden = m.action === "checkUpdates";
+      document.getElementById("doneSub").textContent = m.action === "checkUpdates"
+        ? ""
+        : (m.subMessage || "Reload VS Code for the change to take effect.");
       if (m.action === "checkUpdates") {
-        document.getElementById("doneSub").textContent = "";
-        document.querySelector('[data-action="restart"]').hidden = true;
+        restartBtn.hidden = true;
       }
       setPane("done");
     } else if (m.phase === "error") {
