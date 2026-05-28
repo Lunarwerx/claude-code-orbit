@@ -1274,12 +1274,6 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'authMethod:"local",'
         f"onRefresh:{inline_refresh},"
         f'onOpenURL:{inline_props["onOpenURL"]}}})),'
-        f'{p0}.default.createElement("button",{{className:"claudePatchPaneReopen",title:"Show sessions",'
-        f"onClick:ccPatchTogglePane}},"
-        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("path",{{d:"M4.5 2.5 9 7l-4.5 4.5"}}),'
-        f'{p0}.default.createElement("path",{{d:"M10 2.5v9"}}))),'
         f'{p0}.default.createElement("div",{{className:"claudePatchResizeHandle",onPointerDown:ccPatchStartResize}}),'
         f'{p0}.default.createElement("div",{{className:`${{{h6}.content}} claudePatchMainContent`}},'
     )
@@ -1606,15 +1600,16 @@ def patch_webview_css(webview_css: Path) -> bool:
         "{position:absolute!important;right:0;top:0;bottom:0;"
         "flex:none!important;width:auto!important;min-width:auto!important;max-width:none!important;"
         "opacity:1!important;pointer-events:auto!important;"
-        "border-left:none!important;box-shadow:-2px 0 8px #00000020}"
+        "border-left:none!important;background:transparent!important}"
         ".ccPatchPaneHidden .ccPatchSidebarTitle,"
         ".ccPatchPaneHidden .ccPatchSearchRow,"
         ".ccPatchPaneHidden .ccPatchNewSessionBtn,"
         ".ccPatchPaneHidden .claudePatchInlineSessions>div:last-child,"
-        ".ccPatchPaneHidden .claudePatchResizeHandle,"
-        ".ccPatchPaneHidden .claudePatchPaneReopen"
+        ".ccPatchPaneHidden .claudePatchResizeHandle"
         "{display:none!important}"
-        ".ccPatchPaneHidden .ccPatchSidebarHeader{border-bottom:none!important;padding-right:6px}"
+        ".ccPatchPaneHidden .ccPatchSidebarHeader{background:var(--app-primary-background);"
+        "border-bottom:none!important;border-radius:0 0 0 8px;"
+        "box-shadow:-2px 2px 8px #00000018;padding:2px 4px}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
@@ -1807,17 +1802,9 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchInstructionsOpenBtn{background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));"
         "color:var(--vscode-button-secondaryForeground,var(--app-primary-foreground))}"
         ".ccPatchInstructionsOpenBtn:hover{background:var(--vscode-button-secondaryHoverBackground,rgba(127,127,127,.2))}"
-        # Right-edge pane collapse toggle — sits in the header row (Copilot-style)
-        ".ccPatchPaneCollapseBtn{display:inline-flex;align-items:center;justify-content:center;"
-        "background:transparent;border:0;cursor:pointer;width:24px;height:24px;"
-        "border-radius:4px;color:var(--app-secondary-foreground);opacity:.7;"
-        "padding:0;flex-shrink:0;margin-left:auto;"
-        "transition:opacity .15s,background .15s,color .15s}"
-        ".ccPatchPaneCollapseBtn:hover{opacity:1;background:var(--app-list-hover-background,rgba(255,255,255,.06));"
-        "color:var(--vscode-charts-blue,#3b82f6)}"
-        ".ccPatchPaneCollapseBtn svg{width:14px;height:14px;display:block;transition:transform .25s ease}"
+        # Collapse toggle — regular header button, icon reverses when collapsed
+        ".ccPatchPaneCollapseBtn svg{transition:transform .25s ease}"
         ".ccPatchPaneHidden .ccPatchPaneCollapseBtn svg{transform:rotate(180deg)}"
-        ".ccPatchPaneCloseBtn:hover{color:var(--vscode-charts-blue,#3b82f6)!important}"
     )
     css_marker = ".ccPatchHeaderBtn{display:inline-flex;"
     old_media_hide = (
@@ -1956,7 +1943,6 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "instructions modal": "ccPatchInstructionsOverlay" in js and ".ccPatchInstructionsOverlay" in css,
         "instructions read": "ccPatchReadClaudeMd" in js and "read_claude_md_response" in host,
         "instructions write": "ccPatchWriteClaudeMd" in js and "write_claude_md_response" in host,
-        "pane close css": ".ccPatchPaneCloseBtn" in css and ".claudePatchPaneReopen" in css,
         "pane collapse btn": "ccPatchPaneCollapseBtn" in js and ".ccPatchPaneCollapseBtn" in css,
         "instructions request": "open_claude_md" in js and "open_claude_md_response" in host,
         "built-in search hide": '[class*="searchRow_"]' in css,
