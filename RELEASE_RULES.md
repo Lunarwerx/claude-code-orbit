@@ -90,6 +90,32 @@ For wrapper/sidebar/updater releases:
 The release is not complete until `Lunarwerx/claude-code-orbit` contains the new
 version marker or wrapper artifact.
 
+## Post-Push: Confirm the CDN Before Telling Anyone "It's Live"
+
+`raw.githubusercontent.com` has a CDN cache. After `git push orbit main`
+succeeds, the raw URL will keep serving the **old** version for 2–5 minutes.
+During that window, Orbit's "Check experimental updates" will correctly report
+"no updates" — because the CDN still returns the old version marker.
+
+**Required step before calling a release done:**
+
+1. Push to `orbit main`.
+2. Run this and compare the result to the local version file:
+
+   ```
+   Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main/patcher_version.txt" -UseBasicParsing | Select-Object -ExpandProperty Content
+   ```
+
+3. If the CDN still returns the old version: **tell the user explicitly** how
+   long it has been since the push and that they need to wait for the CDN cache
+   to expire (typically 2–5 minutes). Do not just guess — confirm you actually
+   checked the URL and saw it was stale.
+4. If the CDN returns the new version: the update is live. Tell the user they
+   can click "Check experimental updates" now.
+
+Never claim an update is available until the raw CDN confirms it is serving the
+new version marker.
+
 ## Stable Is Different
 
 Stable is the production fallback shipped inside the Orbit VSIX.
