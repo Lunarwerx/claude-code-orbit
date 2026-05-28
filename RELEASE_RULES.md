@@ -3,6 +3,35 @@
 These are production notes for future agents. Follow them unless Jacob
 explicitly says otherwise.
 
+## Building — there is exactly ONE way
+
+To build, run:
+
+```
+python build.py
+```
+
+That is the only build path. Do not create or use any other (no `npm run
+build`, no manual zipping, no second script). Every run:
+
+- writes a freshly NUMBERED artifact `builds/claude-code-orbit-build-<N>.vsix`
+  where `N` strictly increases. The highest number is always the newest build —
+  that number is the proof a build actually happened.
+- appends a line to `builds/BUILD_LOG.md` (tracked in git, so the history is
+  visible on GitHub). The numbered `build-*.vsix` files are also tracked.
+- always bundles the current `stable/` files and copies the result to
+  `latest/claude-code-orbit.vsix`.
+
+A plain build NEVER changes a version number:
+
+- It does NOT touch `Claude Code Orbit/package.json`. That version bumps ONLY at
+  push/release time, and ONLY when Jacob says so.
+- It does NOT touch `stable_version.txt` or `stable/`. Stable moves ONLY on an
+  explicit stable promotion (see "Stable Promotion Checklist").
+
+So: "build" = make the next numbered VSIX. "push" = bump package.json + ship.
+They are separate actions.
+
 ## Two Update Channels
 
 Orbit has two separate update channels.

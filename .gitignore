@@ -18,6 +18,8 @@ config/secrets.yaml
 config/database.yml
 config/master.key
 node_modules/
+__pycache__/
+*.pyc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -27,6 +29,11 @@ build/
 .nuxt/
 out/
 *.vsix
+# ...but DO keep the numbered wrapper builds + the build log visible. The build
+# NUMBER in the filename is how we know a build actually happened and which is
+# newest. (The huge upstream Claude Code .vsix files stay ignored.)
+!builds/claude-code-orbit-build-*.vsix
+!builds/BUILD_LOG.md
 .DS_Store
 Thumbs.db
 .vscode/settings.json

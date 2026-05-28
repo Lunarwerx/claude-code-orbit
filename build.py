@@ -1,11 +1,29 @@
 #!/usr/bin/env python
 """
-build.py — Package the Claude Code Orbit wrapper extension as a numbered VSIX.
+build.py — THE ONE AND ONLY way to build Claude Code Orbit.
 
-Output: builds/claude-code-orbit-N.vsix (auto-incremented N)
-Bundles the wrapper plus the locked production files from stable/. The live
-working patcher is intentionally not bundled unless it has been explicitly
-promoted into stable/.
+    python build.py
+
+There is exactly one build path. Do not invent others (no `npm run build`, no
+ad-hoc zipping). Every run:
+
+  * produces a freshly NUMBERED artifact: builds/claude-code-orbit-build-<N>.vsix
+    where N strictly increases each build. The highest number is always the
+    newest build — that number is your proof a build actually happened.
+  * always bundles the locked production files from stable/ (the live working
+    patcher is NOT bundled unless it has been explicitly promoted into stable/).
+  * appends a line to builds/BUILD_LOG.md (the visible, version-controlled
+    record of every build).
+  * copies the new artifact to latest/claude-code-orbit.vsix (the "newest build"
+    pointer that gets shipped on push).
+
+INVARIANTS — a plain build NEVER changes a version NUMBER:
+  * It does NOT touch Claude Code Orbit/package.json (that bumps only at push,
+    only when Jacob says so).
+  * It does NOT touch stable_version.txt or stable/ (stable moves only on an
+    explicit stable promotion).
+It only READS those to stamp the VSIX manifest. The build NUMBER is independent
+of the package.json version and increments on its own.
 """
 from __future__ import annotations
 
@@ -13,6 +31,7 @@ import argparse
 import json
 import shutil
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -27,6 +46,7 @@ BUILDS_DIR = ROOT / "builds"
 LATEST_DIR = ROOT / "latest"
 LATEST_VSIX = LATEST_DIR / "claude-code-orbit.vsix"
 WRAPPER_VERSION_SRC = ROOT / "wrapper_version.txt"
+BUILD_LOG = BUILDS_DIR / "BUILD_LOG.md"
 EXT_NAME = "claude-code-orbit"
 
 VSIX_MANIFEST = """<?xml version="1.0" encoding="utf-8"?>
@@ -127,9 +147,10 @@ def build(out: Path | None = None) -> Path:
     stable_version = get_stable_version()
     patcher_version = get_stable_patcher_version()
     manifest = load_manifest()
+    build_number = None
     if out is None:
-        n = next_build_number()
-        out = BUILDS_DIR / f"{EXT_NAME}-{n}.vsix"
+        build_number = next_build_number()
+        out = BUILDS_DIR / f"{EXT_NAME}-build-{build_number}.vsix"
     if out.exists():
         out.unlink()
 
@@ -194,6 +215,33 @@ def build(out: Path | None = None) -> Path:
     WRAPPER_VERSION_SRC.write_text(str(manifest["version"]) + "\n", encoding="utf-8")
     print(f"  latest:  {LATEST_VSIX}")
     print(f"  wrapper: {WRAPPER_VERSION_SRC.name} = {manifest['version']}")
+
+    # Append to the version-controlled build ledger — the visible proof that this
+    # build happened and which number is newest.
+    if build_number is not None:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        line = (f"- **Build #{build_number}** — `{out.name}` — "
+                f"pkg {manifest['version']}, stable Claude {stable_version}, "
+                f"patcher {patcher_version} — {ts}\n")
+        if BUILD_LOG.exists():
+            BUILD_LOG.write_text(BUILD_LOG.read_text(encoding="utf-8") + line, encoding="utf-8")
+        else:
+            BUILD_LOG.write_text(
+                "# Build log\n\n"
+                "Every `python build.py` appends one line here. "
+                "Highest build number = newest build. "
+                "package.json/stable versions are NOT changed by a build.\n\n"
+                + line,
+                encoding="utf-8",
+            )
+
+    bn = f"#{build_number}" if build_number is not None else "(custom --out)"
+    print("\n" + "=" * 56)
+    print(f"  BUILD {bn} COMPLETE")
+    print(f"     file:     {out.name}")
+    print(f"     bundled:  stable Claude {stable_version} / patcher {patcher_version}")
+    print(f"     pkg ver:  {manifest['version']}  (NOT changed by build)")
+    print("=" * 56)
     return out
 
 
