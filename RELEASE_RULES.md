@@ -179,23 +179,35 @@ new version marker.
 
 ## Stable Is Different
 
-Stable is the production fallback shipped inside the Orbit VSIX.
+Stable is the production fallback shipped inside the Orbit VSIX — a HARDCODED,
+specific Claude Code version that's been verified to work, kept as the recovery
+path if experimental breaks for someone.
 
-- Stable lives in `stable/`.
-- Stable is bundled into the wrapper VSIX by `build.py`.
-- Stable must not be updated just because experimental changed.
-- Stable must not be updated just because Anthropic released a new Claude Code.
-- Stable is promoted only after the exact Claude Code version and exact patcher
-  have been tested together and Jacob explicitly approves the promotion.
-- Do not edit `stable/`, `stable_version.txt`, or stable patcher pins unless
-  Jacob explicitly asks for a stable promotion.
+- Stable lives in `stable/`, bundled into the wrapper VSIX by `build.py`.
+- Stable is a FIXED PIN, not auto-latest. Experimental dynamically pulls the
+  newest Claude Code on every run; stable stays frozen at whatever we last
+  pinned until a deliberate promotion.
+- Stable does NOT auto-update — not when experimental changes, and not merely
+  because Anthropic shipped a new Claude Code. It moves only on a deliberate
+  promotion.
+- **When we DO promote stable, we pin it to Anthropic's CURRENT NEWEST Claude
+  Code version** (after verifying the patcher patches that version cleanly).
+  Pinning stable to an *older* version is wrong — the whole reason to promote is
+  "make stable work with the newest one." So a promotion = verify patcher vs the
+  newest version, set `stable_version.txt` + `stable/stable_version.txt` to that
+  newest version, and copy the verified patcher into `stable/`.
+- The only reasons to touch stable: (1) promote it forward to the current newest
+  Claude Code once the patcher is verified against it, or (2) Jacob explicitly
+  asks. Otherwise leave it frozen.
 
-Expected cadence:
+Verify-before-pin (ALWAYS, no exceptions):
+`python "Claude Code/patch_claude_vsix_v147.py" anthropic.claude-code --version <newest> --out tmp.vsix --download-dir tmp`
+must end with "Verification passed (62 checks)" before <newest> becomes stable.
 
-- Experimental can move quickly, often within a day or two of upstream Claude
-  Code changes, after the obvious breakage is fixed.
-- Stable can lag behind by days or weeks. That is intentional. Stable is the
-  known-good recovery path, not the bleeding-edge path.
+Cadence: experimental moves immediately (it is always latest). Stable moves when
+we promote it — and a promotion always targets the newest version, never a lagged
+one. The "lag" is only the gap between a new Claude release and our next verified
+stable promotion, not a deliberate hold on an old version.
 
 ## Stable Promotion Checklist
 
