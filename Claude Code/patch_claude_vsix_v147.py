@@ -100,7 +100,14 @@ def download_marketplace_vsix(
     target_platform: str | None = None,
 ) -> Path:
     target_platform = target_platform or detect_target_platform()
-    body = {"filters": [{"criteria": [{"filterType": 7, "value": item}]}], "flags": 914}
+    # flags MUST NOT include IncludeLatestVersionOnly (0x200). The old value 914
+    # set it, so the gallery returned ONLY the newest version — meaning any
+    # specific pinned version (e.g. stable's pinned Claude Code) failed with
+    # "Version X not found" as soon as a newer release shipped, even though the
+    # version was still fully available. 403 = IncludeVersions(0x1) |
+    # IncludeFiles(0x2) | IncludeVersionProperties(0x10) | IncludeAssetUri(0x80) |
+    # 0x100, which returns the full version history with downloadable files.
+    body = {"filters": [{"criteria": [{"filterType": 7, "value": item}]}], "flags": 403}
     req = urllib.request.Request(
         MARKETPLACE_QUERY_URL,
         data=json.dumps(body).encode("utf-8"),
