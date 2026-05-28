@@ -1526,20 +1526,12 @@ def patch_webview_css(webview_css: Path) -> bool:
     m_dropdown = re.search(r"\.dropdown_(?P<hash>[A-Za-z0-9_]+)\{", text)
     if m_dropdown is None:
         raise RuntimeError("Could not find .dropdown_<hash> CSS anchor")
-    # Discover TRUE modal backdrops by CSS *signature*, not by class-name substring.
-    # A real modal/dialog overlay is a full-viewport fixed layer: position:fixed +
-    # inset:0. Matching on substrings (the old approach) wrongly swept in editor
-    # chrome (overlayWidgets, transitionOverlay, previewOverlay) and layout panels
-    # (panel_*), then forced them opaque-black at z-index:10000 — which painted over
-    # the collapsed sidebar buttons and would have blacked out the model picker.
-    overlay_classes = sorted({
-        "." + mm.group(1)
-        for mm in re.finditer(r"\.([A-Za-z0-9_]+)\{([^}]*)\}", text)
-        if "position:fixed" in mm.group(2) and re.search(r"inset:\s*0", mm.group(2))
-    })
-    if not overlay_classes:
-        raise RuntimeError("Could not find any fixed full-viewport modal overlays to lift")
-    overlay_selector = ",".join(overlay_classes)
+    # NOTE: we intentionally do NOT discover/boost modal overlays anymore. Native
+    # overlays are position:fixed with their own z-index (~1000); removing the
+    # stacking context from .claudePatchMainContent (below) is enough for them to
+    # float over our sidebar (z-index:0). An explicit z-index:10000 boost used to
+    # sit a full-viewport scrim/click-catcher ON TOP of menu content (slash command
+    # menu, model picker) and ate every click. Leave native stacking alone.
 
     # Anchor on the OPENING of the `.dropdown_<hash>{` rule. We then walk
     # braces forward to find its closing `}` so we can append our extra
@@ -1565,17 +1557,14 @@ def patch_webview_css(webview_css: Path) -> bool:
     old = text[anchor_idx:end_idx]
     new = old + (
         # Main content — NO z-index, so it does NOT create a stacking context. Native
-        # panels (Account & Usage, model picker) render as position:fixed DESCENDANTS of
-        # this element; giving it z-index:0 trapped them in its context, and because the
-        # sidebar uses flex `order` it paints last -> the opaque sidebar covered the modal.
-        # Without a context here, the modal's z-index:10000 resolves at the root and floats
-        # above the sidebar. overflow:hidden still clips in-flow chat content (fixed escapes).
+        # panels (Account & Usage, model picker, slash command menu) render as
+        # position:fixed DESCENDANTS of this element; giving it z-index:0 trapped them in
+        # its context, and because the sidebar uses flex `order` it paints last -> the
+        # opaque sidebar covered the modal. Without a context here, each overlay's native
+        # z-index (~1000) resolves at the root and floats above the sidebar (z-index:0),
+        # while keeping the overlays' own internal stacking intact so their buttons stay
+        # clickable. overflow:hidden still clips in-flow chat content (fixed escapes).
         ".claudePatchMainContent{position:relative;overflow:hidden;min-width:0;min-height:0}"
-        # Modal backdrops (the fixed full-viewport overlays discovered above) ride
-        # above our split-pane chrome. z-index ONLY — no background override: native
-        # overlays carry their own backdrop, and transparent click-catchers (e.g. the
-        # model-picker overlay) must stay see-through.
-        f"{overlay_selector}{{z-index:10000!important}}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
         ".claudePatchRoot{position:relative;min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
@@ -1974,7 +1963,8 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "waiting indicator": "ccPatchIsWaiting" in js and ".claudePatchStatusWaiting" in css,
         "pane toggle": "ccPatchTogglePane" in js and "ccPatchPaneCollapseBtn" in js,
         "history removed": 'ariaLabel:"Session history"' not in js,
-        "overlay fix": "{z-index:10000!important}" in css and "background-color:#000000e6" not in css,
+        "modal trap removed": ".claudePatchMainContent{position:relative;overflow:hidden" in css and "background-color:#000000e6" not in css,
+        "no overlay zboost": "{z-index:10000!important}" not in css,
         "collapsed pane z-index": ".ccPatchPaneHidden .claudePatchInlineSessions" in css and "z-index:40!important" in css,
         "switch model item": "executeCommand(`model`)" in js,
         "row height": "min-height:48px" in css,
