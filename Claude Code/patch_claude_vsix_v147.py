@@ -1755,6 +1755,29 @@ def patch_webview_css(webview_css: Path) -> bool:
         "color:var(--app-primary-foreground)}"
         # Hide built-in duplicate search row
         ".claudePatchInlineSessions [class*=\"searchRow_\"]{display:none!important}"
+        # ── Orbit chat restyle (CSS-only; hash-proof [class*=] selectors) ──
+        # User message = accented chat bubble (Copilot-style), laid out as a
+        # column so pasted images can sit BELOW the text instead of above it.
+        "[class*=\"userMessage_\"]{display:flex!important;flex-direction:column;"
+        "background:var(--app-input-background)!important;"
+        "border:1px solid var(--app-input-border)!important;"
+        "border-left:2px solid var(--vscode-textLink-foreground,#3794ff)!important;"
+        "border-radius:6px!important;padding:7px 11px!important}"
+        "[class*=\"userMessageContainer\"]{padding-left:6px}"
+        # Pasted images render BELOW the text (order:2), wrap, and the row allows
+        # overflow so a hovered image can grow without being clipped.
+        "[class*=\"userMessageAttachments\"]{order:2!important;padding:6px 0 0!important;"
+        "overflow:visible!important;flex-wrap:wrap}"
+        # Hover an attached image to enlarge it in place (Codex-style).
+        "[class*=\"userMessageAttachments\"] img{transition:transform .15s ease,box-shadow .15s ease;"
+        "transform-origin:left top;cursor:zoom-in;border-radius:4px}"
+        "[class*=\"userMessageAttachments\"] img:hover{transform:scale(2);"
+        "box-shadow:0 8px 28px #000000aa;position:relative;z-index:60}"
+        # "Show more / show less": subtle inline link, not a chunky filled button.
+        "[class*=\"collapseButton\"]{background:transparent!important;border:none!important;"
+        "box-shadow:none!important;color:var(--vscode-textLink-foreground,#3794ff)!important;"
+        "padding:2px 2px!important;margin:3px 0!important;font-size:.82em!important;opacity:.85}"
+        "[class*=\"collapseButton\"]:hover{opacity:1;text-decoration:underline}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
         "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
@@ -1989,6 +2012,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "no overlay zboost": "{z-index:10000!important}" not in css,
         "collapsed pane z-index": ".ccPatchPaneHidden .claudePatchInlineSessions" in css and "z-index:40!important" in css,
         "switch model item": "executeCommand(`model`)" in js,
+        "chat restyle": '[class*="userMessageAttachments"]{order:2' in css and '[class*="collapseButton"]' in css,
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
         "yolo perm init": "permissionMode=" in js and "ccPatchYoloDefault()" in js,
