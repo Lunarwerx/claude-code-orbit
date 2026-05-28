@@ -286,8 +286,22 @@ class SidebarProvider {
       try { await vscode.commands.executeCommand("extension.open", msg.id); } catch (_) {}
       return;
     }
+    if (msg.type === "cancel") {
+      // Honor cancel only while we're still in a safe (pre-uninstall) step and
+      // haven't already requested it. Once we've committed to swapping the
+      // extension, ignore it so we never leave Claude Code half-installed.
+      if (this.busy && !this.committing && !this.cancelRequested) {
+        this.cancelRequested = true;
+        this.log("Cancellation requested — stopping at the next safe point…");
+        if (this.activeProc) { try { this.activeProc.kill(); } catch (_) {} }
+      }
+      return;
+    }
     if (msg.type === "action" && !this.busy) {
       this.busy = true;
+      this.cancelRequested = false;
+      this.committing = false;
+      this.activeProc = null;
       this.send("phase", { phase: "working", action: msg.action });
       try {
         if (msg.action === "enable") await this.enable(false);
@@ -368,15 +382,47 @@ class SidebarProvider {
             : "Reload VS Code for the change to take effect.",
         });
       } catch (err) {
-        this.send("phase", {
-          phase: "error",
-          message: String(err && err.message ? err.message : err),
-        });
+        if (this.cancelRequested && !this.committing) {
+          this.log("Cancelled. No changes were applied.");
+          this.send("phase", { phase: "cancelled" });
+        } else {
+          const baseMsg = String(err && err.message ? err.message : err);
+          // If we already crossed the point of no return, the extension swap
+          // failed partway — be explicit so the user knows Claude Code may be
+          // uninstalled and can reinstall via the buttons on the error pane.
+          this.send("phase", {
+            phase: "error",
+            message: this.committing
+              ? "The swap failed partway, so Claude Code may currently be uninstalled. Use the buttons below to reinstall it (Use stable / Use experimental).\n\n" + baseMsg
+              : baseMsg,
+          });
+        }
       } finally {
         this.busy = false;
+        this.cancelRequested = false;
+        this.committing = false;
+        this.activeProc = null;
         this.pushState();
       }
     }
+  }
+
+  // Throws if the user asked to cancel. Call only at SAFE points — before any
+  // uninstall/install has started — so a cancel never leaves Claude Code broken.
+  checkCancelled() {
+    if (this.cancelRequested) {
+      const e = new Error("Cancelled by user.");
+      e.cancelled = true;
+      throw e;
+    }
+  }
+
+  // Cross the point of no return: from here on the extension is being swapped,
+  // so we lock out cancellation and hide the Cancel button in the webview.
+  commit() {
+    this.committing = true;
+    this.activeProc = null;
+    this.send("lockCancel");
   }
 
   async enable(useStable) {
@@ -413,8 +459,13 @@ class SidebarProvider {
     } else {
       this.log("Downloading + patching experimental " + STOCK_ID + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     }
-    await runPython(python, patcher, args, (line) => this.log(line));
+    this.checkCancelled();
+    await runPython(python, patcher, args, (line) => this.log(line), (proc) => { this.activeProc = proc; });
+    this.activeProc = null;
 
+    // Last safe checkpoint, then commit — nothing below here is cancellable.
+    this.checkCancelled();
+    this.commit();
     this.log("Uninstalling current " + STOCK_ID);
     if (vscode.extensions.getExtension(STOCK_ID)) {
       await vscode.commands.executeCommand("workbench.extensions.uninstallExtension", STOCK_ID);
@@ -428,6 +479,8 @@ class SidebarProvider {
     const out = path.join(work, "claude-code-orbit-latest.vsix");
     this.log("Downloading Orbit wrapper VSIX from GitHub");
     await httpsDownload(OTA_WRAPPER_VSIX_URL + "?t=" + Date.now(), out, OTA_TIMEOUT_MS * 4);
+    this.checkCancelled();
+    this.commit();
     this.log("Installing Orbit wrapper VSIX");
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(out));
   }
@@ -445,6 +498,7 @@ class SidebarProvider {
     const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
     const patcher = otaPatcher || bundledPatcher;
 
+    this.checkCancelled();
     this.log("Downloading original " + STOCK_ID);
     let downloadedPath = null;
     await runPython(
@@ -455,9 +509,15 @@ class SidebarProvider {
         this.log(line);
         const m = line.match(/STOCK_VSIX_PATH:\s*(.+)$/);
         if (m) downloadedPath = m[1].trim();
-      }
+      },
+      (proc) => { this.activeProc = proc; }
     );
+    this.activeProc = null;
 
+    // Last safe checkpoint, then commit — the uninstall below is irreversible,
+    // so cancellation is locked out from here on.
+    this.checkCancelled();
+    this.commit();
     this.log("Uninstalling current " + STOCK_ID);
     if (vscode.extensions.getExtension(STOCK_ID)) {
       await vscode.commands.executeCommand("workbench.extensions.uninstallExtension", STOCK_ID);
@@ -609,6 +669,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   background:rgba(127,127,127,.14);border-radius:2px;overflow:hidden}
 .progressFill{height:100%;background:var(--vscode-button-background,#3b82f6);
   width:0%;transition:width .4s ease;border-radius:2px}
+.workingCancel{margin-top:24px;opacity:.85}
+.workingCancel:hover{opacity:1}
+.workingCancel[hidden]{display:none}
 
 /* done / error visual treatments — sized up to match the bumped working pane */
 .iconCircle{align-self:center;width:50px;height:50px;border-radius:50%;
@@ -705,6 +768,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
         <p class="stepSub" id="stepSub">Step 1 of 5</p>
       </div>
       <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+      <button class="btn workingCancel" id="cancelBtn" data-action="cancel" hidden>Cancel</button>
     </div>
 
     <!-- DONE -->
@@ -886,6 +950,7 @@ document.querySelectorAll("[data-action]").forEach(btn => {
     const action = btn.dataset.action;
     if (action === "back") {
       resetWorkingState();
+      resetCancelButton();
       logBuf = "";
       logEl.textContent = "";
       logEl.classList.remove("visible");
@@ -897,6 +962,12 @@ document.querySelectorAll("[data-action]").forEach(btn => {
       vscode.postMessage({ type: "restart" });
       btn.disabled = true;
       btn.innerHTML = '<span style="opacity:.7">Restarting…</span>';
+      return;
+    }
+    if (action === "cancel") {
+      vscode.postMessage({ type: "cancel" });
+      btn.disabled = true;
+      btn.textContent = "Cancelling…";
       return;
     }
     if (action === "checkUpdates") {
@@ -937,6 +1008,11 @@ function resetWorkingState() {
   stepSubEl.textContent = "Step 1 of 5";
   progressFillEl.style.width = "0%";
   logoEl.style.transform = "";
+}
+
+function resetCancelButton() {
+  const cb = document.getElementById("cancelBtn");
+  if (cb) { cb.hidden = true; cb.disabled = false; cb.textContent = "Cancel"; }
 }
 
 function setCheckProgress(idx, label) {
@@ -1027,14 +1103,33 @@ window.addEventListener("message", (ev) => {
     updateProgress(m.line);
     return;
   }
+  if (m.type === "lockCancel") {
+    const cb = document.getElementById("cancelBtn");
+    if (cb) cb.hidden = true;
+    return;
+  }
   if (m.type === "phase") {
     if (m.phase === "working") {
       currentStep = 0;
       currentAction = m.action || null;
       actionStartState = lastIdleState;
       if (currentAction === "checkUpdates") setCheckProgress(1, "Checking GitHub");
+      // Offer Cancel only for the long, reversible flows (download/patch before
+      // the extension swap). The quick version check has nothing worth cancelling.
+      const cb = document.getElementById("cancelBtn");
+      if (cb) {
+        const cancellable = ["enable", "enableStable", "disable", "updateWrapper"].indexOf(currentAction) !== -1;
+        cb.hidden = !cancellable;
+        cb.disabled = false;
+        cb.textContent = "Cancel";
+      }
       setPane("working");
+    } else if (m.phase === "cancelled") {
+      resetWorkingState();
+      resetCancelButton();
+      setPane("idle");
     } else if (m.phase === "done") {
+      resetCancelButton();
       progressFillEl.style.width = "100%";
       doneMsgEl.textContent = m.message || "All set.";
       const doneSub = document.getElementById("doneSub");
@@ -1053,6 +1148,7 @@ window.addEventListener("message", (ev) => {
       }
       setPane("done");
     } else if (m.phase === "error") {
+      resetCancelButton();
       errorSubEl.textContent = m.message || "Unknown error.";
       logEl.classList.add("visible");
       detailsToggle.textContent = "Hide details";
@@ -1257,9 +1353,12 @@ async function findPython() {
   return null;
 }
 
-function runPython(python, script, args, onLine) {
+function runPython(python, script, args, onLine, onSpawn) {
   return new Promise((resolve, reject) => {
     const p = cp.spawn(python, [script, ...args], { shell: false });
+    // Hand the process to the caller so a user-requested cancel can kill the
+    // download mid-flight (the long, fully-safe step before any uninstall).
+    if (typeof onSpawn === "function") { try { onSpawn(p); } catch (_) {} }
     let stderr = "";
     const stream = (chunk) => {
       chunk.toString().split(/\r?\n/).forEach((l) => l && onLine(l));
