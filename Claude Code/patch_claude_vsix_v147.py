@@ -1756,28 +1756,55 @@ def patch_webview_css(webview_css: Path) -> bool:
         # Hide built-in duplicate search row
         ".claudePatchInlineSessions [class*=\"searchRow_\"]{display:none!important}"
         # ── Orbit chat restyle (CSS-only; hash-proof [class*=] selectors) ──
-        # User message = accented chat bubble (Copilot-style), laid out as a
-        # column so pasted images can sit BELOW the text instead of above it.
-        "[class*=\"userMessage_\"]{display:flex!important;flex-direction:column;"
-        "background:var(--app-input-background)!important;"
-        "border:1px solid var(--app-input-border)!important;"
-        "border-left:2px solid var(--vscode-textLink-foreground,#3794ff)!important;"
-        "border-radius:6px!important;padding:7px 11px!important}"
+        # Kill the left-hand timeline rail: the dot (:before) + vertical line
+        # (:after) Codex doesn't have, and reclaim its 30px indent so replies
+        # run wider/bigger.
+        "[class*=\"timelineMessage_\"]:before,[class*=\"timelineMessage_\"]:after{display:none!important}"
+        "[class*=\"timelineMessage_\"]{padding-left:2px!important}"
+        # Tool-call rows: small + dimmed (Codex shrinks actions, keeps prose big)
+        # and drop the leading middle-dot bullet.
+        "[class*=\"toolItem_\"]:before{display:none!important}"
+        "[class*=\"toolItem_\"]{font-size:11.5px!important;opacity:.78;padding:3px 0!important;gap:6px!important}"
+        "[class*=\"toolItem_\"]:hover{opacity:1}"
+        "[class*=\"toolName_\"]{font-size:11.5px!important}"
+        "[class*=\"toolsList_\"]{margin-top:2px!important}"
+        # User message = accented chat bubble (Copilot/Codex-style). The bubble
+        # lives on the TEXT (expandableContainer) only, so pasted images sit
+        # OUTSIDE/below it instead of boxed inside. :has() scopes the strip to
+        # prose messages, leaving slash-command messages with their own look.
+        "[class*=\"userMessage_\"]:has([class*=\"expandableContainer_\"]){display:flex!important;"
+        "flex-direction:column;background:transparent!important;border:none!important;"
+        "border-radius:0!important;padding:0!important;overflow:visible!important;max-width:100%!important}"
+        "[class*=\"userMessage_\"] [class*=\"expandableContainer_\"]{"
+        "background:var(--app-input-background);border:1px solid var(--app-input-border);"
+        "border-left:2px solid var(--vscode-textLink-foreground,#3794ff);"
+        "border-radius:6px;padding:7px 11px;max-width:100%}"
         "[class*=\"userMessageContainer\"]{padding-left:6px}"
-        # Pasted images render BELOW the text (order:2), wrap, and the row allows
-        # overflow so a hovered image can grow without being clipped.
-        "[class*=\"userMessageAttachments\"]{order:2!important;padding:6px 0 0!important;"
+        # Pasted images: detached row BELOW the text bubble (order:2), no
+        # border/bg, wraps, overflow visible so a hovered image can grow.
+        "[class*=\"userMessageAttachments\"]{order:2!important;padding:8px 0 0!important;"
+        "margin:0!important;background:transparent!important;border:none!important;"
         "overflow:visible!important;flex-wrap:wrap}"
         # Hover an attached image to enlarge it in place (Codex-style).
         "[class*=\"userMessageAttachments\"] img{transition:transform .15s ease,box-shadow .15s ease;"
         "transform-origin:left top;cursor:zoom-in;border-radius:4px}"
         "[class*=\"userMessageAttachments\"] img:hover{transform:scale(2);"
         "box-shadow:0 8px 28px #000000aa;position:relative;z-index:60}"
-        # "Show more / show less": subtle inline link, not a chunky filled button.
-        "[class*=\"collapseButton\"]{background:transparent!important;border:none!important;"
-        "box-shadow:none!important;color:var(--vscode-textLink-foreground,#3794ff)!important;"
-        "padding:2px 2px!important;margin:3px 0!important;font-size:.82em!important;opacity:.85}"
-        "[class*=\"collapseButton\"]:hover{opacity:1;text-decoration:underline}"
+        # "Show more / show less": subtle inline links, not chunky filled pills
+        # (covers BOTH expandButton and collapseButton).
+        "[class*=\"expandButton\"],[class*=\"collapseButton\"]{background:transparent!important;"
+        "border:none!important;box-shadow:none!important;"
+        "color:var(--vscode-textLink-foreground,#3794ff)!important;"
+        "padding:1px 4px!important;margin:2px!important;font-size:.8em!important;opacity:.85}"
+        "[class*=\"expandButton\"]:hover,[class*=\"collapseButton\"]:hover{"
+        "opacity:1;text-decoration:underline;transform:none!important}"
+        # Fork / rewind action button: permanently visible above each USER
+        # message (native is hover-only). Exposes the existing menu — Fork from
+        # here / Rewind code / Fork + rewind — Codex-style always-on checkpoint.
+        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"]{opacity:.5!important}"
+        "[class*=\"userMessageContainer\"]:hover [class*=\"actionButton_\"],"
+        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"]:hover,"
+        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"][aria-expanded=\"true\"]{opacity:1!important}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
         "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
@@ -2012,7 +2039,9 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "no overlay zboost": "{z-index:10000!important}" not in css,
         "collapsed pane z-index": ".ccPatchPaneHidden .claudePatchInlineSessions" in css and "z-index:40!important" in css,
         "switch model item": "executeCommand(`model`)" in js,
-        "chat restyle": '[class*="userMessageAttachments"]{order:2' in css and '[class*="collapseButton"]' in css,
+        "chat restyle": ('[class*="userMessageAttachments"]{order:2' in css
+                         and '[class*="timelineMessage_"]:before' in css
+                         and '[class*="actionButton_"]' in css),
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
         "yolo perm init": "permissionMode=" in js and "ccPatchYoloDefault()" in js,
