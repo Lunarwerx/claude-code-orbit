@@ -1234,6 +1234,15 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("path",{{d:"M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"}}),'
         f'{p0}.default.createElement("line",{{x1:7,y1:3.4,x2:7,y2:4.4}}),'
         f'{p0}.default.createElement("line",{{x1:7,y1:9.6,x2:7,y2:10.6}}))),'
+        # Switch account — opens the built-in login switcher dialog
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchAccountSwitchBtn",title:"Switch account",'
+        f'onClick:()=>{{try{{{fe1["Z"]}.commandRegistry.executeCommand("login")}}catch(e){{}}}}}},'
+        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{p0}.default.createElement("circle",{{cx:7,cy:5,r:2.4}}),'
+        f'{p0}.default.createElement("path",{{d:"M2.5 12.2c.7-2.2 2.5-3.4 4.5-3.4 1.3 0 2.4.5 3.3 1.3"}}),'
+        f'{p0}.default.createElement("polyline",{{points:"10,9.5 12,11.5 10,13.5"}}),'
+        f'{p0}.default.createElement("line",{{x1:8.4,y1:11.5,x2:12,y2:11.5}}))),'
         # Instructions — manage CLAUDE.md custom instructions
         f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchInstructionsBtn",title:"Custom instructions \\u2014 edit CLAUDE.md",'
         f"onClick:function(){{ccPatchInstructionsModal({fe1['Z']})}}}},"
@@ -1242,13 +1251,13 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("path",{{d:"M10 1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:4,x2:9.5,y2:4}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:6.5,x2:9.5,y2:6.5}}),'
-        f'{p0}.default.createElement("line",{{x1:4.5,y1:9,x2:7.5,y2:9}})))),'
-        # Collapse/expand toggle — stays in header, icon reverses when collapsed (Copilot-style)
+        f'{p0}.default.createElement("line",{{x1:4.5,y1:9,x2:7.5,y2:9}}))),'
+        # Collapse/expand toggle — last button in the header, icon reverses when collapsed (Copilot-style)
         f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCollapseBtn",title:"Toggle sidebar",'
         f"onClick:ccPatchTogglePane}},"
         f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("polyline",{{points:"9.5,2.5 5,7 9.5,11.5"}}))),'
+        f'{p0}.default.createElement("polyline",{{points:"9.5,2.5 5,7 9.5,11.5"}})))),'
         f'{p0}.default.createElement("div",{{className:"ccPatchSearchRow"}},'
         f'{p0}.default.createElement("input",{{type:"text",className:"ccPatchSearchInput",'
         f'placeholder:"Search sessions...",'
@@ -1758,6 +1767,8 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchYoloMode .ccPatchYoloBtn:hover{background:rgba(249,115,22,.26)!important;color:#fb923c!important}"
         # Usage button
         ".ccPatchUsageBtn:hover{color:var(--vscode-charts-green,#10b981)!important}"
+        # Switch account button
+        ".ccPatchAccountSwitchBtn:hover{color:var(--vscode-charts-blue,#3b82f6)!important}"
         # Instructions button
         ".ccPatchInstructionsBtn:hover{color:var(--vscode-charts-purple,#a855f7)!important}"
         # Instructions modal overlay
@@ -1939,6 +1950,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "yolo button": "ccPatchYoloBtn" in js and ".ccPatchYoloBtn" in css,
         "yolo on state css": ".ccPatchYoloMode .ccPatchYoloBtn" in css,
         "usage button": "ccPatchUsageBtn" in js and ".ccPatchUsageBtn" in css,
+        "account switch btn": "ccPatchAccountSwitchBtn" in js and ".ccPatchAccountSwitchBtn" in css,
         "instructions btn": "ccPatchInstructionsModal" in js and ".ccPatchInstructionsBtn" in css,
         "instructions modal": "ccPatchInstructionsOverlay" in js and ".ccPatchInstructionsOverlay" in css,
         "instructions read": "ccPatchReadClaudeMd" in js and "read_claude_md_response" in host,
