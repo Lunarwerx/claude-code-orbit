@@ -1243,13 +1243,12 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("line",{{x1:4.5,y1:4,x2:9.5,y2:4}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:6.5,x2:9.5,y2:6.5}}),'
         f'{p0}.default.createElement("line",{{x1:4.5,y1:9,x2:7.5,y2:9}})))),'
-        # Close/collapse lives on the right edge of the sessions panel itself.
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCloseBtn",title:"Hide sessions",'
+        # Collapse/expand toggle — stays in header, icon reverses when collapsed (Copilot-style)
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCollapseBtn",title:"Toggle sidebar",'
         f"onClick:ccPatchTogglePane}},"
         f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("path",{{d:"M9.5 2.5 5 7l4.5 4.5"}}),'
-        f'{p0}.default.createElement("path",{{d:"M4 2.5v9"}}))),'
+        f'{p0}.default.createElement("polyline",{{points:"9.5,2.5 5,7 9.5,11.5"}}))),'
         f'{p0}.default.createElement("div",{{className:"ccPatchSearchRow"}},'
         f'{p0}.default.createElement("input",{{type:"text",className:"ccPatchSearchInput",'
         f'placeholder:"Search sessions...",'
@@ -1282,12 +1281,6 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("path",{{d:"M4.5 2.5 9 7l-4.5 4.5"}}),'
         f'{p0}.default.createElement("path",{{d:"M10 2.5v9"}}))),'
         f'{p0}.default.createElement("div",{{className:"claudePatchResizeHandle",onPointerDown:ccPatchStartResize}}),'
-        # Right-edge collapse toggle — slim vertical tab always visible
-        f'{p0}.default.createElement("button",{{className:"ccPatchPaneCollapseBtn",title:"Toggle sessions sidebar",'
-        f"onClick:ccPatchTogglePane}},"
-        f'{p0}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("polyline",{{points:"8,2 4,6 8,10"}}))),'
         f'{p0}.default.createElement("div",{{className:`${{{h6}.content}} claudePatchMainContent`}},'
     )
     body_marker = f'{p0}.default.createElement("div",{{className:{h6}.body}},{p0}.default.createElement("div",{{className:{h6}.content}},'
@@ -1608,18 +1601,18 @@ def patch_webview_css(webview_css: Path) -> bool:
         "cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
         ".claudePatchResizeHandle:hover,.claudePatchResizeHandle:active{"
         "opacity:1;background:var(--vscode-sash-hoverBorder,var(--app-primary-border-color))}"
-        # Pane-hidden: slide the panel off-screen with transform, snap header padding
+        # Pane-hidden: shrink to header-only strip, keep buttons clickable (Copilot-style)
         ".ccPatchPaneHidden .claudePatchInlineSessions"
-        "{flex-basis:0!important;min-width:0!important;opacity:0;pointer-events:none}"
-        ".ccPatchPaneHidden .claudePatchResizeHandle{display:none!important}"
-        ".claudePatchPaneReopen{order:3;display:none;align-items:center;justify-content:center;"
-        "flex:0 0 28px;align-self:stretch;"
-        "background:var(--app-primary-background);border:0;border-left:1px solid var(--app-primary-border-color);"
-        "color:var(--app-secondary-foreground);cursor:pointer;padding:0;opacity:.8}"
-        ".claudePatchPaneReopen:hover{opacity:1;color:var(--app-primary-foreground);"
-        "background:var(--app-list-hover-background,rgba(255,255,255,.06))}"
-        ".claudePatchPaneReopen svg{width:14px;height:14px;display:block}"
-        ".ccPatchPaneHidden .claudePatchPaneReopen{display:flex!important}"
+        "{flex:0 0 auto!important;min-width:auto!important;max-width:none!important;"
+        "opacity:1!important;pointer-events:auto!important}"
+        ".ccPatchPaneHidden .ccPatchSidebarTitle,"
+        ".ccPatchPaneHidden .ccPatchSearchRow,"
+        ".ccPatchPaneHidden .ccPatchNewSessionBtn,"
+        ".ccPatchPaneHidden .claudePatchInlineSessions>div:last-child,"
+        ".ccPatchPaneHidden .claudePatchResizeHandle,"
+        ".ccPatchPaneHidden .claudePatchPaneReopen"
+        "{display:none!important}"
+        ".ccPatchPaneHidden .ccPatchSidebarHeader{border-bottom:none!important}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
@@ -1812,16 +1805,15 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchInstructionsOpenBtn{background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));"
         "color:var(--vscode-button-secondaryForeground,var(--app-primary-foreground))}"
         ".ccPatchInstructionsOpenBtn:hover{background:var(--vscode-button-secondaryHoverBackground,rgba(127,127,127,.2))}"
-        # Right-edge pane collapse toggle (always visible)
-        ".ccPatchPaneCollapseBtn{position:absolute;right:0;top:50%;transform:translateY(-50%);"
-        "z-index:4;display:flex;align-items:center;justify-content:center;"
-        "width:18px;height:48px;border-radius:6px 0 0 6px;"
-        "background:var(--app-primary-border-color);border:0;cursor:pointer;"
-        "color:var(--app-secondary-foreground);opacity:.55;padding:0;"
-        "transition:opacity .15s,background .15s,width .15s}"
-        ".ccPatchPaneCollapseBtn:hover{opacity:1;background:var(--vscode-charts-blue,#3b82f6);"
-        "color:#fff;width:22px}"
-        ".ccPatchPaneCollapseBtn svg{width:10px;height:10px;display:block;transition:transform .2s}"
+        # Right-edge pane collapse toggle — sits in the header row (Copilot-style)
+        ".ccPatchPaneCollapseBtn{display:inline-flex;align-items:center;justify-content:center;"
+        "background:transparent;border:0;cursor:pointer;width:24px;height:24px;"
+        "border-radius:4px;color:var(--app-secondary-foreground);opacity:.7;"
+        "padding:0;flex-shrink:0;margin-left:auto;"
+        "transition:opacity .15s,background .15s,color .15s}"
+        ".ccPatchPaneCollapseBtn:hover{opacity:1;background:var(--app-list-hover-background,rgba(255,255,255,.06));"
+        "color:var(--vscode-charts-blue,#3b82f6)}"
+        ".ccPatchPaneCollapseBtn svg{width:14px;height:14px;display:block;transition:transform .25s ease}"
         ".ccPatchPaneHidden .ccPatchPaneCollapseBtn svg{transform:rotate(180deg)}"
         ".ccPatchPaneCloseBtn:hover{color:var(--vscode-charts-blue,#3b82f6)!important}"
     )
@@ -1949,9 +1941,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "filter menu css": ".claudePatchFilterMenu" in css,
         "filter svg icons": "ccPatchFilterIconSVG" in js and ".ccPatchFilterItemIcon" in css,
         "waiting indicator": "ccPatchIsWaiting" in js and ".claudePatchStatusWaiting" in css,
-        "pane toggle": "ccPatchTogglePane" in js
-        and "ccPatchPaneCloseBtn" in js
-        and "claudePatchPaneReopen" in js,
+        "pane toggle": "ccPatchTogglePane" in js and "ccPatchPaneCollapseBtn" in js,
         "history removed": 'ariaLabel:"Session history"' not in js,
         "overlay fix": "z-index:10000!important;background-color:#000000e6!important" in css,
         "row height": "min-height:48px" in css,
