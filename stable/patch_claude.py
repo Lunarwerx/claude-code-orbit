@@ -182,6 +182,8 @@ function ccPatchFilterSort(e){let t=ccPatchReadFilters(),q=ccPatchSearchQ.trim()
 function ccPatchCloseFilterMenu(){let m=document.querySelector(`.claudePatchFilterMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchFilterButton.ccPatchFilterButtonOpen`)?.classList.remove(`ccPatchFilterButtonOpen`)}
 function ccPatchFilterIconSVG(name){let svg=document.createElementNS(`http://www.w3.org/2000/svg`,`svg`);svg.setAttribute(`width`,`12`);svg.setAttribute(`height`,`12`);svg.setAttribute(`viewBox`,`0 0 12 12`);svg.setAttribute(`fill`,`none`);svg.setAttribute(`stroke`,`currentColor`);svg.setAttribute(`stroke-width`,`1.3`);svg.setAttribute(`stroke-linecap`,`round`);svg.setAttribute(`stroke-linejoin`,`round`);svg.classList.add(`ccPatchFilterItemIcon`);let paths={pinned:`<circle cx="6" cy="4.5" r="2.5"/><line x1="6" y1="7" x2="6" y2="11"/>`,starred:`<polygon points="6,1.5 7.2,4.5 10.5,4.9 8.2,7.1 8.8,10.5 6,9 3.2,10.5 3.8,7.1 1.5,4.9 4.8,4.5"/>`,running:`<circle cx="6" cy="6" r="4"/><line x1="6" y1="3.5" x2="6" y2="6"/><line x1="6" y1="6" x2="8" y2="7.2"/>`,waiting:`<circle cx="6" cy="6" r="4"/><line x1="6" y1="6" x2="6" y2="3.5"/><line x1="6" y1="6" x2="8" y2="6"/>`,"1h":`<circle cx="6" cy="6" r="4.5"/><polyline points="6,3.5 6,6 7.6,7"/>`,"24h":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`,"7d":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`,"30d":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`};svg.innerHTML=paths[name]||``;return svg}
 function ccPatchShowFilterMenu(e){if(document.querySelector(`.claudePatchFilterMenu`)){ccPatchCloseFilterMenu();return}let t=e.currentTarget;if(!t)return;t.classList.add(`ccPatchFilterButtonOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`claudePatchFilterMenu`,r.style.top=`${Math.round(n.bottom+4)}px`,r.style.left=`${Math.min(Math.round(n.left),window.innerWidth-260)}px`;let i=ccPatchReadFilters(),s=(g,b)=>{let m=document.createElement(`div`);m.className=`claudePatchFilterGroup`;let f=document.createElement(`div`);f.className=`claudePatchFilterGroupTitle`,f.textContent=g,m.appendChild(f);for(let[v,w,icon]of b){let y=document.createElement(`label`);y.className=`claudePatchFilterOption`;let k=document.createElement(`input`);k.type=`checkbox`;let A=g===`Type`?`types`:`ages`;k.checked=i[A].includes(v),k.onchange=()=>{let z=ccPatchReadFilters();if(k.checked){if(!z[A].includes(v))z[A].push(v)}else z[A]=z[A].filter((q)=>q!==v);ccPatchWriteFilters(z),i=z};let _=document.createElement(`span`);_.textContent=w;_.className=`ccPatchFilterItemLabel`;y.appendChild(k);if(icon)y.appendChild(ccPatchFilterIconSVG(icon));y.appendChild(_);m.appendChild(y)}r.appendChild(m)};s(`Type`,[[`pinned`,`Pinned`,`pinned`],[`starred`,`Starred`,`starred`],[`running`,`Running`,`running`],[`waiting`,`Waiting`,`waiting`]]);s(`Age`,[[`1h`,`Last 1 hour`,`1h`],[`24h`,`Last 24 hours`,`24h`],[`7d`,`Last 7 days`,`7d`],[`30d`,`Last 30 days`,`30d`]]);(function(){let hg=document.createElement(`div`);hg.className=`claudePatchFilterGroup`;let ht=document.createElement(`div`);ht.className=`claudePatchFilterGroupTitle`;ht.textContent=`Hide`;hg.appendChild(ht);let hl=document.createElement(`label`);hl.className=`claudePatchFilterOption`;let hc=document.createElement(`input`);hc.type=`checkbox`;hc.checked=i.hideUntitled;hc.onchange=function(){let z=ccPatchReadFilters();z.hideUntitled=hc.checked;ccPatchWriteFilters(z);i=z};let hs=document.createElement(`span`);hs.textContent=`Untitled chats`;hs.className=`ccPatchFilterItemLabel`;hl.appendChild(hc);hl.appendChild(hs);hg.appendChild(hl);r.appendChild(hg)})();let o=document.createElement(`div`);o.className=`claudePatchFilterFooter`;let c=document.createElement(`button`);c.textContent=`Clear all`,c.onclick=(g)=>{g.preventDefault(),g.stopPropagation(),ccPatchWriteFilters(ccPatchDefaultFilters()),ccPatchCloseFilterMenu()},o.appendChild(c),r.appendChild(o),document.body.appendChild(r);setTimeout(()=>{let h=(g)=>{if(!r.contains(g.target)&&!t.contains(g.target))ccPatchCloseFilterMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
+function ccPatchCloseSettingsMenu(){let m=document.querySelector(`.ccPatchSettingsMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSettingsBtn.ccPatchSettingsBtnOpen`)?.classList.remove(`ccPatchSettingsBtnOpen`)}
+function ccPatchShowSettingsMenu(e,ctx,s){if(document.querySelector(`.ccPatchSettingsMenu`)){ccPatchCloseSettingsMenu();return}let t=e.currentTarget;if(!t)return;t.classList.add(`ccPatchSettingsBtnOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSettingsMenu`,r.style.top=`${Math.round(n.bottom+4)}px`,r.style.left=`${Math.min(Math.round(n.right)-210,window.innerWidth-220)}px`;function a(l,i,o,c,k){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let s=document.createElement(`span`);s.className=`ccPatchSettingsItemIcon`;s.innerHTML=i;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=l;d.appendChild(p);if(o){let u=document.createElement(`span`);u.className=`ccPatchSettingsItemExtra`;u.textContent=o;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();if(!k)ccPatchCloseSettingsMenu();if(c)c()};r.appendChild(d)}(function(){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let ic=document.createElement(`span`);ic.className=`ccPatchSettingsItemIcon`;ic.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><polygon points="7.5,1 3.5,7.5 6.5,7.5 5,13 11,5.8 7.5,5.8"/></svg>`;d.appendChild(ic);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=`YOLO mode`;d.appendChild(p);let lb=document.createElement(`label`);lb.className=`ccPatchYoloToggle`;let cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchYoloOn();let sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchYoloToggle(s)};r.appendChild(d)})();a(`Account & usage`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"/><path d="M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"/><line x1="7" y1="3.4" x2="7" y2="4.4"/><line x1="7" y1="9.6" x2="7" y2="10.6"/></svg>`,null,function(){try{ctx.commandRegistry.executeCommand(`account-usage`)}catch(e){}});a(`Switch account`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="5" r="2.4"/><path d="M2.5 12.2c.7-2.2 2.5-3.4 4.5-3.4 1.3 0 2.4.5 3.3 1.3"/><polyline points="10,9.5 12,11.5 10,13.5"/><line x1="8.4" y1="11.5" x2="12" y2="11.5"/></svg>`,null,function(){ccPatchSwitchAccountModal(ctx)});a(`Custom instructions`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><line x1="4.5" y1="4" x2="9.5" y2="4"/><line x1="4.5" y1="6.5" x2="9.5" y2="6.5"/><line x1="4.5" y1="9" x2="7.5" y2="9"/></svg>`,null,function(){ccPatchInstructionsModal(ctx)});document.body.appendChild(r);setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSettingsMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
 function ccPatchYoloOn(){return document.documentElement.classList.contains(`ccPatchYoloMode`)}
 function ccPatchYoloDefault(){return ccPatchYoloOn()?`bypassPermissions`:`default`}
 function ccPatchYoloApplyArr(arr,on){if(!arr)return;arr.forEach(function(s){try{if(s&&s.permissionMode)s.permissionMode.value=on?`bypassPermissions`:`default`}catch(e){}})}
@@ -195,8 +197,10 @@ function ccPatchRpc(ctx){try{var c=ctx&&ctx.comms&&ctx.comms.connection&&ctx.com
 function ccPatchOpenClaudeMd(ctx,filePath,title){var r=ccPatchRpc(ctx);try{if(r){r.sendRequest({type:"open_claude_md",filePath:filePath,title:title||"CLAUDE.md"}).catch(function(e){console.error(e)});return}}catch(e){}try{if(ctx&&ctx.openFile){ctx.openFile(filePath);return}}catch(e){}}
 function ccPatchReadClaudeMd(ctx,filePath,cb){var r=ccPatchRpc(ctx);try{if(r){r.sendRequest({type:"read_claude_md",filePath:filePath}).then(function(o){if(o&&typeof o.content==="string")cb(null,o.content,o.exists);else cb(null,"",false)}).catch(function(e){cb(e,"",false)})}else{cb(new Error("No ctx.sendRequest (comms.connection.value unavailable)"),"",false)}}catch(e){cb(e,"",false)}}
 function ccPatchWriteClaudeMd(ctx,filePath,content,cb){var r=ccPatchRpc(ctx);try{if(r){r.sendRequest({type:"write_claude_md",filePath:filePath,content:content}).then(function(o){cb(null,o&&o.ok)}).catch(function(e){cb(e,false)})}else{cb(new Error("No ctx.sendRequest (comms.connection.value unavailable)"),false)}}catch(e){cb(e,false)}}
-function ccPatchInstructionsModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchInstructionsOverlay");if(existing){existing.remove();return}var cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";var projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";var globalPath="~/.claude/CLAUDE.md";var tabs=[{id:"project",label:"\u{1F4C4} Project",path:projPath,desc:"Workspace CLAUDE.md"},{id:"global",label:"\u{1F3E0} Global",path:globalPath,desc:"User-wide CLAUDE.md"}];var overlay=document.createElement("div");overlay.className="ccPatchInstructionsOverlay";var box=document.createElement("div");box.className="ccPatchInstructionsBox";var closeBtn=document.createElement("button");closeBtn.className="ccPatchInstructionsClose";closeBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>';closeBtn.onclick=function(){overlay.remove()};box.appendChild(closeBtn);var tabBar=document.createElement("div");tabBar.className="ccPatchInstructionsTabs";var contentArea=document.createElement("div");contentArea.className="ccPatchInstructionsContent";var statusEl=document.createElement("div");statusEl.className="ccPatchInstructionsStatus";var textarea=document.createElement("textarea");textarea.className="ccPatchInstructionsTextarea";textarea.placeholder="Loading...";textarea.spellcheck=false;var actions=document.createElement("div");actions.className="ccPatchInstructionsActions";var saveBtn=document.createElement("button");saveBtn.className="ccPatchInstructionsSaveBtn";saveBtn.textContent="Save";var openBtn=document.createElement("button");openBtn.className="ccPatchInstructionsOpenBtn";openBtn.textContent="Open in Editor";var statusText=document.createElement("span");statusEl.appendChild(statusText);actions.appendChild(saveBtn);actions.appendChild(openBtn);var activeTab=tabs[0];var dirty=false;function loadTab(tab){activeTab=tab;dirty=false;statusText.textContent="Loading...";textarea.value="";textarea.placeholder="Loading...";textarea.disabled=true;saveBtn.disabled=true;ccPatchReadClaudeMd(ctx,tab.path,function(err,content,exists){if(err){statusText.textContent="Error: "+err.message;textarea.placeholder="Failed to load file.";textarea.disabled=true;saveBtn.disabled=true;return}if(!exists){statusText.textContent="File does not exist yet. Start typing to create it.";textarea.placeholder="# CLAUDE.md\\n\\nAdd custom instructions for Claude here...";textarea.value="";textarea.disabled=false;saveBtn.disabled=false;dirty=false;return}statusText.textContent=exists?"File loaded ("+content.length+" chars)":"File not found";textarea.value=content;textarea.disabled=false;saveBtn.disabled=false;dirty=false});Array.from(tabBar.children).forEach(function(el){el.classList.toggle("ccPatchInstructionsTabActive",el.dataset.tabId===tab.id)})}tabs.forEach(function(tab){var btn=document.createElement("button");btn.className="ccPatchInstructionsTab";btn.dataset.tabId=tab.id;btn.textContent=tab.label;btn.title=tab.path;btn.onclick=function(){if(dirty&&!confirm("You have unsaved changes. Discard?"))return;loadTab(tab)};tabBar.appendChild(btn)});textarea.oninput=function(){dirty=true;statusText.textContent="Unsaved changes..."};saveBtn.onclick=function(){if(!activeTab)return;saveBtn.disabled=true;statusText.textContent="Saving...";ccPatchWriteClaudeMd(ctx,activeTab.path,textarea.value,function(err,ok){if(err){statusText.textContent="Save failed: "+err.message;saveBtn.disabled=false;return}statusText.textContent="Saved!";dirty=false;saveBtn.disabled=false;setTimeout(function(){if(statusText.textContent==="Saved!")statusText.textContent="File saved ("+textarea.value.length+" chars)"},2000)})};openBtn.onclick=function(){if(activeTab){ccPatchOpenClaudeMd(ctx,activeTab.path,activeTab.label);overlay.remove()}};overlay.onclick=function(e){if(e.target===overlay)overlay.remove()};contentArea.appendChild(statusEl);contentArea.appendChild(textarea);contentArea.appendChild(actions);box.appendChild(tabBar);box.appendChild(contentArea);overlay.appendChild(box);document.body.appendChild(overlay);loadTab(tabs[0]);setTimeout(function(){textarea.focus()},150)}catch(err){console.error("ccPatchInstructionsModal error:",err)}}
-Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal});
+function ccPatchSwitchAccount(ctx,cb){var r=ccPatchRpc(ctx);try{if(r){r.sendRequest({type:"switch_account"}).then(function(o){cb(null,o&&o.ok!==false)}).catch(function(e){cb(e,false)});return}}catch(e){}cb(new Error("No ctx.sendRequest (comms.connection.value unavailable)"),false)}
+function ccPatchSwitchAccountModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchConfirmOverlay");if(existing){existing.remove();return}var overlay=document.createElement("div");overlay.className="ccPatchConfirmOverlay";var box=document.createElement("div");box.className="ccPatchConfirmBox";var iconWrap=document.createElement("div");iconWrap.className="ccPatchConfirmIcon";iconWrap.innerHTML='<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8" r="3.6"/><path d="M3.5 19c1.1-3.5 4-5.2 7.5-5.2 2 0 3.8.6 5.2 1.8"/><polyline points="15.5,14 19,17.5 15.5,21"/><line x1="13.2" y1="17.5" x2="19" y2="17.5"/></svg>';var title=document.createElement("div");title.className="ccPatchConfirmTitle";title.textContent="Switch account?";var desc=document.createElement("div");desc.className="ccPatchConfirmDesc";desc.textContent="This will log you out of Claude Code. You will be prompted to sign in again on the next request.";var status=document.createElement("div");status.className="ccPatchConfirmStatus";var actions=document.createElement("div");actions.className="ccPatchConfirmActions";var cancelBtn=document.createElement("button");cancelBtn.className="ccPatchConfirmCancelBtn";cancelBtn.type="button";cancelBtn.textContent="Cancel";var confirmBtn=document.createElement("button");confirmBtn.className="ccPatchConfirmConfirmBtn";confirmBtn.type="button";confirmBtn.textContent="Yes, log out";function close(){overlay.remove();document.removeEventListener("keydown",onKey)}function onKey(e){if(e.key==="Escape"){e.preventDefault();close()}else if(e.key==="Enter"){e.preventDefault();confirmBtn.click()}}cancelBtn.onclick=close;confirmBtn.onclick=function(){confirmBtn.disabled=true;cancelBtn.disabled=true;status.textContent="Logging out...";ccPatchSwitchAccount(ctx,function(err,ok){if(err){status.textContent="Logout failed: "+(err.message||err);confirmBtn.disabled=false;cancelBtn.disabled=false;return}status.textContent="Logged out.";setTimeout(close,500)})};overlay.onclick=function(e){if(e.target===overlay)close()};document.addEventListener("keydown",onKey);actions.appendChild(cancelBtn);actions.appendChild(confirmBtn);box.appendChild(iconWrap);box.appendChild(title);box.appendChild(desc);box.appendChild(status);box.appendChild(actions);overlay.appendChild(box);document.body.appendChild(overlay);setTimeout(function(){confirmBtn.focus()},80)}catch(err){console.error("ccPatchSwitchAccountModal error:",err)}}
+function ccPatchInstructionsModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchInstructionsOverlay");if(existing){existing.remove();return}var cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";var projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";var globalPath="~/.claude/CLAUDE.md";var tabs=[{id:"project",label:"Project",path:projPath,desc:"Workspace CLAUDE.md"},{id:"global",label:"Global",path:globalPath,desc:"User-wide CLAUDE.md"}];var overlay=document.createElement("div");overlay.className="ccPatchInstructionsOverlay";var box=document.createElement("div");box.className="ccPatchInstructionsBox";var closeBtn=document.createElement("button");closeBtn.className="ccPatchInstructionsClose";closeBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>';closeBtn.onclick=function(){overlay.remove()};box.appendChild(closeBtn);var tabBar=document.createElement("div");tabBar.className="ccPatchInstructionsTabs";var contentArea=document.createElement("div");contentArea.className="ccPatchInstructionsContent";var statusEl=document.createElement("div");statusEl.className="ccPatchInstructionsStatus";var textarea=document.createElement("textarea");textarea.className="ccPatchInstructionsTextarea";textarea.placeholder="Loading...";textarea.spellcheck=false;var actions=document.createElement("div");actions.className="ccPatchInstructionsActions";var saveBtn=document.createElement("button");saveBtn.className="ccPatchInstructionsSaveBtn";saveBtn.textContent="Save";var openBtn=document.createElement("button");openBtn.className="ccPatchInstructionsOpenBtn";openBtn.textContent="Open in Editor";var statusText=document.createElement("span");statusEl.appendChild(statusText);actions.appendChild(saveBtn);actions.appendChild(openBtn);var activeTab=tabs[0];var dirty=false;function loadTab(tab){activeTab=tab;dirty=false;statusText.textContent="Loading...";textarea.value="";textarea.placeholder="Loading...";textarea.disabled=true;saveBtn.disabled=true;ccPatchReadClaudeMd(ctx,tab.path,function(err,content,exists){if(err){statusText.textContent="Error: "+err.message;textarea.placeholder="Failed to load file.";textarea.disabled=true;saveBtn.disabled=true;return}if(!exists){statusText.textContent="File does not exist yet. Start typing to create it.";textarea.placeholder="# CLAUDE.md\\n\\nAdd custom instructions for Claude here...";textarea.value="";textarea.disabled=false;saveBtn.disabled=false;dirty=false;return}statusText.textContent=exists?"File loaded ("+content.length+" chars)":"File not found";textarea.value=content;textarea.disabled=false;saveBtn.disabled=false;dirty=false});Array.from(tabBar.children).forEach(function(el){el.classList.toggle("ccPatchInstructionsTabActive",el.dataset.tabId===tab.id)})}tabs.forEach(function(tab){var btn=document.createElement("button");btn.className="ccPatchInstructionsTab";btn.dataset.tabId=tab.id;btn.textContent=tab.label;btn.title=tab.path;btn.onclick=function(){if(dirty&&!confirm("You have unsaved changes. Discard?"))return;loadTab(tab)};tabBar.appendChild(btn)});textarea.oninput=function(){dirty=true;statusText.textContent="Unsaved changes..."};saveBtn.onclick=function(){if(!activeTab)return;saveBtn.disabled=true;statusText.textContent="Saving...";ccPatchWriteClaudeMd(ctx,activeTab.path,textarea.value,function(err,ok){if(err){statusText.textContent="Save failed: "+err.message;saveBtn.disabled=false;return}statusText.textContent="Saved!";dirty=false;saveBtn.disabled=false;setTimeout(function(){if(statusText.textContent==="Saved!")statusText.textContent="File saved ("+textarea.value.length+" chars)"},2000)})};openBtn.onclick=function(){if(activeTab){ccPatchOpenClaudeMd(ctx,activeTab.path,activeTab.label);overlay.remove()}};overlay.onclick=function(e){if(e.target===overlay)overlay.remove()};contentArea.appendChild(statusEl);contentArea.appendChild(textarea);contentArea.appendChild(actions);box.appendChild(tabBar);box.appendChild(contentArea);overlay.appendChild(box);document.body.appendChild(overlay);loadTab(tabs[0]);setTimeout(function(){textarea.focus()},150)}catch(err){console.error("ccPatchInstructionsModal error:",err)}}
+Object.assign(globalThis,{ccPatchTitle,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1207,12 +1211,6 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("div",{{className:"claudePatchInlineSessions"}},'
         f'{p0}.default.createElement("div",{{className:"ccPatchSidebarHeader"}},'
         f'{p0}.default.createElement("span",{{className:"ccPatchSidebarTitle"}},"Sessions"),'
-        # YOLO mode — bypass permission prompts toggle
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchYoloBtn",title:"YOLO mode \\u2014 bypass permission prompts (toggle)",'
-        f"onClick:function(){{ccPatchYoloToggle({fe1_S})}}}},"
-        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.4,strokeLinejoin:"round",strokeLinecap:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("polygon",{{points:"7.5,1 3.5,7.5 6.5,7.5 5,13 11,5.8 7.5,5.8"}}))),'
         # Search
         f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn",title:"Search",'
         f"onClick:ccPatchToggleSearch}},"
@@ -1225,31 +1223,19 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'className:ccPatchFiltersActive()?"ccPatchFilterButton ccPatchHeaderBtn ccPatchFilterButtonActive":"ccPatchFilterButton ccPatchHeaderBtn",'
         f'title:"Filter",onClick:ccPatchShowFilterMenu}},'
         f'{p0}.default.createElement("span",{{className:"ccPatchFilterIcon","aria-hidden":true}})),'
-        # Usage — opens account-usage panel
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchUsageBtn",title:"Account & usage",'
-        f'onClick:()=>{{try{{{fe1["Z"]}.commandRegistry.executeCommand("account-usage")}}catch(e){{}}}}}},'
+        # Settings gear -> dropdown: YOLO, Account & Usage, Switch Account, Custom Instructions
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchSettingsBtn",title:"Settings",'
+        f"onClick:function(e){{ccPatchShowSettingsMenu(e,{fe1['Z']},{fe1_S})}}}}," 
         f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("circle",{{cx:7,cy:7,r:5.5}}),'
-        f'{p0}.default.createElement("path",{{d:"M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"}}),'
-        f'{p0}.default.createElement("line",{{x1:7,y1:3.4,x2:7,y2:4.4}}),'
-        f'{p0}.default.createElement("line",{{x1:7,y1:9.6,x2:7,y2:10.6}}))),'
-        # Instructions — manage CLAUDE.md custom instructions
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchInstructionsBtn",title:"Custom instructions \\u2014 edit CLAUDE.md",'
-        f"onClick:function(){{ccPatchInstructionsModal({fe1['Z']})}}}},"
-        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.3,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("path",{{d:"M10 1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"}}),'
-        f'{p0}.default.createElement("line",{{x1:4.5,y1:4,x2:9.5,y2:4}}),'
-        f'{p0}.default.createElement("line",{{x1:4.5,y1:6.5,x2:9.5,y2:6.5}}),'
-        f'{p0}.default.createElement("line",{{x1:4.5,y1:9,x2:7.5,y2:9}})))),'
-        # Close/collapse lives on the right edge of the sessions panel itself.
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCloseBtn",title:"Hide sessions",'
+        f'{p0}.default.createElement("circle",{{cx:7,cy:7,r:2.8}}),'
+        f'{p0}.default.createElement("path",{{d:"M7 1.5v1.3M7 11.2v1.3M1.5 7h1.3M11.2 7h1.3M3.1 3.1l.92.92M9.98 9.98l.92.92M3.1 10.9l.92-.92M9.98 4.02l.92-.92"}}))),'
+        # Collapse/expand toggle — last button in the header, icon reverses when collapsed (Copilot-style)
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchPaneCollapseBtn",title:"Toggle sidebar",'
         f"onClick:ccPatchTogglePane}},"
         f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("path",{{d:"M9.5 2.5 5 7l4.5 4.5"}}),'
-        f'{p0}.default.createElement("path",{{d:"M4 2.5v9"}}))),'
+        f'{p0}.default.createElement("polyline",{{points:"9.5,2.5 5,7 9.5,11.5"}})))),'
         f'{p0}.default.createElement("div",{{className:"ccPatchSearchRow"}},'
         f'{p0}.default.createElement("input",{{type:"text",className:"ccPatchSearchInput",'
         f'placeholder:"Search sessions...",'
@@ -1275,19 +1261,7 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'authMethod:"local",'
         f"onRefresh:{inline_refresh},"
         f'onOpenURL:{inline_props["onOpenURL"]}}})),'
-        f'{p0}.default.createElement("button",{{className:"claudePatchPaneReopen",title:"Show sessions",'
-        f"onClick:ccPatchTogglePane}},"
-        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("path",{{d:"M4.5 2.5 9 7l-4.5 4.5"}}),'
-        f'{p0}.default.createElement("path",{{d:"M10 2.5v9"}}))),'
         f'{p0}.default.createElement("div",{{className:"claudePatchResizeHandle",onPointerDown:ccPatchStartResize}}),'
-        # Right-edge collapse toggle — slim vertical tab always visible
-        f'{p0}.default.createElement("button",{{className:"ccPatchPaneCollapseBtn",title:"Toggle sessions sidebar",'
-        f"onClick:ccPatchTogglePane}},"
-        f'{p0}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{p0}.default.createElement("polyline",{{points:"8,2 4,6 8,10"}}))),'
         f'{p0}.default.createElement("div",{{className:`${{{h6}.content}} claudePatchMainContent`}},'
     )
     body_marker = f'{p0}.default.createElement("div",{{className:{h6}.body}},{p0}.default.createElement("div",{{className:{h6}.content}},'
@@ -1582,17 +1556,18 @@ def patch_webview_css(webview_css: Path) -> bool:
         raise RuntimeError("Could not bracket the .dropdown_<hash> rule")
     old = text[anchor_idx:end_idx]
     new = old + (
-        # Main content — shifts left by panel width so chat doesn't go under the sessions column
-        ".claudePatchMainContent{position:relative;z-index:2;overflow:hidden;min-width:0;min-height:0}"
-        # All modal overlay classes — raise above split-pane UI, opaque backdrop
-        f"{overlay_selector}"
+        # Main content — stays at z-index:0 so native Claude Code panels always float above
+        ".claudePatchMainContent{position:relative;z-index:0;overflow:hidden;min-width:0;min-height:0}"
+        # All modal/overlay/dialog classes — raise above split-pane UI, opaque backdrop.
+        # Also blanket-lift any fixed-position element that looks like a panel.
+        f"{overlay_selector},[class*='overlay'],[class*='Overlay'],[class*='modal'],[class*='Modal'],[class*='dialog'],[class*='Dialog'],[class*='panel_'],[class*='Panel_'],[class*='sheet'],[class*='Sheet']"
         "{z-index:10000!important;background-color:#000000e6!important}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
-        ".claudePatchRoot{min-width:0;min-height:0}"
+        ".claudePatchRoot{position:relative;min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
         ".claudePatchHeader{display:none!important}"
-        # Inline sessions panel — absolutely positioned from root's top edge
-        ".claudePatchInlineSessions{order:2;position:relative;z-index:3;"
+        # Inline sessions panel — z-index:1 so native panels (modals, usage) float above
+        ".claudePatchInlineSessions{order:2;position:relative;z-index:0;"
         "flex:0 0 var(--claude-patch-sessions-width,min(44vw,360px));"
         "min-width:180px;max-width:75%;min-height:0;"
         "border-left:1px solid var(--app-primary-border-color);"
@@ -1607,18 +1582,21 @@ def patch_webview_css(webview_css: Path) -> bool:
         "cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
         ".claudePatchResizeHandle:hover,.claudePatchResizeHandle:active{"
         "opacity:1;background:var(--vscode-sash-hoverBorder,var(--app-primary-border-color))}"
-        # Pane-hidden: slide the panel off-screen with transform, snap header padding
+        # Pane-hidden: panel floats absolute (no flex space), just header buttons remain (Copilot-style)
         ".ccPatchPaneHidden .claudePatchInlineSessions"
-        "{flex-basis:0!important;min-width:0!important;opacity:0;pointer-events:none}"
-        ".ccPatchPaneHidden .claudePatchResizeHandle{display:none!important}"
-        ".claudePatchPaneReopen{order:3;display:none;align-items:center;justify-content:center;"
-        "flex:0 0 28px;align-self:stretch;"
-        "background:var(--app-primary-background);border:0;border-left:1px solid var(--app-primary-border-color);"
-        "color:var(--app-secondary-foreground);cursor:pointer;padding:0;opacity:.8}"
-        ".claudePatchPaneReopen:hover{opacity:1;color:var(--app-primary-foreground);"
-        "background:var(--app-list-hover-background,rgba(255,255,255,.06))}"
-        ".claudePatchPaneReopen svg{width:14px;height:14px;display:block}"
-        ".ccPatchPaneHidden .claudePatchPaneReopen{display:flex!important}"
+        "{position:absolute!important;right:0;top:0;bottom:0;"
+        "flex:none!important;width:auto!important;min-width:auto!important;max-width:none!important;"
+        "opacity:1!important;pointer-events:auto!important;"
+        "border-left:none!important;background:transparent!important}"
+        ".ccPatchPaneHidden .ccPatchSidebarTitle,"
+        ".ccPatchPaneHidden .ccPatchSearchRow,"
+        ".ccPatchPaneHidden .ccPatchNewSessionBtn,"
+        ".ccPatchPaneHidden .claudePatchInlineSessions>div:last-child,"
+        ".ccPatchPaneHidden .claudePatchResizeHandle"
+        "{display:none!important}"
+        ".ccPatchPaneHidden .ccPatchSidebarHeader{background:var(--app-primary-background);"
+        "border-bottom:none!important;border-radius:0 0 0 8px;"
+        "box-shadow:-2px 2px 8px #00000018;padding:2px 4px}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
@@ -1752,23 +1730,33 @@ def patch_webview_css(webview_css: Path) -> bool:
         "color:var(--app-primary-foreground)}"
         # Hide built-in duplicate search row
         ".claudePatchInlineSessions [class*=\"searchRow_\"]{display:none!important}"
-        # YOLO toggle button
-        ".ccPatchYoloBtn{display:inline-flex;align-items:center;justify-content:center;"
-        "background:transparent;border:0;cursor:pointer;width:24px;height:24px;"
-        "border-radius:4px;color:var(--app-secondary-foreground);opacity:.7;"
-        "padding:0;flex-shrink:0;"
-        "transition:background .12s,color .12s,opacity .12s}"
-        ".ccPatchYoloBtn:hover{background:var(--app-list-hover-background,rgba(255,255,255,.08));"
-        "opacity:1;color:var(--app-primary-foreground)}"
-        ".ccPatchYoloBtn svg{width:14px;height:14px;display:block}"
-        # YOLO ON state
-        ".ccPatchYoloMode .ccPatchYoloBtn{color:#f97316!important;opacity:1!important;"
-        "background:rgba(249,115,22,.14)!important}"
-        ".ccPatchYoloMode .ccPatchYoloBtn:hover{background:rgba(249,115,22,.26)!important;color:#fb923c!important}"
-        # Usage button
-        ".ccPatchUsageBtn:hover{color:var(--vscode-charts-green,#10b981)!important}"
-        # Instructions button
-        ".ccPatchInstructionsBtn:hover{color:var(--vscode-charts-purple,#a855f7)!important}"
+        # YOLO toggle slider in settings dropdown
+        ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
+        "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
+        ".ccPatchYoloToggle input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}"
+        ".ccPatchYoloSlider{position:absolute;top:0;left:0;right:0;bottom:0;"
+        "background:rgba(255,255,255,.18);border-radius:9px;transition:background .18s}"
+        ".ccPatchYoloSlider::before{content:'';position:absolute;height:14px;width:14px;"
+        "left:2px;bottom:2px;background:#fff;border-radius:50%;transition:transform .18s}"
+        ".ccPatchYoloToggle input:checked+.ccPatchYoloSlider{background:#f97316}"
+        ".ccPatchYoloToggle input:checked+.ccPatchYoloSlider::before{transform:translateX(14px)}"
+        # Settings gear button -- subtle highlight on open
+        ".ccPatchSettingsBtnOpen{opacity:1!important;color:var(--app-primary-foreground)!important}"
+        # Settings dropdown menu
+        ".ccPatchSettingsMenu{position:fixed;z-index:2000;"
+        "background:var(--app-menu-background);border:1px solid var(--app-menu-border);"
+        "border-radius:8px;padding:4px;box-shadow:0 6px 20px #00000055;"
+        "display:flex;flex-direction:column;min-width:190px;max-width:240px;"
+        "font-size:13px;color:var(--app-primary-foreground)}"
+        ".ccPatchSettingsItem{display:flex;align-items:center;gap:8px;"
+        "padding:7px 10px;border-radius:5px;cursor:pointer;user-select:none;"
+        "background:transparent;border:0;width:100%;text-align:left;"
+        "color:var(--app-primary-foreground);font-size:12.5px}"
+        ".ccPatchSettingsItem:hover{background:var(--app-list-hover-background)}"
+        ".ccPatchSettingsItemIcon{flex:0 0 auto;width:14px;height:14px;display:flex;"
+        "align-items:center;justify-content:center;opacity:.7}"
+        ".ccPatchSettingsItem:hover .ccPatchSettingsItemIcon{opacity:1}"
+        ".ccPatchSettingsItemLabel{flex:1;line-height:1.3}"
         # Instructions modal overlay
         ".ccPatchInstructionsOverlay{position:fixed;inset:0;z-index:10001;"
         "background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;"
@@ -1811,18 +1799,34 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchInstructionsOpenBtn{background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));"
         "color:var(--vscode-button-secondaryForeground,var(--app-primary-foreground))}"
         ".ccPatchInstructionsOpenBtn:hover{background:var(--vscode-button-secondaryHoverBackground,rgba(127,127,127,.2))}"
-        # Right-edge pane collapse toggle
-        ".ccPatchPaneCollapseBtn{position:absolute;right:0;top:50%;transform:translateY(-50%);"
-        "z-index:4;display:flex;align-items:center;justify-content:center;"
-        "width:18px;height:48px;border-radius:6px 0 0 6px;"
-        "background:var(--app-primary-border-color);border:0;cursor:pointer;"
-        "color:var(--app-secondary-foreground);opacity:.55;padding:0;"
-        "transition:opacity .15s,background .15s,width .15s}"
-        ".ccPatchPaneCollapseBtn:hover{opacity:1;background:var(--vscode-charts-blue,#3b82f6);"
-        "color:#fff;width:22px}"
-        ".ccPatchPaneCollapseBtn svg{width:10px;height:10px;display:block;transition:transform .2s}"
+        # Switch-account confirmation modal — small, centered, blue accent
+        ".ccPatchConfirmOverlay{position:fixed;inset:0;z-index:10002;"
+        "background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;"
+        "animation:ccPatchFadeIn .18s ease}"
+        ".ccPatchConfirmBox{width:min(380px,90vw);padding:22px 22px 18px;"
+        "background:var(--app-primary-background);border:1px solid var(--app-primary-border-color);"
+        "border-radius:10px;box-shadow:0 12px 40px #00000066;"
+        "display:flex;flex-direction:column;align-items:center;text-align:center;"
+        "animation:ccPatchSlideUp .22s ease}"
+        ".ccPatchConfirmIcon{display:flex;align-items:center;justify-content:center;"
+        "width:46px;height:46px;border-radius:50%;margin-bottom:12px;"
+        "background:rgba(59,130,246,.14);color:var(--vscode-charts-blue,#3b82f6)}"
+        ".ccPatchConfirmTitle{font-size:15px;font-weight:600;margin:0 0 6px;letter-spacing:.01em}"
+        ".ccPatchConfirmDesc{font-size:12.5px;opacity:.68;line-height:1.5;margin:0 4px 14px;max-width:320px}"
+        ".ccPatchConfirmStatus{font-size:11.5px;opacity:.6;margin:0 0 10px;min-height:14px}"
+        ".ccPatchConfirmActions{display:flex;gap:8px;width:100%;justify-content:flex-end}"
+        ".ccPatchConfirmCancelBtn,.ccPatchConfirmConfirmBtn{padding:8px 16px;border-radius:6px;"
+        "border:0;cursor:pointer;font-size:12.5px;font-weight:500;transition:background .12s,opacity .12s}"
+        ".ccPatchConfirmCancelBtn{background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));"
+        "color:var(--vscode-button-secondaryForeground,var(--app-primary-foreground))}"
+        ".ccPatchConfirmCancelBtn:hover{background:var(--vscode-button-secondaryHoverBackground,rgba(127,127,127,.24))}"
+        ".ccPatchConfirmConfirmBtn{background:var(--vscode-button-background,#3b82f6);"
+        "color:var(--vscode-button-foreground,#fff)}"
+        ".ccPatchConfirmConfirmBtn:hover{background:var(--vscode-button-hoverBackground,#2563eb)}"
+        ".ccPatchConfirmCancelBtn:disabled,.ccPatchConfirmConfirmBtn:disabled{opacity:.5;cursor:not-allowed}"
+        # Collapse toggle — regular header button, icon reverses when collapsed
+        ".ccPatchPaneCollapseBtn svg{transition:transform .25s ease}"
         ".ccPatchPaneHidden .ccPatchPaneCollapseBtn svg{transform:rotate(180deg)}"
-        ".ccPatchPaneCloseBtn:hover{color:var(--vscode-charts-blue,#3b82f6)!important}"
     )
     css_marker = ".ccPatchHeaderBtn{display:inline-flex;"
     old_media_hide = (
@@ -1900,6 +1904,12 @@ def patch_extension_host_js(path: Path) -> bool:
         f'{fs_id}.mkdirSync({path_id}.dirname(ccP),{{recursive:!0}});'
         f'{fs_id}.writeFileSync(ccP,ccCt,"utf8");return{{type:"write_claude_md_response",ok:!0}}}}'
         f'catch(ccE){{this.output?.error?.(`Failed to write ${{ccP}}: ${{ccE}}`);return{{type:"write_claude_md_response",ok:!1}}}}}}'
+        # switch_account: fire the host-side logout command so the next request
+        # forces a fresh sign-in. Webview-only showLogin() leaves valid creds in
+        # place and the auth state snaps back to "Signed in" within a second.
+        f'case"switch_account":{{try{{await require("vscode").commands.executeCommand("claude-vscode.logout");'
+        f'return{{type:"switch_account_response",ok:!0}}}}'
+        f'catch(ccE){{this.output?.error?.(`switch_account failed: ${{ccE}}`);return{{type:"switch_account_response",ok:!1,error:String(ccE)}}}}}}'
     )
     text = text[:match.start()] + insert + text[match.start():]
     write(path, text)
@@ -1948,22 +1958,19 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "filter menu css": ".claudePatchFilterMenu" in css,
         "filter svg icons": "ccPatchFilterIconSVG" in js and ".ccPatchFilterItemIcon" in css,
         "waiting indicator": "ccPatchIsWaiting" in js and ".claudePatchStatusWaiting" in css,
-        "pane toggle": "ccPatchTogglePane" in js
-        and "ccPatchPaneCloseBtn" in js
-        and "claudePatchPaneReopen" in js,
+        "pane toggle": "ccPatchTogglePane" in js and "ccPatchPaneCollapseBtn" in js,
         "history removed": 'ariaLabel:"Session history"' not in js,
         "overlay fix": "z-index:10000!important;background-color:#000000e6!important" in css,
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
         "yolo perm init": "permissionMode=" in js and "ccPatchYoloDefault()" in js,
-        "yolo button": "ccPatchYoloBtn" in js and ".ccPatchYoloBtn" in css,
-        "yolo on state css": ".ccPatchYoloMode .ccPatchYoloBtn" in css,
-        "usage button": "ccPatchUsageBtn" in js and ".ccPatchUsageBtn" in css,
-        "instructions btn": "ccPatchInstructionsModal" in js and ".ccPatchInstructionsBtn" in css,
+        "settings menu": "ccPatchShowSettingsMenu" in js and "ccPatchCloseSettingsMenu" in js,
+        "settings dropdown css": ".ccPatchSettingsMenu" in css and ".ccPatchSettingsItem" in css,
+        "account switch modal": "ccPatchSwitchAccountModal" in js and ".ccPatchConfirmOverlay" in css,
+        "account switch rpc": "ccPatchSwitchAccount(" in js and 'case"switch_account"' in host,
         "instructions modal": "ccPatchInstructionsOverlay" in js and ".ccPatchInstructionsOverlay" in css,
         "instructions read": "ccPatchReadClaudeMd" in js and "read_claude_md_response" in host,
         "instructions write": "ccPatchWriteClaudeMd" in js and "write_claude_md_response" in host,
-        "pane close css": ".ccPatchPaneCloseBtn" in css and ".claudePatchPaneReopen" in css,
         "pane collapse btn": "ccPatchPaneCollapseBtn" in js and ".ccPatchPaneCollapseBtn" in css,
         "instructions request": "open_claude_md" in js and "open_claude_md_response" in host,
         "built-in search hide": '[class*="searchRow_"]' in css,
