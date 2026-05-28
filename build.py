@@ -235,12 +235,22 @@ def build(out: Path | None = None) -> Path:
                 encoding="utf-8",
             )
 
+    # HARD GUARD: a build must NEVER change package.json's version. We only ever
+    # READ it. Re-read from disk and fail loudly if it somehow differs — proof the
+    # build can't silently bump the Marketplace number.
+    after_version = load_manifest().get("version")
+    if after_version != manifest["version"]:
+        raise SystemExit(
+            f"ABORT: build changed package.json version {manifest['version']} -> {after_version}. "
+            "Builds must never touch package.json; only an explicit release bumps it."
+        )
+
     bn = f"#{build_number}" if build_number is not None else "(custom --out)"
     print("\n" + "=" * 56)
     print(f"  BUILD {bn} COMPLETE")
     print(f"     file:     {out.name}")
     print(f"     bundled:  stable Claude {stable_version} / patcher {patcher_version}")
-    print(f"     pkg ver:  {manifest['version']}  (NOT changed by build)")
+    print(f"     pkg ver:  {manifest['version']}  (verified UNCHANGED by build)")
     print("=" * 56)
     return out
 
