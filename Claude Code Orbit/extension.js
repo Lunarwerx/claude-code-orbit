@@ -1217,8 +1217,7 @@ function detectState(context) {
     if (fs.existsSync(jsPath)) {
       const text = fs.readFileSync(jsPath, "utf8");
       const isPatched =
-        text.indexOf("ccPatchYoloBtn") !== -1 ||
-        text.indexOf("ccPatchUsageBtn") !== -1 ||
+        text.indexOf("ccPatchSettingsBtn") !== -1 ||
         text.indexOf("ccPatchSessionItem") !== -1;
       if (isPatched) {
         const m = text.match(/ccPatchBuildVersion="([^"]+)"/);
