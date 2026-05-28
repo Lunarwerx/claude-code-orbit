@@ -3,6 +3,38 @@
 These are production notes for future agents. Follow them unless Jacob
 explicitly says otherwise.
 
+## Version numbers — there are THREE, and they are INDEPENDENT
+
+Do not assume any two of these move together. They do not.
+
+1. **Patcher version** — files: root `patcher_version.txt` and
+   `stable/patcher_version.txt`. Series: **1.2.x** (e.g. 1.2.20, 1.2.21).
+   What it versions: the patch SCRIPT (`Claude Code/patch_claude_vsix_v147.py`)
+   that rewrites Claude Code's webview. How it ships: over-the-air from the
+   GitHub `orbit` repo — the user gets it by clicking **"Check experimental
+   updates."** This is the "GitHub experimental version." It is the number meant
+   when we say things like **"promote 1.2.20 to stable."** It is INDEPENDENT of
+   package.json and is fine to bump for every patcher fix.
+
+2. **Wrapper / VSIX version** — files: `Claude Code Orbit/package.json`
+   (`"version"`) → `wrapper_version.txt` (derived by `build.py`).
+   Series: **1.1.x** (e.g. 1.1.5). What it versions: the Orbit extension itself
+   (the VSIX). This MUST track the VS Code Marketplace line. Bump it ONLY at a
+   push/release, and ONLY when Jacob says so.
+
+3. **Stable Claude pin** — files: `stable_version.txt` /
+   `stable/stable_version.txt`. Value: **2.1.152**. What it is: Anthropic's
+   Claude Code version that the stable patcher has been tested against. This is
+   NOT an Orbit version number; it changes only on an explicit stable promotion
+   to a new Claude Code release.
+
+**"Promote <patcher version> to stable"** means: copy the experimental patcher
+(`Claude Code/patch_claude_vsix_v147.py` + root `patcher_version.txt`) into
+`stable/patch_claude.py` + `stable/patcher_version.txt`. That moves only the
+patcher channel into the bundled production fallback. It does NOT touch
+`package.json`. (Shipping that promoted stable to users in their VSIX is a
+separate step that DOES bump package.json — see "Stable Promotion Checklist".)
+
 ## Building — there is exactly ONE way
 
 To build, run:
