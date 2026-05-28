@@ -1582,7 +1582,7 @@ def patch_webview_css(webview_css: Path) -> bool:
         f"{overlay_selector},[class*='overlay'],[class*='Overlay'],[class*='modal'],[class*='Modal'],[class*='dialog'],[class*='Dialog'],[class*='panel_'],[class*='Panel_'],[class*='sheet'],[class*='Sheet']"
         "{z-index:10000!important;background-color:#000000e6!important}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
-        ".claudePatchRoot{min-width:0;min-height:0}"
+        ".claudePatchRoot{position:relative;min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
         ".claudePatchHeader{display:none!important}"
         # Inline sessions panel — z-index:1 so native panels (modals, usage) float above
@@ -1601,10 +1601,12 @@ def patch_webview_css(webview_css: Path) -> bool:
         "cursor:col-resize;background:var(--app-primary-border-color);opacity:.5}"
         ".claudePatchResizeHandle:hover,.claudePatchResizeHandle:active{"
         "opacity:1;background:var(--vscode-sash-hoverBorder,var(--app-primary-border-color))}"
-        # Pane-hidden: shrink to header-only strip, keep buttons clickable (Copilot-style)
+        # Pane-hidden: panel floats absolute (no flex space), just header buttons remain (Copilot-style)
         ".ccPatchPaneHidden .claudePatchInlineSessions"
-        "{flex:0 0 auto!important;min-width:auto!important;max-width:none!important;"
-        "opacity:1!important;pointer-events:auto!important}"
+        "{position:absolute!important;right:0;top:0;bottom:0;"
+        "flex:none!important;width:auto!important;min-width:auto!important;max-width:none!important;"
+        "opacity:1!important;pointer-events:auto!important;"
+        "border-left:none!important;box-shadow:-2px 0 8px #00000020}"
         ".ccPatchPaneHidden .ccPatchSidebarTitle,"
         ".ccPatchPaneHidden .ccPatchSearchRow,"
         ".ccPatchPaneHidden .ccPatchNewSessionBtn,"
@@ -1612,7 +1614,7 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchPaneHidden .claudePatchResizeHandle,"
         ".ccPatchPaneHidden .claudePatchPaneReopen"
         "{display:none!important}"
-        ".ccPatchPaneHidden .ccPatchSidebarHeader{border-bottom:none!important}"
+        ".ccPatchPaneHidden .ccPatchSidebarHeader{border-bottom:none!important;padding-right:6px}"
         # Slim Copilot-style sidebar header
         ".ccPatchSidebarHeader{flex:0 0 auto;display:flex;align-items:center;"
         "padding:2px 4px 2px 8px;border-bottom:1px solid var(--app-primary-border-color);"
