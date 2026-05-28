@@ -1218,8 +1218,16 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'{p0}.default.createElement("div",{{className:"claudePatchInlineSessions"}},'
         f'{p0}.default.createElement("div",{{className:"ccPatchSidebarHeader"}},'
         f'{p0}.default.createElement("span",{{className:"ccPatchSidebarTitle"}},"Sessions"),'
+        # Collapsed-only "+" — creates a new session when the pane is collapsed
+        # (hidden while expanded; the full "New Session" button covers that state).
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchCollapsedNewBtn",title:"New session",'
+        f'onClick:()=>{{if(!{fe1["Z"]}.startNewConversationTab()){fe1_S}.createSession()}}}},'
+        f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{p0}.default.createElement("line",{{x1:7,y1:2.5,x2:7,y2:11.5}}),'
+        f'{p0}.default.createElement("line",{{x1:2.5,y1:7,x2:11.5,y2:7}}))),'
         # Search
-        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn",title:"Search",'
+        f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchSearchBtn",title:"Search",'
         f"onClick:ccPatchToggleSearch}},"
         f'{p0}.default.createElement("svg",{{width:14,height:14,viewBox:"0 0 14 14",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round","aria-hidden":true}},'
@@ -1582,8 +1590,11 @@ def patch_webview_css(webview_css: Path) -> bool:
         "min-width:180px;max-width:75%;min-height:0;"
         "border-left:1px solid var(--app-primary-border-color);"
         "display:flex;flex-direction:column;"
-        "overflow:hidden;background:var(--app-primary-background);"
-        "transition:flex-basis .22s ease,opacity .22s ease,min-width .22s ease}"
+        "overflow:hidden;background:var(--app-primary-background)}"
+        # NOTE: no flex-basis/min-width transition. It made collapse/expand feel
+        # laggy and "glitchy" (the panel animated over .22s while position/flex
+        # switched instantly), and it made resize lag the cursor by .22s. Instant
+        # is crisp, Copilot-style.
         # Rs component fills remaining height below header
         ".claudePatchInlineSessions>div:last-child{flex:1;min-height:0;overflow:hidden}"
         # Resize handle — absolutely positioned along the left edge of the panel
@@ -1600,10 +1611,14 @@ def patch_webview_css(webview_css: Path) -> bool:
         "border-left:none!important;background:transparent!important}"
         ".ccPatchPaneHidden .ccPatchSidebarTitle,"
         ".ccPatchPaneHidden .ccPatchSearchRow,"
+        ".ccPatchPaneHidden .ccPatchSearchBtn,"
         ".ccPatchPaneHidden .ccPatchNewSessionBtn,"
         ".ccPatchPaneHidden .claudePatchInlineSessions>div:last-child,"
         ".ccPatchPaneHidden .claudePatchResizeHandle"
         "{display:none!important}"
+        # Collapsed-only "+" new-session button: hidden while expanded, shown when collapsed.
+        ".ccPatchCollapsedNewBtn{display:none!important}"
+        ".ccPatchPaneHidden .ccPatchCollapsedNewBtn{display:inline-flex!important}"
         ".ccPatchPaneHidden .ccPatchSidebarHeader{background:var(--app-primary-background);"
         "border-bottom:none!important;border-radius:0 0 0 8px;"
         "box-shadow:-2px 2px 8px #00000018;padding:2px 4px}"
