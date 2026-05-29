@@ -1665,10 +1665,12 @@ def patch_webview_js(webview_js: Path) -> bool:
     SStop = m_si.group("stop")
     SSend = m_si.group("send")
     SCls = m_si.group("cls")
+    # The native button is now ALWAYS the send arrow; a dedicated Stop button
+    # (rendered while busy, to its left) owns interrupt. So the icon never
+    # swaps to the stop glyph here.
     new_icon = (
         f"let {SW}=null;try{{globalThis.ccPatchComposerSession={SS}}}catch(ccE){{}}"
-        f"if({SS}.busy.value&&!{SX}){SW}={SRE}.default.createElement({SStop},{{className:{SCls}.stopIcon}});"
-        f"else {SW}={SRE}.default.createElement({SSend},{{className:{SCls}.sendIcon}});"
+        f"{SW}={SRE}.default.createElement({SSend},{{className:{SCls}.sendIcon}});"
     )
     text = text[: m_si.start()] + new_icon + text[m_si.end() :]
 
@@ -1695,22 +1697,25 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'({BS}.busy.value?({BX}?"busy-text":"busy-empty"):({BX}?"idle-text":"idle-empty"))'
     )
     new_btn = (
-        # Dedicated Stop button — only when busy AND there's text
-        # (busy+empty already shows the native stop icon on the button below).
-        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
+        # Dedicated Stop button — shown the moment a turn is in flight (busy),
+        # regardless of whether there's text. It sits to the LEFT of the send
+        # arrow and owns interrupt.
+        f'(({BS}.busy.value)?{BRE}.default.createElement("button",{{type:"button",'
         f'className:"ccPatchStopBtn","aria-label":"Stop generating",'
         f'onClick:function(){{try{{{BS}.interrupt()}}catch(ccE){{}}}}}},'
         f'{BRE}.default.createElement({SStop},{{className:{BCls}.stopIcon}})):null),'
-        # Native send/stop button + state attr (drives the blue idle-text style).
+        # Native send button (always the up-arrow now). Disabled until there's
+        # text; while busy+text its click routes to the saved mode.
         f'{BRE}.default.createElement("button",{{type:"submit",'
-        f'disabled:!{BS}.busy.value&&!{BX},'
+        f'disabled:!{BX},'
         f'className:{BCls}.sendButton,'
         f'"data-permission-mode":{BZ},'
         f'"data-cc-send-state":{state_expr},'
-        f'onClick:({BE})=>{{if({BS}.busy.value&&!{BX}){{{BE}.preventDefault();{BS}.interrupt()}}else if({BS}.busy.value&&{BX}){{{BE}.preventDefault();ccPatchComposerAction(globalThis.ccPatchSendMode||"queue",{BE}.currentTarget.closest("form"))}}}}}},'
+        f'onClick:({BE})=>{{if({BS}.busy.value&&{BX}){{{BE}.preventDefault();ccPatchComposerAction(globalThis.ccPatchSendMode||"queue",{BE}.currentTarget.closest("form"))}}}}}},'
         f'{BW}),'
-        # Chevron → steer/queue/stop-and-send menu — only when busy AND text.
-        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
+        # Mode toggle (up/down) — shown while busy. Opens the persisted-mode
+        # selector (Steer / Add to Queue / Stop and Send).
+        f'(({BS}.busy.value)?{BRE}.default.createElement("button",{{type:"button",'
         f'className:"ccPatchSendChevron","aria-label":"Send options",'
         f'onClick:({BE})=>ccPatchSendMenu({BE})}},'
         f'{BRE}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
