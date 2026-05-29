@@ -1880,12 +1880,15 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchImgPreview img{display:block;max-width:58vw;max-height:74vh;object-fit:contain}"
         # "Show more / show less": subtle inline links, not chunky filled pills
         # (covers BOTH expandButton and collapseButton).
-        "[class*=\"expandButton\"],[class*=\"collapseButton\"]{background:transparent!important;"
-        "border:none!important;box-shadow:none!important;"
-        "color:var(--vscode-textLink-foreground,#3794ff)!important;"
-        "padding:1px 4px!important;margin:2px!important;font-size:.8em!important;opacity:.85}"
+        # expandButton ("Show more") is natively position:absolute (pinned
+        # bottom-right), so flex alignment can't move it -- force it static so
+        # it flows into the left-aligned buttonContainer. Bright, bold color.
+        "[class*=\"expandButton\"],[class*=\"collapseButton\"]{position:static!important;"
+        "background:transparent!important;border:none!important;box-shadow:none!important;"
+        "color:#4da3ff!important;padding:2px 0!important;margin:0!important;"
+        "font-size:.85em!important;font-weight:600!important;opacity:1}"
         "[class*=\"expandButton\"]:hover,[class*=\"collapseButton\"]:hover{"
-        "opacity:1;text-decoration:underline;transform:none!important}"
+        "color:#7cc0ff!important;text-decoration:underline;transform:none!important}"
         # Kill the dark truncation-fade gradient on collapsed messages; the
         # JS patch makes the "Show more" link always visible, left-aligned
         # below the text (images sit on their own row below, so no collision).
@@ -1898,11 +1901,10 @@ def patch_webview_css(webview_css: Path) -> bool:
         # Fork + rewind) centered above each user message with a divider line
         # on each side. Clearly visible by default, brighter on hover.
         ".ccPatchForkRow{display:flex;gap:7px;align-items:center;justify-content:center;"
-        "flex-wrap:wrap;padding:5px 2px 8px;opacity:.9;transition:opacity .13s ease}"
+        "flex-wrap:wrap;padding:5px 2px 8px;opacity:.4;transition:opacity .15s ease}"
         ".ccPatchForkRow::before,.ccPatchForkRow::after{content:\"\";flex:1 1 auto;min-width:14px;"
         "height:1px;background:rgba(255,255,255,.16)}"
-        "[class*=\"userMessageContainer\"]:hover .ccPatchForkRow,"
-        ".ccPatchForkRow:focus-within{opacity:1}"
+        ".ccPatchForkRow:hover,.ccPatchForkRow:focus-within{opacity:1}"
         ".ccPatchForkBtn{display:inline-flex;align-items:center;gap:5px;"
         "background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);"
         "color:#fff;border-radius:7px;padding:3px 10px 3px 8px;"
