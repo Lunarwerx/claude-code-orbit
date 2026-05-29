@@ -207,12 +207,12 @@ function ccPatchWriteClaudeMd(ctx,filePath,content,cb){var r=ccPatchRpc(ctx);try
 function ccPatchSwitchAccount(ctx,cb){var r=ccPatchRpc(ctx);try{if(r){r.sendRequest({type:"switch_account"}).then(function(o){cb(null,o&&o.ok!==false)}).catch(function(e){cb(e,false)});return}}catch(e){}cb(new Error("No ctx.sendRequest (comms.connection.value unavailable)"),false)}
 function ccPatchSwitchAccountModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchConfirmOverlay");if(existing){existing.remove();return}var overlay=document.createElement("div");overlay.className="ccPatchConfirmOverlay";var box=document.createElement("div");box.className="ccPatchConfirmBox";var iconWrap=document.createElement("div");iconWrap.className="ccPatchConfirmIcon";iconWrap.innerHTML='<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8" r="3.6"/><path d="M3.5 19c1.1-3.5 4-5.2 7.5-5.2 2 0 3.8.6 5.2 1.8"/><polyline points="15.5,14 19,17.5 15.5,21"/><line x1="13.2" y1="17.5" x2="19" y2="17.5"/></svg>';var title=document.createElement("div");title.className="ccPatchConfirmTitle";title.textContent="Switch account?";var desc=document.createElement("div");desc.className="ccPatchConfirmDesc";desc.textContent="This will log you out of Claude Code. You will be prompted to sign in again on the next request.";var status=document.createElement("div");status.className="ccPatchConfirmStatus";var actions=document.createElement("div");actions.className="ccPatchConfirmActions";var cancelBtn=document.createElement("button");cancelBtn.className="ccPatchConfirmCancelBtn";cancelBtn.type="button";cancelBtn.textContent="Cancel";var confirmBtn=document.createElement("button");confirmBtn.className="ccPatchConfirmConfirmBtn";confirmBtn.type="button";confirmBtn.textContent="Yes, log out";function close(){overlay.remove();document.removeEventListener("keydown",onKey)}function onKey(e){if(e.key==="Escape"){e.preventDefault();close()}else if(e.key==="Enter"){e.preventDefault();confirmBtn.click()}}cancelBtn.onclick=close;confirmBtn.onclick=function(){confirmBtn.disabled=true;cancelBtn.disabled=true;status.textContent="Logging out...";ccPatchSwitchAccount(ctx,function(err,ok){if(err){status.textContent="Logout failed: "+(err.message||err);confirmBtn.disabled=false;cancelBtn.disabled=false;return}status.textContent="Logged out.";setTimeout(close,500)})};overlay.onclick=function(e){if(e.target===overlay)close()};document.addEventListener("keydown",onKey);actions.appendChild(cancelBtn);actions.appendChild(confirmBtn);box.appendChild(iconWrap);box.appendChild(title);box.appendChild(desc);box.appendChild(status);box.appendChild(actions);overlay.appendChild(box);document.body.appendChild(overlay);setTimeout(function(){confirmBtn.focus()},80)}catch(err){console.error("ccPatchSwitchAccountModal error:",err)}}
 function ccPatchInstructionsModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchInstructionsOverlay");if(existing){existing.remove();return}var cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";var projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";var globalPath="~/.claude/CLAUDE.md";var tabs=[{id:"project",label:"Project",path:projPath,desc:"Workspace CLAUDE.md"},{id:"global",label:"Global",path:globalPath,desc:"User-wide CLAUDE.md"}];var overlay=document.createElement("div");overlay.className="ccPatchInstructionsOverlay";var box=document.createElement("div");box.className="ccPatchInstructionsBox";var closeBtn=document.createElement("button");closeBtn.className="ccPatchInstructionsClose";closeBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>';closeBtn.onclick=function(){overlay.remove()};box.appendChild(closeBtn);var tabBar=document.createElement("div");tabBar.className="ccPatchInstructionsTabs";var contentArea=document.createElement("div");contentArea.className="ccPatchInstructionsContent";var statusEl=document.createElement("div");statusEl.className="ccPatchInstructionsStatus";var textarea=document.createElement("textarea");textarea.className="ccPatchInstructionsTextarea";textarea.placeholder="Loading...";textarea.spellcheck=false;var actions=document.createElement("div");actions.className="ccPatchInstructionsActions";var saveBtn=document.createElement("button");saveBtn.className="ccPatchInstructionsSaveBtn";saveBtn.textContent="Save";var openBtn=document.createElement("button");openBtn.className="ccPatchInstructionsOpenBtn";openBtn.textContent="Open in Editor";var statusText=document.createElement("span");statusEl.appendChild(statusText);actions.appendChild(saveBtn);actions.appendChild(openBtn);var activeTab=tabs[0];var dirty=false;function loadTab(tab){activeTab=tab;dirty=false;statusText.textContent="Loading...";textarea.value="";textarea.placeholder="Loading...";textarea.disabled=true;saveBtn.disabled=true;ccPatchReadClaudeMd(ctx,tab.path,function(err,content,exists){if(err){statusText.textContent="Error: "+err.message;textarea.placeholder="Failed to load file.";textarea.disabled=true;saveBtn.disabled=true;return}if(!exists){statusText.textContent="File does not exist yet. Start typing to create it.";textarea.placeholder="# CLAUDE.md\\n\\nAdd custom instructions for Claude here...";textarea.value="";textarea.disabled=false;saveBtn.disabled=false;dirty=false;return}statusText.textContent=exists?"File loaded ("+content.length+" chars)":"File not found";textarea.value=content;textarea.disabled=false;saveBtn.disabled=false;dirty=false});Array.from(tabBar.children).forEach(function(el){el.classList.toggle("ccPatchInstructionsTabActive",el.dataset.tabId===tab.id)})}tabs.forEach(function(tab){var btn=document.createElement("button");btn.className="ccPatchInstructionsTab";btn.dataset.tabId=tab.id;btn.textContent=tab.label;btn.title=tab.path;btn.onclick=function(){if(dirty&&!confirm("You have unsaved changes. Discard?"))return;loadTab(tab)};tabBar.appendChild(btn)});textarea.oninput=function(){dirty=true;statusText.textContent="Unsaved changes..."};saveBtn.onclick=function(){if(!activeTab)return;saveBtn.disabled=true;statusText.textContent="Saving...";ccPatchWriteClaudeMd(ctx,activeTab.path,textarea.value,function(err,ok){if(err){statusText.textContent="Save failed: "+err.message;saveBtn.disabled=false;return}statusText.textContent="Saved!";dirty=false;saveBtn.disabled=false;setTimeout(function(){if(statusText.textContent==="Saved!")statusText.textContent="File saved ("+textarea.value.length+" chars)"},2000)})};openBtn.onclick=function(){if(activeTab){ccPatchOpenClaudeMd(ctx,activeTab.path,activeTab.label);overlay.remove()}};overlay.onclick=function(e){if(e.target===overlay)overlay.remove()};contentArea.appendChild(statusEl);contentArea.appendChild(textarea);contentArea.appendChild(actions);box.appendChild(tabBar);box.appendChild(contentArea);overlay.appendChild(box);document.body.appendChild(overlay);loadTab(tabs[0]);setTimeout(function(){textarea.focus()},150)}catch(err){console.error("ccPatchInstructionsModal error:",err)}}
-var ccPatchImgPreviewEl=null;
-function ccPatchImgPreviewHide(){if(ccPatchImgPreviewEl){ccPatchImgPreviewEl.remove();ccPatchImgPreviewEl=null}}
-function ccPatchImgHoverSrc(t){if(!t||!t.closest)return null;if(!t.closest('[class*="userMessageAttachments"]'))return null;var host=t.closest('[class*="pill"]')||t;var img=host.querySelector?host.querySelector("img"):null;if(!img&&t.tagName==="IMG")img=t;return img?(img.currentSrc||img.src):null}
-function ccPatchImgPreviewShow(src){if(!src)return;if(ccPatchImgPreviewEl&&ccPatchImgPreviewEl.getAttribute("data-src")===src)return;ccPatchImgPreviewHide();try{var p=document.createElement("div");p.className="ccPatchImgPreview";p.setAttribute("data-src",src);var b=document.createElement("img");b.src=src;p.appendChild(b);document.body.appendChild(p);ccPatchImgPreviewEl=p}catch(e){}}
+var ccPatchImgPreviewEl=null,ccPatchImgPreviewTimer=null;
+function ccPatchImgPreviewHide(){if(ccPatchImgPreviewTimer){clearTimeout(ccPatchImgPreviewTimer);ccPatchImgPreviewTimer=null}if(ccPatchImgPreviewEl){ccPatchImgPreviewEl.remove();ccPatchImgPreviewEl=null}}
+function ccPatchImgHoverSrc(t){if(!t||!t.closest)return null;var pill=t.closest('[class*="pill"]');if(!pill||!pill.closest('[class*="userMessageAttachments"]'))return null;var img=pill.querySelector?pill.querySelector("img"):null;if(!img&&t.tagName==="IMG")img=t;return img?(img.currentSrc||img.src):null}
+function ccPatchImgPreviewShow(src){if(!src)return;if(ccPatchImgPreviewEl&&ccPatchImgPreviewEl.getAttribute("data-src")===src)return;ccPatchImgPreviewHide();ccPatchImgPreviewTimer=setTimeout(function(){ccPatchImgPreviewTimer=null;try{var p=document.createElement("div");p.className="ccPatchImgPreview";p.setAttribute("data-src",src);var b=document.createElement("img");b.src=src;p.appendChild(b);document.body.appendChild(p);ccPatchImgPreviewEl=p}catch(e){}},500)}
 document.addEventListener("mouseover",function(e){ccPatchImgPreviewShow(ccPatchImgHoverSrc(e.target))},true);
-document.addEventListener("mouseout",function(e){var to=e.relatedTarget;if(to&&to.closest&&to.closest('[class*="userMessageAttachments"]'))return;ccPatchImgPreviewHide()},true);
+document.addEventListener("mouseout",function(e){var to=e.relatedTarget;if(to&&to.closest&&to.closest('[class*="pill"]'))return;ccPatchImgPreviewHide()},true);
 document.addEventListener("mousedown",function(){ccPatchImgPreviewHide()},true);
 Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
@@ -1573,34 +1573,31 @@ def patch_webview_js(webview_js: Path) -> bool:
         text = text[: m_fork.start()] + new_fork + text[m_fork.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
-    # 18. Sticky-header collapse toggle — inject a chevron button as the first
-    #     child of the user-message `<div class=message ...>` wrapper. CSS
-    #     shows it only when the message carries the `stickyHeader` class (i.e.
-    #     pinned at the top while scrolling) and, on click, toggles a global
-    #     `ccPatchStickyCollapsed` class on <html> that hides the pinned box's
-    #     body — click again to restore. Anchored on the message className
-    #     template that references `.message` and `.stickyHeader`.
+    # 18. "Show more" always visible — the native expandable text only renders
+    #     its "Show more" button while the row is hovered (the `&&z&&` gate).
+    #     Since we hide the dark truncation-fade gradient (CSS), a collapsed
+    #     message would otherwise give no affordance, so drop the hover gate
+    #     and let the left-aligned "Show more" link always show when the text
+    #     is clipped. Anchored on the expandButton "Show more" structure.
     # ──────────────────────────────────────────────────────────────────────
-    sticky_re = re.compile(
-        rf'(?P<RE>{JS_ID})\.default\.createElement\("div",\{{key:{JS_ID},'
-        rf'className:`\$\{{(?P<MOD>{JS_ID})\.message\}}[^`]*?(?P=MOD)\.stickyHeader[^`]*`,'
-        rf'ref:(?P<V>{JS_ID})\}},'
+    showmore_re = re.compile(
+        rf'(?P<z>{JS_ID})&&(?P<RE>{JS_ID})\.default\.createElement\("div",'
+        rf'\{{className:(?P<ZG>{JS_ID})\.buttonContainer\}},'
+        rf'(?P=RE)\.default\.createElement\("button",'
+        rf'\{{className:(?P=ZG)\.expandButton,"aria-label":"Show more"\}}'
     )
-    m_sticky = sticky_re.search(text)
-    if m_sticky is None:
-        log("Note: sticky-header anchor not found; skipping collapse toggle")
+    m_sm = showmore_re.search(text)
+    if m_sm is None:
+        log("Note: Show-more anchor not found; skipping always-visible patch")
     else:
-        RE = m_sticky.group("RE")
-        sticky_btn = (
-            f'{RE}.default.createElement("button",{{className:"ccPatchStickyToggle",'
-            f'title:"Collapse",onClick:()=>document.documentElement.classList.toggle'
-            f'("ccPatchStickyCollapsed")}},'
-            f'{RE}.default.createElement("svg",{{className:"ccPatchStickyChevron",width:"15",'
-            f'height:"15",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2",'
-            f'strokeLinecap:"round",strokeLinejoin:"round"}},'
-            f'{RE}.default.createElement("path",{{d:"M18 15l-6-6-6 6"}}))),'
+        RE = m_sm.group("RE")
+        ZG = m_sm.group("ZG")
+        new_sm = (
+            f'{RE}.default.createElement("div",{{className:{ZG}.buttonContainer}},'
+            f'{RE}.default.createElement("button",'
+            f'{{className:{ZG}.expandButton,"aria-label":"Show more"}}'
         )
-        text = text[: m_sticky.end()] + sticky_btn + text[m_sticky.end() :]
+        text = text[: m_sm.start()] + new_sm + text[m_sm.end() :]
 
     write(webview_js, text)
     return True
@@ -1870,14 +1867,15 @@ def patch_webview_css(webview_css: Path) -> bool:
         # add a subtle hover ring. Hovering shows a big floating preview popup
         # (helper JS ccPatchImgPreview: fixed, centered, reads the chip's img).
         "[class*=\"userMessageAttachments\"] [class*=\"pill\"]{background:transparent!important;"
-        "border:1px solid transparent!important;cursor:zoom-in;"
+        "border:1px solid rgba(255,255,255,.2)!important;border-radius:5px!important;cursor:zoom-in;"
         "transition:background .14s ease,border-color .14s ease}"
         "[class*=\"userMessageAttachments\"] [class*=\"pill\"]:hover{"
-        "background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.16)!important}"
+        "background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.38)!important}"
         "[class*=\"userMessageAttachments\"] [class*=\"pill\"] [class*=\"thumbIcon\"]"
         "{width:18px!important;height:18px!important}"
         ".ccPatchImgPreview{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);"
         "z-index:99999;pointer-events:none;border-radius:10px;overflow:hidden;"
+        "border:1px solid rgba(255,255,255,.3);"
         "box-shadow:0 24px 70px #000000d0;animation:ccPatchFadeIn .12s ease}"
         ".ccPatchImgPreview img{display:block;max-width:58vw;max-height:74vh;object-fit:contain}"
         # "Show more / show less": subtle inline links, not chunky filled pills
@@ -1888,6 +1886,14 @@ def patch_webview_css(webview_css: Path) -> bool:
         "padding:1px 4px!important;margin:2px!important;font-size:.8em!important;opacity:.85}"
         "[class*=\"expandButton\"]:hover,[class*=\"collapseButton\"]:hover{"
         "opacity:1;text-decoration:underline;transform:none!important}"
+        # Kill the dark truncation-fade gradient on collapsed messages; the
+        # JS patch makes the "Show more" link always visible, left-aligned
+        # below the text (images sit on their own row below, so no collision).
+        "[class*=\"expandableContainer\"] [class*=\"truncationGradient\"]{display:none!important}"
+        "[class*=\"expandableContainer\"] [class*=\"buttonContainer\"]{display:flex!important;"
+        "justify-content:flex-start!important;padding:0!important;margin-top:3px!important}"
+        "[class*=\"expandableContainer\"] [class*=\"expandButton\"],"
+        "[class*=\"expandableContainer\"] [class*=\"collapseButton\"]{margin-left:0!important}"
         # Fork / rewind action row: three inline buttons (Fork / Rewind /
         # Fork + rewind) centered above each user message with a divider line
         # on each side. Clearly visible by default, brighter on hover.
@@ -1905,29 +1911,14 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchForkBtn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}"
         ".ccPatchForkBtnAlt:hover{background:rgba(55,148,255,.28);border-color:rgba(55,148,255,.6)}"
         ".ccPatchForkIco{flex:0 0 auto;opacity:.95}"
-        # Sticky header (the floating current-message box pinned at the top
-        # while scrolling): rounded card bg, fork row stripped out, and a
-        # collapse chevron that hides the body when toggled.
-        "[class*=\"stickyHeader\"]{background:#2b2b31!important;"
-        "background-image:none!important;border-radius:0 0 12px 12px!important;"
-        "border:1px solid rgba(255,255,255,.1)!important;border-top:0!important;"
-        "box-shadow:0 6px 16px #00000066!important;padding:6px 34px 8px 10px!important}"
-        "[class*=\"stickyHeader\"] .ccPatchForkRow{display:none!important}"
-        ".ccPatchStickyToggle{display:none}"
-        "[class*=\"stickyHeader\"] .ccPatchStickyToggle{display:flex;align-items:center;"
-        "justify-content:center;position:absolute;top:5px;right:6px;z-index:3;"
-        "width:22px;height:22px;padding:0;border:1px solid rgba(255,255,255,.18);"
-        "border-radius:5px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;"
-        "opacity:.9;transition:background .12s,opacity .12s}"
-        "[class*=\"stickyHeader\"] .ccPatchStickyToggle:hover{"
-        "background:rgba(255,255,255,.2);opacity:1}"
-        ".ccPatchStickyChevron{transition:transform .15s ease}"
-        "html.ccPatchStickyCollapsed [class*=\"stickyHeader\"]{padding:2px 32px 2px 10px!important;"
-        "min-height:26px!important;box-shadow:0 3px 10px #00000044!important}"
-        "html.ccPatchStickyCollapsed [class*=\"stickyHeader\"] [class*=\"userMessageContainer\"]"
-        "{display:none!important}"
-        "html.ccPatchStickyCollapsed [class*=\"stickyHeader\"] .ccPatchStickyChevron"
-        "{transform:rotate(180deg)}"
+        # Sticky header DELETED. Claude's sticky-mode pins each user message to
+        # the top of the scroll ("the top thing"). Neutralize it so messages
+        # just scroll normally — no floating box. This ALSO removes the old
+        # sticky-scoped rule that was hiding .ccPatchForkRow on every message
+        # (the stickyHeader class is on all user messages), which is why the
+        # fork/rewind buttons had gone "perma-gone".
+        "[class*=\"stickyHeader\"]{position:static!important;background:transparent!important;"
+        "background-image:none!important;border:0!important;box-shadow:none!important}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
         "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
@@ -2171,9 +2162,9 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "fork row dividers": ".ccPatchForkRow::before" in css,
         "image hover preview": ("ccPatchImgPreviewShow" in js
                                 and ".ccPatchImgPreview" in css),
-        "sticky collapse toggle": ('"ccPatchStickyToggle"' in js
-                                   and ".ccPatchStickyToggle" in css
-                                   and "ccPatchStickyCollapsed" in css),
+        "sticky header neutralized": '[class*="stickyHeader"]{position:static' in css,
+        "show-more no-gradient": ('[class*="expandableContainer"] [class*="truncationGradient"]'
+                                  in css),
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
         "yolo perm init": "permissionMode=" in js and "ccPatchYoloDefault()" in js,
