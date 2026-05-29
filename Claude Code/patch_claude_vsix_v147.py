@@ -215,15 +215,36 @@ function ccPatchImgPreviewShow(pill){if(!pill)return;var img=pill.querySelector(
 document.addEventListener("mouseover",function(e){ccPatchImgPreviewShow(ccPatchImgHoverPill(e.target))},true);
 document.addEventListener("mouseout",function(e){var to=e.relatedTarget;if(to&&to.closest&&to.closest('[class*="pill"]'))return;ccPatchImgPreviewHide()},true);
 document.addEventListener("mousedown",function(){ccPatchImgPreviewHide()},true);
+globalThis.ccPatchQueue=Array.isArray(globalThis.ccPatchQueue)?globalThis.ccPatchQueue:[];
+globalThis.ccPatchQueueListeners=globalThis.ccPatchQueueListeners||new Set;
+globalThis.ccPatchQueueEditId=globalThis.ccPatchQueueEditId||null;
+try{var ccPSM0=localStorage.getItem(`ccPatchSendMode`);globalThis.ccPatchSendMode=(ccPSM0===`steer`||ccPSM0===`stopsend`||ccPSM0===`queue`)?ccPSM0:`queue`}catch(e){globalThis.ccPatchSendMode=`queue`}
+try{var ccPQ0=JSON.parse(localStorage.getItem(`ccPatchQueue`)||`[]`);if(Array.isArray(ccPQ0))globalThis.ccPatchQueue=ccPQ0}catch(e){}
+function ccPatchActiveSession(){return globalThis.ccPatchChatSession||globalThis.ccPatchComposerSession||null}
+function ccPatchIsBusy(){var s=ccPatchActiveSession();try{return!!(s&&s.busy&&s.busy.value)}catch(e){return!1}}
+function ccPatchSendText(t){var s=ccPatchActiveSession();if(!t||!s||typeof s.send!==`function`)return!1;try{s.send(t,[],!1);return!0}catch(e){console.error(`Orbit queue send failed:`,e);return!1}}
+function ccPatchComposerInput(form){try{return(form||document).querySelector(`[contenteditable="plaintext-only"][aria-label="Message input"]`)}catch(e){return null}}
+function ccPatchComposerClear(inp){if(!inp)return;try{inp.textContent=``;inp.dispatchEvent(new Event(`input`,{bubbles:!0}))}catch(e){}}
+function ccPatchQueueNotify(){try{localStorage.setItem(`ccPatchQueue`,JSON.stringify(globalThis.ccPatchQueue||[]))}catch(e){}globalThis.ccPatchQueueListeners.forEach(function(f){try{f()}catch(err){}})}
+function ccPatchSetSendMode(m){globalThis.ccPatchSendMode=m;try{localStorage.setItem(`ccPatchSendMode`,m)}catch(e){}}
+function ccPatchQueueFlush(){var q=globalThis.ccPatchQueue||[];if(!q.length||ccPatchIsBusy())return;var item=q[0];globalThis.ccPatchQueue=q.slice(1);ccPatchQueueNotify();ccPatchSendText(item.text)}
+function ccPatchQueueEnsureSub(){if(globalThis.ccPatchQueueSub)return;var s=ccPatchActiveSession();if(s&&s.busy&&typeof s.busy.subscribe===`function`){globalThis.ccPatchQueueSub=s.busy.subscribe(function(v){if(!v)setTimeout(ccPatchQueueFlush,60)})}else{var iv=setInterval(ccPatchQueueFlush,300);globalThis.ccPatchQueueSub=function(){clearInterval(iv)}}}
+function ccPatchQueueAdd(t){t=(t||``).trim();if(!t)return;globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).concat([{id:`q`+Date.now()+`_`+Math.round(Math.random()*1e6),text:t}]);ccPatchQueueNotify();ccPatchQueueEnsureSub()}
+function ccPatchQueueRemove(id){globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){return x.id!==id});if(globalThis.ccPatchQueueEditId===id)globalThis.ccPatchQueueEditId=null;ccPatchQueueNotify()}
+function ccPatchQueueEdit(id){globalThis.ccPatchQueueEditId=id;ccPatchQueueNotify()}
+function ccPatchQueueCancelEdit(){globalThis.ccPatchQueueEditId=null;ccPatchQueueNotify()}
+function ccPatchQueueCommitEdit(id,t){t=(t||``).trim();globalThis.ccPatchQueueEditId=null;if(!t){ccPatchQueueRemove(id);return}globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).map(function(x){return x.id===id?{id:x.id,text:t}:x});ccPatchQueueNotify()}
+function ccPatchQueueSendNow(id){var item=null;globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){if(x.id===id){item=x;return!1}return!0});ccPatchQueueNotify();if(item)ccPatchSendText(item.text)}
+function ccPatchComposerAction(mode,form){form=form||ccPatchComposerForm(document.activeElement);var inp=ccPatchComposerInput(form);var text=inp?(inp.textContent||``).trim():``;if(!text)return;if(mode===`queue`){ccPatchQueueAdd(text);ccPatchComposerClear(inp)}else if(mode===`stopsend`){ccPatchStopAndSendForm(form)}else{ccPatchTriggerSend(form)}}
+function ccPatchRenderQueue(R,G2,sess){if(sess)globalThis.ccPatchChatSession=sess;var q=globalThis.ccPatchQueue||[];if(!q.length)return null;var ce=R.default.createElement,editId=globalThis.ccPatchQueueEditId;function ic(inner){return ce(`svg`,{width:13,height:13,viewBox:`0 0 13 13`,fill:`none`,stroke:`currentColor`,strokeWidth:1.4,strokeLinecap:`round`,strokeLinejoin:`round`,"aria-hidden":!0},inner)}var rows=q.map(function(it){var ctrls=ce(`div`,{className:`ccPatchQueueControls`},ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Edit`,onClick:function(){ccPatchQueueEdit(it.id)}},ic(ce(`path`,{d:`M8.4 2l2.6 2.6L4.6 11H2V8.4z`}))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Send now`,onClick:function(){ccPatchQueueSendNow(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:6.5,y1:10.5,x2:6.5,y2:2.5}),ce(`polyline`,{points:`3,6 6.5,2.5 10,6`})))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Remove`,onClick:function(){ccPatchQueueRemove(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:3,y1:3,x2:10,y2:10}),ce(`line`,{x1:10,y1:3,x2:3,y2:10})))));var body;if(editId===it.id){body=ce(`textarea`,{className:G2.userMessage+` ccPatchQueueEdit`,defaultValue:it.text,rows:1,ref:function(el){if(el)setTimeout(function(){try{el.focus();el.setSelectionRange(el.value.length,el.value.length)}catch(e){}},0)},onKeyDown:function(ev){if(ev.key===`Enter`&&!ev.shiftKey){ev.preventDefault();ccPatchQueueCommitEdit(it.id,ev.target.value)}else if(ev.key===`Escape`){ev.preventDefault();ccPatchQueueCancelEdit()}},onBlur:function(ev){ccPatchQueueCommitEdit(it.id,ev.target.value)}})}else{body=ce(`div`,{className:G2.userMessage},it.text)}return ce(`div`,{className:G2.message+` ccPatchQueuedMsg`,key:`ccq-`+it.id},ce(`div`,{className:G2.userMessageContainer},ctrls,body))});return ce(`div`,{className:`ccPatchQueueWrap`,key:`ccPatchQueueWrap`},[ce(`div`,{className:`ccPatchQueueHeader`,key:`ccqh`},`QUEUED`)].concat(rows))}
 function ccPatchCloseSendMenu(){let m=document.querySelector(`.ccPatchSendMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSendChevron.ccPatchSendChevronOpen`)?.classList.remove(`ccPatchSendChevronOpen`)}
 function ccPatchComposerForm(node){try{return node&&node.closest?node.closest(`form`):null}catch(e){return null}}
 function ccPatchTriggerSend(form){if(!form)return;try{if(form.requestSubmit)form.requestSubmit();else form.dispatchEvent(new Event(`submit`,{cancelable:!0,bubbles:!0}))}catch(e){}}
-function ccPatchStopAndSendForm(form){if(globalThis.ccPatchQueueUnsub){try{globalThis.ccPatchQueueUnsub()}catch(e){}globalThis.ccPatchQueueUnsub=null}let s=globalThis.ccPatchComposerSession;try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchTriggerSend(form)},80)}
-function ccPatchQueueForm(form){let s=globalThis.ccPatchComposerSession;if(!form)return;let busy=!1;try{busy=!!(s&&s.busy&&s.busy.value)}catch(e){}if(!busy){ccPatchTriggerSend(form);return}if(globalThis.ccPatchQueueUnsub)return;function flush(){let u=globalThis.ccPatchQueueUnsub;globalThis.ccPatchQueueUnsub=null;try{if(u)u()}catch(e){}setTimeout(function(){ccPatchTriggerSend(form)},40)}try{globalThis.ccPatchQueueUnsub=s.busy.subscribe(function(v){if(!v)flush()})}catch(e){let iv=setInterval(function(){let b=!1;try{b=!!(s&&s.busy&&s.busy.value)}catch(err){}if(!b){let u=globalThis.ccPatchQueueUnsub;globalThis.ccPatchQueueUnsub=null;clearInterval(iv);if(u)ccPatchTriggerSend(form)}},200);globalThis.ccPatchQueueUnsub=function(){clearInterval(iv)}}}
-function ccPatchSendMenu(e){if(document.querySelector(`.ccPatchSendMenu`)){ccPatchCloseSendMenu();return}let t=e.currentTarget;if(!t)return;let form=ccPatchComposerForm(t);t.classList.add(`ccPatchSendChevronOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSendMenu`;r.style.left=`-9999px`;r.style.top=`0px`;function a(l,sc,ic,cb){let d=document.createElement(`div`);d.className=`ccPatchSendItem`;let s=document.createElement(`span`);s.className=`ccPatchSendItemIcon`;s.innerHTML=ic;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSendItemLabel`;p.textContent=l;d.appendChild(p);if(sc){let u=document.createElement(`span`);u.className=`ccPatchSendItemKey`;u.textContent=sc;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchCloseSendMenu();if(cb)cb()};r.appendChild(d)}a(`Stop and Send`,``,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="6.5" x2="9.5" y2="6.5"/><polyline points="6.5,3.5 10,6.5 6.5,9.5"/></svg>`,function(){ccPatchStopAndSendForm(form)});a(`Add to Queue`,`Alt+Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="2.5" x2="6.5" y2="10.5"/><line x1="2.5" y1="6.5" x2="10.5" y2="6.5"/></svg>`,function(){ccPatchQueueForm(form)});a(`Steer with Message`,`Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="10.5" x2="6.5" y2="3"/><polyline points="3.5,6 6.5,3 9.5,6"/></svg>`,function(){ccPatchTriggerSend(form)});document.body.appendChild(r);var mw=r.offsetWidth||196,mh=r.offsetHeight||112,ml=Math.round(n.right)-mw,mt=Math.round(n.top)-mh-6;if(ml+mw>window.innerWidth-8)ml=window.innerWidth-8-mw;if(ml<8)ml=8;if(mt<8)mt=Math.round(n.bottom)+6;r.style.left=`${ml}px`;r.style.top=`${mt}px`;setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSendMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
-document.addEventListener(`submit`,function(){if(globalThis.ccPatchQueueUnsub){try{globalThis.ccPatchQueueUnsub()}catch(e){}globalThis.ccPatchQueueUnsub=null}},!0);
-document.addEventListener(`keydown`,function(e){if(e.key!==`Enter`||!e.altKey||e.shiftKey)return;let inp=e.target&&e.target.closest&&e.target.closest(`[contenteditable="plaintext-only"][aria-label="Message input"]`);if(!inp)return;let form=inp.closest(`form`);if(!form)return;e.preventDefault();e.stopImmediatePropagation();ccPatchQueueForm(form)},!0);
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm});
+function ccPatchStopAndSendForm(form){var s=ccPatchActiveSession();try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchTriggerSend(form)},80)}
+function ccPatchQueueForm(form){ccPatchComposerAction(`queue`,form)}
+function ccPatchSendMenu(e){if(document.querySelector(`.ccPatchSendMenu`)){ccPatchCloseSendMenu();return}let t=e.currentTarget;if(!t)return;let form=ccPatchComposerForm(t);t.classList.add(`ccPatchSendChevronOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSendMenu`;r.style.left=`-9999px`;r.style.top=`0px`;function a(mode,l,sc,ic){let on=globalThis.ccPatchSendMode===mode;let d=document.createElement(`div`);d.className=on?`ccPatchSendItem ccPatchSendItemActive`:`ccPatchSendItem`;let ck=document.createElement(`span`);ck.className=`ccPatchSendItemCheck`;ck.innerHTML=on?`<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,6.5 5,9 9.5,3.5"/></svg>`:``;d.appendChild(ck);let s=document.createElement(`span`);s.className=`ccPatchSendItemIcon`;s.innerHTML=ic;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSendItemLabel`;p.textContent=l;d.appendChild(p);if(sc){let u=document.createElement(`span`);u.className=`ccPatchSendItemKey`;u.textContent=sc;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchSetSendMode(mode);ccPatchCloseSendMenu();ccPatchComposerAction(mode,form)};r.appendChild(d)}a(`stopsend`,`Stop and Send`,``,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="6.5" x2="9.5" y2="6.5"/><polyline points="6.5,3.5 10,6.5 6.5,9.5"/></svg>`);a(`queue`,`Add to Queue`,`Alt+Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="2.5" x2="6.5" y2="10.5"/><line x1="2.5" y1="6.5" x2="10.5" y2="6.5"/></svg>`);a(`steer`,`Steer with Message`,`Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="10.5" x2="6.5" y2="3"/><polyline points="3.5,6 6.5,3 9.5,6"/></svg>`);document.body.appendChild(r);var mw=r.offsetWidth||212,mh=r.offsetHeight||124,ml=Math.round(n.right)-mw,mt=Math.round(n.top)-mh-6;if(ml+mw>window.innerWidth-8)ml=window.innerWidth-8-mw;if(ml<8)ml=8;if(mt<8)mt=Math.round(n.bottom)+6;r.style.left=`${ml}px`;r.style.top=`${mt}px`;setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSendMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
+document.addEventListener(`keydown`,function(e){if(e.key!==`Enter`||e.shiftKey||e.isComposing)return;let inp=e.target&&e.target.closest&&e.target.closest(`[contenteditable="plaintext-only"][aria-label="Message input"]`);if(!inp)return;let text=(inp.textContent||``).trim();if(!text)return;if(!ccPatchIsBusy())return;let mode=e.altKey?`queue`:(globalThis.ccPatchSendMode||`queue`);let form=inp.closest(`form`);e.preventDefault();e.stopImmediatePropagation();ccPatchComposerAction(mode,form)},!0);
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueFlush,ccPatchActiveSession,ccPatchIsBusy});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1686,7 +1707,7 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'className:{BCls}.sendButton,'
         f'"data-permission-mode":{BZ},'
         f'"data-cc-send-state":{state_expr},'
-        f'onClick:({BE})=>{{if({BS}.busy.value&&!{BX}){BE}.preventDefault(),{BS}.interrupt()}}}},'
+        f'onClick:({BE})=>{{if({BS}.busy.value&&!{BX}){{{BE}.preventDefault();{BS}.interrupt()}}else if({BS}.busy.value&&{BX}){{{BE}.preventDefault();ccPatchComposerAction(globalThis.ccPatchSendMode||"queue",{BE}.currentTarget.closest("form"))}}}}}},'
         f'{BW}),'
         # Chevron → steer/queue/stop-and-send menu — only when busy AND text.
         f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
@@ -1694,9 +1715,64 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'onClick:({BE})=>ccPatchSendMenu({BE})}},'
         f'{BRE}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
         f'stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{BRE}.default.createElement("polyline",{{points:"3,4.5 6,7.5 9,4.5"}}))):null)'
+        f'{BRE}.default.createElement("polyline",{{points:"3,5 6,2.5 9,5"}}),'
+        f'{BRE}.default.createElement("polyline",{{points:"3,7 6,9.5 9,7"}}))):null)'
     )
     text = text[: m_sb.start()] + new_btn + text[m_sb.end() :]
+
+    # ──────────────────────────────────────────────────────────────────────
+    # 20. Inline queued-message bubbles in the transcript (Codex-style).
+    #     Queued messages are held client-side (the harness has no queue) and
+    #     rendered as user-style bubbles at the bottom of the message list,
+    #     with edit / delete / send-now controls, until the current turn ends.
+    #     (a) re-render hook in the chat-area component `he1` so the transcript
+    #         re-renders when our external queue array changes;
+    #     (b) splice ccPatchRenderQueue(n1,G2,$) into the messagesContainer
+    #         children, right after the mapped turns and before the spinner.
+    # ──────────────────────────────────────────────────────────────────────
+    he1_re = re.compile(
+        rf'function (?P<fn>{JS_ID})\(\{{session:(?P<S>{JS_ID}),context:(?P<Z>{JS_ID}),'
+        rf'onCreateNewSession:{JS_ID},onTeleportCheckout:{JS_ID}\}}\)\{{'
+        rf'(?P<y4>{JS_ID})\(\);let {JS_ID}=(?P<RE>{JS_ID})\.useRef\(null\)'
+    )
+    m_he1 = he1_re.search(text)
+    if m_he1 is None:
+        raise RuntimeError("Lost he1 chat-area component anchor")
+    he1_S = m_he1.group("S")
+    he1_RE = m_he1.group("RE")
+    he1_full = m_he1.group(0)
+    he1_marker = f'{m_he1.group("y4")}();'
+    he1_idx = he1_full.index(he1_marker) + len(he1_marker)
+    he1_hook = (
+        f"let[,ccPQB]={he1_RE}.useState(0);"
+        f"{he1_RE}.useEffect(()=>{{var f=()=>ccPQB(v=>v+1);"
+        f"globalThis.ccPatchQueueListeners.add(f);"
+        f"return()=>globalThis.ccPatchQueueListeners.delete(f)}},[]);"
+    )
+    he1_new = he1_full[:he1_idx] + he1_hook + he1_full[he1_idx:]
+    text = text[: m_he1.start()] + he1_new + text[m_he1.end() :]
+
+    # (b) capture the chat CSS class-map (G2) via the messagesContainer.
+    mc_re = re.compile(
+        rf'{re.escape(he1_RE)}\.default\.createElement\("div",\{{ref:{JS_ID},'
+        rf'className:`\$\{{(?P<G2>{JS_ID})\.messagesContainer\}}'
+    )
+    m_mc = mc_re.search(text)
+    if m_mc is None:
+        raise RuntimeError("Lost messagesContainer anchor")
+    he1_G2 = m_mc.group("G2")
+
+    # Injection point: the bottom spacer `,<h5>,<RE>.createElement("div",{ref:<X>,style:{height:`${<U>}px`...`.
+    # Splice our queue render in as the child immediately before the spinner row.
+    inj_re = re.compile(
+        rf',{JS_ID},{re.escape(he1_RE)}\.default\.createElement\("div",\{{ref:{JS_ID},'
+        rf'style:\{{height:`\$\{{{JS_ID}\}}px`'
+    )
+    m_inj = inj_re.search(text)
+    if m_inj is None:
+        raise RuntimeError("Lost transcript spacer (queue injection) anchor")
+    inject = f',ccPatchRenderQueue({he1_RE},{he1_G2},{he1_S})'
+    text = text[: m_inj.start()] + inject + text[m_inj.start() :]
 
     write(webview_js, text)
     return True
@@ -1781,6 +1857,26 @@ def patch_webview_css(webview_css: Path) -> bool:
         "width:16px;height:16px;flex:0 0 16px;opacity:.85}"
         ".ccPatchSendItemLabel{flex:1}"
         ".ccPatchSendItemKey{opacity:.5;font-size:11px;margin-left:16px;letter-spacing:.02em}"
+        # mode-selector menu: active-item checkmark
+        ".ccPatchSendItemCheck{display:inline-flex;align-items:center;justify-content:center;"
+        "width:14px;height:14px;flex:0 0 14px;opacity:.9}"
+        ".ccPatchSendItemActive{color:var(--app-accent-color,var(--app-primary-foreground))}"
+        # inline queued-message bubbles in the transcript (Codex-style)
+        ".ccPatchQueueWrap{display:flex;flex-direction:column;gap:2px;padding:6px 0 2px}"
+        ".ccPatchQueueHeader{font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.5;"
+        "padding:0 0 2px 2px;text-transform:uppercase}"
+        ".ccPatchQueuedMsg{opacity:.7}"
+        ".ccPatchQueuedMsg:hover{opacity:1}"
+        ".ccPatchQueuedMsg .ccPatchQueueControls{display:none;position:absolute;top:-11px;right:0;"
+        "gap:1px;padding:2px;border-radius:6px;background:var(--app-primary-background);"
+        "border:1px solid var(--app-primary-border-color);box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:3}"
+        ".ccPatchQueuedMsg:hover .ccPatchQueueControls{display:flex}"
+        ".ccPatchQueueCtl{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;"
+        "padding:0;border:none;border-radius:4px;background:transparent;"
+        "color:var(--app-secondary-foreground);cursor:pointer}"
+        ".ccPatchQueueCtl:hover{background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
+        ".ccPatchQueueEdit{width:100%;min-width:220px;resize:vertical;font:inherit;line-height:inherit;"
+        "color:var(--app-primary-foreground);background:transparent;border:none;outline:none}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
         ".claudePatchRoot{position:relative;min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
@@ -2322,6 +2418,11 @@ def verify_extension_dir(extension_dir: Path) -> None:
                       and "ccPatchComposerSession=" in js
                       and ".ccPatchSendMenu" in css and ".ccPatchStopBtn" in css
                       and '[data-cc-send-state="idle-text"]' in css),
+        "queue display": ("ccPatchRenderQueue(" in js and "ccPatchQueueListeners" in js
+                          and "ccPatchComposerAction(" in js
+                          and ".ccPatchQueueWrap" in css and ".ccPatchQueuedMsg" in css
+                          and ".ccPatchQueueCtl" in css),
+        "send mode persist": "ccPatchSetSendMode" in js and "ccPatchSendMode" in js,
     }
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
