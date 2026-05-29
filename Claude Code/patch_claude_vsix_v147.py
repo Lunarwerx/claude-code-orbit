@@ -215,7 +215,15 @@ function ccPatchImgPreviewShow(pill){if(!pill)return;var img=pill.querySelector(
 document.addEventListener("mouseover",function(e){ccPatchImgPreviewShow(ccPatchImgHoverPill(e.target))},true);
 document.addEventListener("mouseout",function(e){var to=e.relatedTarget;if(to&&to.closest&&to.closest('[class*="pill"]'))return;ccPatchImgPreviewHide()},true);
 document.addEventListener("mousedown",function(){ccPatchImgPreviewHide()},true);
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal});
+function ccPatchCloseSendMenu(){let m=document.querySelector(`.ccPatchSendMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSendChevron.ccPatchSendChevronOpen`)?.classList.remove(`ccPatchSendChevronOpen`)}
+function ccPatchComposerForm(node){try{return node&&node.closest?node.closest(`form`):null}catch(e){return null}}
+function ccPatchTriggerSend(form){if(!form)return;try{if(form.requestSubmit)form.requestSubmit();else form.dispatchEvent(new Event(`submit`,{cancelable:!0,bubbles:!0}))}catch(e){}}
+function ccPatchStopAndSendForm(form){if(globalThis.ccPatchQueueUnsub){try{globalThis.ccPatchQueueUnsub()}catch(e){}globalThis.ccPatchQueueUnsub=null}let s=globalThis.ccPatchComposerSession;try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchTriggerSend(form)},80)}
+function ccPatchQueueForm(form){let s=globalThis.ccPatchComposerSession;if(!form)return;let busy=!1;try{busy=!!(s&&s.busy&&s.busy.value)}catch(e){}if(!busy){ccPatchTriggerSend(form);return}if(globalThis.ccPatchQueueUnsub)return;function flush(){let u=globalThis.ccPatchQueueUnsub;globalThis.ccPatchQueueUnsub=null;try{if(u)u()}catch(e){}setTimeout(function(){ccPatchTriggerSend(form)},40)}try{globalThis.ccPatchQueueUnsub=s.busy.subscribe(function(v){if(!v)flush()})}catch(e){let iv=setInterval(function(){let b=!1;try{b=!!(s&&s.busy&&s.busy.value)}catch(err){}if(!b){let u=globalThis.ccPatchQueueUnsub;globalThis.ccPatchQueueUnsub=null;clearInterval(iv);if(u)ccPatchTriggerSend(form)}},200);globalThis.ccPatchQueueUnsub=function(){clearInterval(iv)}}}
+function ccPatchSendMenu(e){if(document.querySelector(`.ccPatchSendMenu`)){ccPatchCloseSendMenu();return}let t=e.currentTarget;if(!t)return;let form=ccPatchComposerForm(t);t.classList.add(`ccPatchSendChevronOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSendMenu`;r.style.left=`-9999px`;r.style.top=`0px`;function a(l,sc,ic,cb){let d=document.createElement(`div`);d.className=`ccPatchSendItem`;let s=document.createElement(`span`);s.className=`ccPatchSendItemIcon`;s.innerHTML=ic;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSendItemLabel`;p.textContent=l;d.appendChild(p);if(sc){let u=document.createElement(`span`);u.className=`ccPatchSendItemKey`;u.textContent=sc;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchCloseSendMenu();if(cb)cb()};r.appendChild(d)}a(`Stop and Send`,``,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="6.5" x2="9.5" y2="6.5"/><polyline points="6.5,3.5 10,6.5 6.5,9.5"/></svg>`,function(){ccPatchStopAndSendForm(form)});a(`Add to Queue`,`Alt+Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="2.5" x2="6.5" y2="10.5"/><line x1="2.5" y1="6.5" x2="10.5" y2="6.5"/></svg>`,function(){ccPatchQueueForm(form)});a(`Steer with Message`,`Enter`,`<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6.5" y1="10.5" x2="6.5" y2="3"/><polyline points="3.5,6 6.5,3 9.5,6"/></svg>`,function(){ccPatchTriggerSend(form)});document.body.appendChild(r);var mw=r.offsetWidth||196,mh=r.offsetHeight||112,ml=Math.round(n.right)-mw,mt=Math.round(n.top)-mh-6;if(ml+mw>window.innerWidth-8)ml=window.innerWidth-8-mw;if(ml<8)ml=8;if(mt<8)mt=Math.round(n.bottom)+6;r.style.left=`${ml}px`;r.style.top=`${mt}px`;setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSendMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
+document.addEventListener(`submit`,function(){if(globalThis.ccPatchQueueUnsub){try{globalThis.ccPatchQueueUnsub()}catch(e){}globalThis.ccPatchQueueUnsub=null}},!0);
+document.addEventListener(`keydown`,function(e){if(e.key!==`Enter`||!e.altKey||e.shiftKey)return;let inp=e.target&&e.target.closest&&e.target.closest(`[contenteditable="plaintext-only"][aria-label="Message input"]`);if(!inp)return;let form=inp.closest(`form`);if(!form)return;e.preventDefault();e.stopImmediatePropagation();ccPatchQueueForm(form)},!0);
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1602,6 +1610,94 @@ def patch_webview_js(webview_js: Path) -> bool:
         )
         text = text[: m_sm.start()] + new_sm + text[m_sm.end() :]
 
+    # ──────────────────────────────────────────────────────────────────────
+    # 19. Composer send button → split control with steer / queue / stop menu.
+    #
+    #     Claude's footer renders ONE button[type=submit] whose icon + behavior
+    #     swap on `$.busy.value`: busy+empty → stop (interrupt), otherwise →
+    #     send (submit the form). The harness has no native steer-vs-queue
+    #     distinction — both are just an `io_message` onto the live input
+    #     stream; the only real primitives are `send` (submit) and
+    #     `interrupt()`. We expose all three as genuinely-distinct actions:
+    #       • Steer with Message (Enter)     → submit now (inject into the turn)
+    #       • Add to Queue       (Alt+Enter) → hold, auto-submit when busy→false
+    #       • Stop and Send                  → interrupt(), then submit
+    #     plus a dedicated Stop button while busy and a blue "send" state when
+    #     the box has text and we're idle (Copilot-style).
+    #
+    #     (a) Stash the live session on globalThis from the icon ternary so the
+    #         menu helpers can reach `.interrupt()` / `.busy`.
+    # ──────────────────────────────────────────────────────────────────────
+    sendicon_re = re.compile(
+        rf'let\s+(?P<W>{JS_ID})=null;'
+        rf'if\((?P<S>{JS_ID})\.busy\.value&&!(?P<X>{JS_ID})\)'
+        rf'(?P=W)=(?P<react>{JS_ID})\.default\.createElement\((?P<stop>{JS_ID}),\{{className:(?P<cls>{JS_ID})\.stopIcon\}}\);'
+        rf'else (?P=W)=(?P=react)\.default\.createElement\((?P<send>{JS_ID}),\{{className:(?P=cls)\.sendIcon\}}\);'
+    )
+    m_si = sendicon_re.search(text)
+    if m_si is None:
+        raise RuntimeError("Lost composer send/stop icon-ternary anchor")
+    SW = m_si.group("W")
+    SS = m_si.group("S")
+    SX = m_si.group("X")
+    SRE = m_si.group("react")
+    SStop = m_si.group("stop")
+    SSend = m_si.group("send")
+    SCls = m_si.group("cls")
+    new_icon = (
+        f"let {SW}=null;try{{globalThis.ccPatchComposerSession={SS}}}catch(ccE){{}}"
+        f"if({SS}.busy.value&&!{SX}){SW}={SRE}.default.createElement({SStop},{{className:{SCls}.stopIcon}});"
+        f"else {SW}={SRE}.default.createElement({SSend},{{className:{SCls}.sendIcon}});"
+    )
+    text = text[: m_si.start()] + new_icon + text[m_si.end() :]
+
+    # (b) Replace the single submit button with: [Stop][Send+state][Chevron].
+    sendbtn_re = re.compile(
+        rf'(?P<react>{JS_ID})\.default\.createElement\("button",\{{type:"submit",'
+        rf'disabled:!(?P<S>{JS_ID})\.busy\.value&&!(?P<X>{JS_ID}),'
+        rf'className:(?P<cls>{JS_ID})\.sendButton,'
+        rf'"data-permission-mode":(?P<Z>{JS_ID}),'
+        rf'onClick:\((?P<E>{JS_ID})\)=>\{{if\((?P=S)\.busy\.value&&!(?P=X)\)(?P=E)\.preventDefault\(\),(?P=S)\.interrupt\(\)\}}\}},'
+        rf'(?P<W>{JS_ID})\)'
+    )
+    m_sb = sendbtn_re.search(text)
+    if m_sb is None:
+        raise RuntimeError("Lost composer submit-button anchor")
+    BRE = m_sb.group("react")
+    BS = m_sb.group("S")
+    BX = m_sb.group("X")
+    BCls = m_sb.group("cls")
+    BZ = m_sb.group("Z")
+    BE = m_sb.group("E")
+    BW = m_sb.group("W")
+    state_expr = (
+        f'({BS}.busy.value?({BX}?"busy-text":"busy-empty"):({BX}?"idle-text":"idle-empty"))'
+    )
+    new_btn = (
+        # Dedicated Stop button — only when busy AND there's text
+        # (busy+empty already shows the native stop icon on the button below).
+        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
+        f'className:"ccPatchStopBtn","aria-label":"Stop generating",'
+        f'onClick:function(){{try{{{BS}.interrupt()}}catch(ccE){{}}}}}},'
+        f'{BRE}.default.createElement({SStop},{{className:{BCls}.stopIcon}})):null),'
+        # Native send/stop button + state attr (drives the blue idle-text style).
+        f'{BRE}.default.createElement("button",{{type:"submit",'
+        f'disabled:!{BS}.busy.value&&!{BX},'
+        f'className:{BCls}.sendButton,'
+        f'"data-permission-mode":{BZ},'
+        f'"data-cc-send-state":{state_expr},'
+        f'onClick:({BE})=>{{if({BS}.busy.value&&!{BX}){BE}.preventDefault(),{BS}.interrupt()}}}},'
+        f'{BW}),'
+        # Chevron → steer/queue/stop-and-send menu — only when busy AND text.
+        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
+        f'className:"ccPatchSendChevron","aria-label":"Send options",'
+        f'onClick:({BE})=>ccPatchSendMenu({BE})}},'
+        f'{BRE}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
+        f'stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{BRE}.default.createElement("polyline",{{points:"3,4.5 6,7.5 9,4.5"}}))):null)'
+    )
+    text = text[: m_sb.start()] + new_btn + text[m_sb.end() :]
+
     write(webview_js, text)
     return True
 
@@ -1658,6 +1754,33 @@ def patch_webview_css(webview_css: Path) -> bool:
         # while keeping the overlays' own internal stacking intact so their buttons stay
         # clickable. overflow:hidden still clips in-flow chat content (fixed escapes).
         ".claudePatchMainContent{position:relative;overflow:hidden;min-width:0;min-height:0}"
+        # ── Composer split send button: dedicated Stop, blue Send (idle+text),
+        #    and the steer / queue / stop-and-send chevron menu. ──
+        ".ccPatchStopBtn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+        "width:26px;height:26px;padding:0;margin-left:2px;border:none;border-radius:5px;"
+        "background:transparent;color:var(--app-secondary-foreground)}"
+        ".ccPatchStopBtn:hover{background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
+        ".ccPatchSendChevron{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+        "width:18px;height:26px;padding:0;margin-left:1px;border:none;border-radius:5px;"
+        "background:transparent;color:var(--app-secondary-foreground);opacity:.8}"
+        ".ccPatchSendChevron:hover,.ccPatchSendChevron.ccPatchSendChevronOpen{opacity:1;"
+        "background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
+        # Blue "ready to send" state — idle with text in the box (Copilot-style).
+        '[data-cc-send-state="idle-text"]{background:var(--app-accent-color,var(--app-button-background))!important;'
+        "color:var(--app-button-foreground,#fff)!important}"
+        '[data-cc-send-state="idle-text"]:hover{filter:brightness(1.08)}'
+        # The steer / queue dropdown.
+        ".ccPatchSendMenu{position:fixed;z-index:100000;min-width:190px;padding:4px;"
+        "background:var(--app-primary-background);"
+        "border:1px solid var(--app-primary-border-color);border-radius:8px;"
+        "box-shadow:0 6px 22px rgba(0,0,0,.42);font-size:12px;color:var(--app-primary-foreground)}"
+        ".ccPatchSendItem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;"
+        "cursor:pointer;white-space:nowrap;color:var(--app-primary-foreground)}"
+        ".ccPatchSendItem:hover{background:var(--app-ghost-button-hover-background)}"
+        ".ccPatchSendItemIcon{display:inline-flex;align-items:center;justify-content:center;"
+        "width:16px;height:16px;flex:0 0 16px;opacity:.85}"
+        ".ccPatchSendItemLabel{flex:1}"
+        ".ccPatchSendItemKey{opacity:.5;font-size:11px;margin-left:16px;letter-spacing:.02em}"
         # h6.root becomes positioning anchor for the absolutely-positioned sessions panel
         ".claudePatchRoot{position:relative;min-width:0;min-height:0}"
         # h6.header gets right-padding so its buttons clear the sessions column
@@ -2195,6 +2318,10 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "build version marker": 'var ccPatchBuildVersion="' in js,
         "global helper exports": "Object.assign(globalThis" in js and 'Object.defineProperty(globalThis,"ccPatchSearchQ"' in js,
         "hide untitled": "ccPatchIsUntitledEmpty" in js and "hideUntitled" in js,
+        "send menu": ("ccPatchSendMenu" in js and "ccPatchSendChevron" in js
+                      and "ccPatchComposerSession=" in js
+                      and ".ccPatchSendMenu" in css and ".ccPatchStopBtn" in css
+                      and '[data-cc-send-state="idle-text"]' in css),
     }
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
