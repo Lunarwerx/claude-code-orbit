@@ -165,7 +165,10 @@ function ccPatchColorHex(k){var p=ccPatchColorPalette();for(var i=0;i<p.length;i
 function ccPatchGetColor(e){return ccPatchGetSS(e).color||``}
 function ccPatchSetColor(e,c){ccPatchSetSS(e,{color:c||``})}
 function ccPatchStickyOn(){return document.documentElement.classList.contains(`ccPatchStickyPreview`)}
-function ccPatchStickyToggle(){var on=!ccPatchStickyOn();document.documentElement.classList.toggle(`ccPatchStickyPreview`,on);try{localStorage.setItem(`ccPatchStickyPreview`,on?`1`:`0`)}catch(e){}}
+function ccPatchStickyToggle(){var on=!ccPatchStickyOn();document.documentElement.classList.toggle(`ccPatchStickyPreview`,on);try{localStorage.setItem(`ccPatchStickyPreview`,on?`1`:`0`)}catch(e){}ccPatchStickyScheduleSweep()}
+function ccPatchScrollParent(el){for(var n=el&&el.parentElement;n;n=n.parentElement){try{var s=getComputedStyle(n);if(/(auto|scroll|overlay)/.test(s.overflowY)&&n.scrollHeight>n.clientHeight)return n}catch(e){}}return null}
+function ccPatchStickySweep(){try{if(!ccPatchStickyOn())return;var hs=document.querySelectorAll(`[class*="stickyHeader"]`);if(!hs.length)return;var sp=ccPatchScrollParent(hs[0]);var topLine=sp?sp.getBoundingClientRect().top:0;var scrolled=sp?sp.scrollTop>0:(window.scrollY>0);for(var i=0;i<hs.length;i++){var r=hs[i].getBoundingClientRect();var stuck=scrolled&&r.top<=topLine+1&&r.bottom>topLine+1;if(stuck)hs[i].setAttribute(`data-cc-stuck`,`1`);else hs[i].removeAttribute(`data-cc-stuck`)}}catch(e){}}
+var ccPatchStickyRAF=0;function ccPatchStickyScheduleSweep(){if(ccPatchStickyRAF)return;ccPatchStickyRAF=requestAnimationFrame(function(){ccPatchStickyRAF=0;ccPatchStickySweep()})}
 function ccPatchSortSessions(e,t){let ae=ccPatchIsArchived(e),at=ccPatchIsArchived(t);if(ae!==at)return ae?1:-1;if(!ae){let se=ccPatchIsStarred(e),st=ccPatchIsStarred(t);if(se!==st)return se?-1:1;let pe=ccPatchIsPinned(e),pt=ccPatchIsPinned(t);if(pe!==pt)return pe?-1:1}return t.lastModifiedTime.value-e.lastModifiedTime.value}
 function ccPatchSessionId(e){return e.sessionId?.value||e.internalId||ccPatchTitle(e)}
 var ccPatchBusyBySession=new Map,ccPatchDoneSessions=new Set;
@@ -182,6 +185,7 @@ var ccPatchPaneVis=(function(){try{return localStorage.getItem(`ccPatchPaneVis`)
 function ccPatchTogglePane(){ccPatchPaneVis=!ccPatchPaneVis;try{localStorage.setItem(`ccPatchPaneVis`,String(ccPatchPaneVis))}catch(e){}document.documentElement.classList.toggle(`ccPatchPaneHidden`,!ccPatchPaneVis)}
 if(!ccPatchPaneVis)document.documentElement.classList.add(`ccPatchPaneHidden`);
 try{if(localStorage.getItem(`ccPatchStickyPreview`)===`1`)document.documentElement.classList.add(`ccPatchStickyPreview`)}catch(e){}
+document.addEventListener(`scroll`,ccPatchStickyScheduleSweep,!0);
 var ccPatchSearchQ=``;
 function ccPatchSetSearch(q){ccPatchSearchQ=q;ccPatchFilterListeners.forEach(function(fn){try{fn()}catch(err){}})}
 function ccPatchToggleSearch(){let p=document.querySelector(`.claudePatchInlineSessions`),i=document.querySelector(`.ccPatchSearchInput`);if(!p||!i)return;let v=p.classList.toggle(`ccPatchSearchActive`);if(v){setTimeout(function(){i.focus();i.select()},0)}else{ccPatchSetSearch(``);i.value=``}}
@@ -2290,6 +2294,15 @@ def patch_webview_css(webview_css: Path) -> bool:
         # neutralization so Claude's native faded title-at-top header returns.
         "html:not(.ccPatchStickyPreview) [class*=\"stickyHeader\"]{position:static!important;background:transparent!important;"
         "background-image:none!important;border:0!important;box-shadow:none!important}"
+        # Floating preview bar (toggle ON), scoped to the CURRENTLY-pinned header
+        # only ([data-cc-stuck], set by ccPatchStickySweep on scroll): fade the
+        # bar's background out toward its bottom edge, and hide the Fork/Rewind
+        # action row on the floating bar. The row stays on the inline message, so
+        # you scroll up to the message to reach it. Inline (non-pinned) user
+        # messages keep their native sticky styling.
+        ".ccPatchStickyPreview [class*=\"stickyHeader\"][data-cc-stuck=\"1\"]{"
+        "background-image:linear-gradient(to bottom,var(--sticky-bg,var(--app-secondary-background)) 38%,transparent 100%)!important}"
+        ".ccPatchStickyPreview [class*=\"stickyHeader\"][data-cc-stuck=\"1\"] .ccPatchForkRow{display:none!important}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
         "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
@@ -2580,6 +2593,8 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "sticky preview toggle": ("ccPatchStickyToggle" in js and "ccPatchStickyOn" in js
                                   and "Chat preview header" in js
                                   and "html:not(.ccPatchStickyPreview) [class*=\"stickyHeader\"]" in css),
+        "sticky floating bar": ("ccPatchStickySweep" in js and "data-cc-stuck" in js
+                                and "[data-cc-stuck=\"1\"] .ccPatchForkRow{display:none" in css),
     }
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
