@@ -1665,12 +1665,13 @@ def patch_webview_js(webview_js: Path) -> bool:
     SStop = m_si.group("stop")
     SSend = m_si.group("send")
     SCls = m_si.group("cls")
-    # The native button is now ALWAYS the send arrow; a dedicated Stop button
-    # (rendered while busy, to its left) owns interrupt. So the icon never
-    # swaps to the stop glyph here.
+    # The native button is Claude's OWN stop button whenever a turn is in
+    # flight (no second/white stop button), and the send arrow when idle. The
+    # extra send arrow + toggle (below) appear only once there's text typed.
     new_icon = (
         f"let {SW}=null;try{{globalThis.ccPatchComposerSession={SS}}}catch(ccE){{}}"
-        f"{SW}={SRE}.default.createElement({SSend},{{className:{SCls}.sendIcon}});"
+        f"if({SS}.busy.value){SW}={SRE}.default.createElement({SStop},{{className:{SCls}.stopIcon}});"
+        f"else {SW}={SRE}.default.createElement({SSend},{{className:{SCls}.sendIcon}});"
     )
     text = text[: m_si.start()] + new_icon + text[m_si.end() :]
 
@@ -1697,31 +1698,29 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'({BS}.busy.value?({BX}?"busy-text":"busy-empty"):({BX}?"idle-text":"idle-empty"))'
     )
     new_btn = (
-        # Dedicated Stop button — shown the moment a turn is in flight (busy),
-        # regardless of whether there's text. It sits to the LEFT of the send
-        # arrow and owns interrupt.
-        f'(({BS}.busy.value)?{BRE}.default.createElement("button",{{type:"button",'
-        f'className:"ccPatchStopBtn","aria-label":"Stop generating",'
-        f'onClick:function(){{try{{{BS}.interrupt()}}catch(ccE){{}}}}}},'
-        f'{BRE}.default.createElement({SStop},{{className:{BCls}.stopIcon}})):null),'
-        # Native send button (always the up-arrow now). Disabled until there's
-        # text; while busy+text its click routes to the saved mode.
+        # The NATIVE button: Claude's own stop while busy (no second white stop),
+        # the send arrow while idle. Clicking it while busy interrupts; idle it
+        # submits normally. Blue idle-text state preserved via data-cc-send-state.
         f'{BRE}.default.createElement("button",{{type:"submit",'
-        f'disabled:!{BX},'
+        f'disabled:!{BS}.busy.value&&!{BX},'
         f'className:{BCls}.sendButton,'
         f'"data-permission-mode":{BZ},'
         f'"data-cc-send-state":{state_expr},'
-        f'onClick:({BE})=>{{if({BS}.busy.value&&{BX}){{{BE}.preventDefault();ccPatchComposerAction(globalThis.ccPatchSendMode||"queue",{BE}.currentTarget.closest("form"))}}}}}},'
+        f'onClick:({BE})=>{{if({BS}.busy.value){{{BE}.preventDefault();{BS}.interrupt()}}}}}},'
         f'{BW}),'
-        # Mode toggle (up/down) — shown while busy. Opens the persisted-mode
-        # selector (Steer / Add to Queue / Stop and Send).
-        f'(({BS}.busy.value)?{BRE}.default.createElement("button",{{type:"button",'
+        # Busy AND text typed: a send arrow appears to the RIGHT of the stop,
+        # routing to the saved mode (default Add to Queue).
+        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
+        f'className:"ccPatchSendArrow","aria-label":"Send",'
+        f'onClick:({BE})=>ccPatchComposerAction(globalThis.ccPatchSendMode||"queue",{BE}.currentTarget.closest("form"))}},'
+        f'{BRE}.default.createElement({SSend},{{className:{BCls}.sendIcon}})):null),'
+        # ... and a single small chevron next to it that opens the mode selector.
+        f'(({BS}.busy.value&&{BX})?{BRE}.default.createElement("button",{{type:"button",'
         f'className:"ccPatchSendChevron","aria-label":"Send options",'
         f'onClick:({BE})=>ccPatchSendMenu({BE})}},'
         f'{BRE}.default.createElement("svg",{{width:12,height:12,viewBox:"0 0 12 12",fill:"none",'
-        f'stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
-        f'{BRE}.default.createElement("polyline",{{points:"3,5 6,2.5 9,5"}}),'
-        f'{BRE}.default.createElement("polyline",{{points:"3,7 6,9.5 9,7"}}))):null)'
+        f'stroke:"currentColor",strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
+        f'{BRE}.default.createElement("polyline",{{points:"2.5,4.5 6,8 9.5,4.5"}}))):null)'
     )
     text = text[: m_sb.start()] + new_btn + text[m_sb.end() :]
 
@@ -1837,14 +1836,17 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".claudePatchMainContent{position:relative;overflow:hidden;min-width:0;min-height:0}"
         # ── Composer split send button: dedicated Stop, blue Send (idle+text),
         #    and the steer / queue / stop-and-send chevron menu. ──
-        ".ccPatchStopBtn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
-        "width:26px;height:26px;padding:0;margin-left:2px;border:none;border-radius:5px;"
-        "background:transparent;color:var(--app-secondary-foreground)}"
-        ".ccPatchStopBtn:hover{background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
+        # Send arrow — appears (busy+text) to the right of Claude's native stop;
+        # accent-colored so it reads clearly as the send action.
+        ".ccPatchSendArrow{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+        "width:26px;height:26px;padding:0;margin-left:4px;border:none;border-radius:5px;"
+        "background:var(--app-accent-color,var(--app-button-background));color:var(--app-button-foreground,#fff)}"
+        ".ccPatchSendArrow:hover{filter:brightness(1.12)}"
+        # Mode toggle — a single, clearly-visible chevron right of the send arrow.
         ".ccPatchSendChevron{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
         "width:18px;height:26px;padding:0;margin-left:1px;border:none;border-radius:5px;"
-        "background:transparent;color:var(--app-secondary-foreground);opacity:.8}"
-        ".ccPatchSendChevron:hover,.ccPatchSendChevron.ccPatchSendChevronOpen{opacity:1;"
+        "background:transparent;color:var(--app-secondary-foreground);opacity:1}"
+        ".ccPatchSendChevron:hover,.ccPatchSendChevron.ccPatchSendChevronOpen{"
         "background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
         # Blue "ready to send" state — idle with text in the box (Copilot-style).
         '[data-cc-send-state="idle-text"]{background:var(--app-accent-color,var(--app-button-background))!important;'
@@ -2421,7 +2423,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "hide untitled": "ccPatchIsUntitledEmpty" in js and "hideUntitled" in js,
         "send menu": ("ccPatchSendMenu" in js and "ccPatchSendChevron" in js
                       and "ccPatchComposerSession=" in js
-                      and ".ccPatchSendMenu" in css and ".ccPatchStopBtn" in css
+                      and ".ccPatchSendMenu" in css and ".ccPatchSendArrow" in css
                       and '[data-cc-send-state="idle-text"]' in css),
         "queue display": ("ccPatchRenderQueue(" in js and "ccPatchQueueListeners" in js
                           and "ccPatchComposerAction(" in js
