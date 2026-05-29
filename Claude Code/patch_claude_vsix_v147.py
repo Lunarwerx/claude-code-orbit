@@ -209,10 +209,10 @@ function ccPatchSwitchAccountModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilte
 function ccPatchInstructionsModal(ctx){try{ccPatchCloseMenu();ccPatchCloseFilterMenu();var existing=document.querySelector(".ccPatchInstructionsOverlay");if(existing){existing.remove();return}var cwd=(ctx&&ctx.defaultCwd&&ctx.defaultCwd.value)||".";var projPath=cwd.replace(/\\/g,"/")+"/CLAUDE.md";var globalPath="~/.claude/CLAUDE.md";var tabs=[{id:"project",label:"Project",path:projPath,desc:"Workspace CLAUDE.md"},{id:"global",label:"Global",path:globalPath,desc:"User-wide CLAUDE.md"}];var overlay=document.createElement("div");overlay.className="ccPatchInstructionsOverlay";var box=document.createElement("div");box.className="ccPatchInstructionsBox";var closeBtn=document.createElement("button");closeBtn.className="ccPatchInstructionsClose";closeBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>';closeBtn.onclick=function(){overlay.remove()};box.appendChild(closeBtn);var tabBar=document.createElement("div");tabBar.className="ccPatchInstructionsTabs";var contentArea=document.createElement("div");contentArea.className="ccPatchInstructionsContent";var statusEl=document.createElement("div");statusEl.className="ccPatchInstructionsStatus";var textarea=document.createElement("textarea");textarea.className="ccPatchInstructionsTextarea";textarea.placeholder="Loading...";textarea.spellcheck=false;var actions=document.createElement("div");actions.className="ccPatchInstructionsActions";var saveBtn=document.createElement("button");saveBtn.className="ccPatchInstructionsSaveBtn";saveBtn.textContent="Save";var openBtn=document.createElement("button");openBtn.className="ccPatchInstructionsOpenBtn";openBtn.textContent="Open in Editor";var statusText=document.createElement("span");statusEl.appendChild(statusText);actions.appendChild(saveBtn);actions.appendChild(openBtn);var activeTab=tabs[0];var dirty=false;function loadTab(tab){activeTab=tab;dirty=false;statusText.textContent="Loading...";textarea.value="";textarea.placeholder="Loading...";textarea.disabled=true;saveBtn.disabled=true;ccPatchReadClaudeMd(ctx,tab.path,function(err,content,exists){if(err){statusText.textContent="Error: "+err.message;textarea.placeholder="Failed to load file.";textarea.disabled=true;saveBtn.disabled=true;return}if(!exists){statusText.textContent="File does not exist yet. Start typing to create it.";textarea.placeholder="# CLAUDE.md\\n\\nAdd custom instructions for Claude here...";textarea.value="";textarea.disabled=false;saveBtn.disabled=false;dirty=false;return}statusText.textContent=exists?"File loaded ("+content.length+" chars)":"File not found";textarea.value=content;textarea.disabled=false;saveBtn.disabled=false;dirty=false});Array.from(tabBar.children).forEach(function(el){el.classList.toggle("ccPatchInstructionsTabActive",el.dataset.tabId===tab.id)})}tabs.forEach(function(tab){var btn=document.createElement("button");btn.className="ccPatchInstructionsTab";btn.dataset.tabId=tab.id;btn.textContent=tab.label;btn.title=tab.path;btn.onclick=function(){if(dirty&&!confirm("You have unsaved changes. Discard?"))return;loadTab(tab)};tabBar.appendChild(btn)});textarea.oninput=function(){dirty=true;statusText.textContent="Unsaved changes..."};saveBtn.onclick=function(){if(!activeTab)return;saveBtn.disabled=true;statusText.textContent="Saving...";ccPatchWriteClaudeMd(ctx,activeTab.path,textarea.value,function(err,ok){if(err){statusText.textContent="Save failed: "+err.message;saveBtn.disabled=false;return}statusText.textContent="Saved!";dirty=false;saveBtn.disabled=false;setTimeout(function(){if(statusText.textContent==="Saved!")statusText.textContent="File saved ("+textarea.value.length+" chars)"},2000)})};openBtn.onclick=function(){if(activeTab){ccPatchOpenClaudeMd(ctx,activeTab.path,activeTab.label);overlay.remove()}};overlay.onclick=function(e){if(e.target===overlay)overlay.remove()};contentArea.appendChild(statusEl);contentArea.appendChild(textarea);contentArea.appendChild(actions);box.appendChild(tabBar);box.appendChild(contentArea);overlay.appendChild(box);document.body.appendChild(overlay);loadTab(tabs[0]);setTimeout(function(){textarea.focus()},150)}catch(err){console.error("ccPatchInstructionsModal error:",err)}}
 var ccPatchImgPreviewEl=null;
 function ccPatchImgPreviewHide(){if(ccPatchImgPreviewEl){ccPatchImgPreviewEl.remove();ccPatchImgPreviewEl=null}}
-function ccPatchImgIsAttach(t){return!!(t&&t.tagName==="IMG"&&t.closest&&t.closest('[class*="userMessageAttachments"]'))}
-function ccPatchImgPreviewShow(img){try{ccPatchImgPreviewHide();var p=document.createElement("div");p.className="ccPatchImgPreview";var b=document.createElement("img");b.src=img.currentSrc||img.src;p.appendChild(b);document.body.appendChild(p);ccPatchImgPreviewEl=p}catch(e){}}
-document.addEventListener("mouseover",function(e){if(ccPatchImgIsAttach(e.target))ccPatchImgPreviewShow(e.target)},true);
-document.addEventListener("mouseout",function(e){if(ccPatchImgIsAttach(e.target))ccPatchImgPreviewHide()},true);
+function ccPatchImgHoverSrc(t){if(!t||!t.closest)return null;if(!t.closest('[class*="userMessageAttachments"]'))return null;var host=t.closest('[class*="pill"]')||t;var img=host.querySelector?host.querySelector("img"):null;if(!img&&t.tagName==="IMG")img=t;return img?(img.currentSrc||img.src):null}
+function ccPatchImgPreviewShow(src){if(!src)return;if(ccPatchImgPreviewEl&&ccPatchImgPreviewEl.getAttribute("data-src")===src)return;ccPatchImgPreviewHide();try{var p=document.createElement("div");p.className="ccPatchImgPreview";p.setAttribute("data-src",src);var b=document.createElement("img");b.src=src;p.appendChild(b);document.body.appendChild(p);ccPatchImgPreviewEl=p}catch(e){}}
+document.addEventListener("mouseover",function(e){ccPatchImgPreviewShow(ccPatchImgHoverSrc(e.target))},true);
+document.addEventListener("mouseout",function(e){var to=e.relatedTarget;if(to&&to.closest&&to.closest('[class*="userMessageAttachments"]'))return;ccPatchImgPreviewHide()},true);
 document.addEventListener("mousedown",function(){ccPatchImgPreviewHide()},true);
 Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
@@ -1864,16 +1864,18 @@ def patch_webview_css(webview_css: Path) -> bool:
         "[class*=\"userMessageAttachments\"]{order:2!important;padding:8px 0 0!important;"
         "margin:0!important;background:transparent!important;border:none!important;"
         "overflow:visible!important;flex-wrap:wrap;justify-content:flex-end!important}"
-        # Hover an attached image -> floating enlarged preview popup driven by
-        # the helper JS (ccPatchImgPreview). In-place scaling was clipped by
-        # the chat scroll container, so we show a fixed, centered popup
-        # instead. The thumbnail itself just gets a subtle hover ring.
-        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"]{display:inline-flex;"
-        "cursor:zoom-in;border-radius:5px;outline:2px solid transparent;"
-        "transition:box-shadow .14s ease,outline-color .14s ease}"
-        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"] img{border-radius:5px;display:block}"
-        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"]:hover{"
-        "box-shadow:0 4px 14px #00000080;outline-color:var(--app-focus-border,#3794ff)}"
+        # Sent images render as "pill" chips (tiny icon + filename + dims) with
+        # a near-black native background (color-mix of --app-input-background).
+        # Strip that box so they read clean, slightly enlarge the thumb, and
+        # add a subtle hover ring. Hovering shows a big floating preview popup
+        # (helper JS ccPatchImgPreview: fixed, centered, reads the chip's img).
+        "[class*=\"userMessageAttachments\"] [class*=\"pill\"]{background:transparent!important;"
+        "border:1px solid transparent!important;cursor:zoom-in;"
+        "transition:background .14s ease,border-color .14s ease}"
+        "[class*=\"userMessageAttachments\"] [class*=\"pill\"]:hover{"
+        "background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.16)!important}"
+        "[class*=\"userMessageAttachments\"] [class*=\"pill\"] [class*=\"thumbIcon\"]"
+        "{width:18px!important;height:18px!important}"
         ".ccPatchImgPreview{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);"
         "z-index:99999;pointer-events:none;border-radius:10px;overflow:hidden;"
         "box-shadow:0 24px 70px #000000d0;animation:ccPatchFadeIn .12s ease}"
@@ -1892,35 +1894,33 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchForkRow{display:flex;gap:7px;align-items:center;justify-content:center;"
         "flex-wrap:wrap;padding:5px 2px 8px;opacity:.9;transition:opacity .13s ease}"
         ".ccPatchForkRow::before,.ccPatchForkRow::after{content:\"\";flex:1 1 auto;min-width:14px;"
-        "height:1px;background:linear-gradient(to right,transparent,"
-        "var(--app-input-border,rgba(255,255,255,.28)),transparent)}"
+        "height:1px;background:rgba(255,255,255,.16)}"
         "[class*=\"userMessageContainer\"]:hover .ccPatchForkRow,"
         ".ccPatchForkRow:focus-within{opacity:1}"
         ".ccPatchForkBtn{display:inline-flex;align-items:center;gap:5px;"
-        "background:var(--app-input-background,rgba(255,255,255,.07));"
-        "border:1px solid var(--app-input-border,rgba(255,255,255,.2));"
-        "color:var(--app-primary-foreground);border-radius:7px;padding:3px 10px 3px 8px;"
+        "background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);"
+        "color:#fff;border-radius:7px;padding:3px 10px 3px 8px;"
         "font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap;"
-        "transition:background .12s,color .12s,border-color .12s}"
-        ".ccPatchForkBtn:hover{background:var(--app-list-hover-background);"
-        "border-color:var(--app-focus-border,#3794ff);color:#fff}"
-        ".ccPatchForkBtnAlt:hover{color:var(--vscode-textLink-foreground,#3794ff)}"
-        ".ccPatchForkIco{flex:0 0 auto;opacity:.9}"
+        "transition:background .12s,border-color .12s}"
+        ".ccPatchForkBtn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}"
+        ".ccPatchForkBtnAlt:hover{background:rgba(55,148,255,.28);border-color:rgba(55,148,255,.6)}"
+        ".ccPatchForkIco{flex:0 0 auto;opacity:.95}"
         # Sticky header (the floating current-message box pinned at the top
         # while scrolling): rounded card bg, fork row stripped out, and a
         # collapse chevron that hides the body when toggled.
-        "[class*=\"stickyHeader\"]{background:var(--app-secondary-background)!important;"
+        "[class*=\"stickyHeader\"]{background:#2b2b31!important;"
         "background-image:none!important;border-radius:0 0 12px 12px!important;"
-        "box-shadow:0 6px 16px #00000055!important;padding:6px 32px 8px 10px!important}"
+        "border:1px solid rgba(255,255,255,.1)!important;border-top:0!important;"
+        "box-shadow:0 6px 16px #00000066!important;padding:6px 34px 8px 10px!important}"
         "[class*=\"stickyHeader\"] .ccPatchForkRow{display:none!important}"
         ".ccPatchStickyToggle{display:none}"
         "[class*=\"stickyHeader\"] .ccPatchStickyToggle{display:flex;align-items:center;"
         "justify-content:center;position:absolute;top:5px;right:6px;z-index:3;"
-        "width:20px;height:20px;padding:0;border:0;border-radius:5px;cursor:pointer;"
-        "background:transparent;color:var(--app-secondary-foreground);opacity:.7;"
-        "transition:background .12s,opacity .12s,color .12s}"
+        "width:22px;height:22px;padding:0;border:1px solid rgba(255,255,255,.18);"
+        "border-radius:5px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;"
+        "opacity:.9;transition:background .12s,opacity .12s}"
         "[class*=\"stickyHeader\"] .ccPatchStickyToggle:hover{"
-        "background:var(--app-list-hover-background);opacity:1;color:var(--app-primary-foreground)}"
+        "background:rgba(255,255,255,.2);opacity:1}"
         ".ccPatchStickyChevron{transition:transform .15s ease}"
         "html.ccPatchStickyCollapsed [class*=\"stickyHeader\"]{padding:2px 32px 2px 10px!important;"
         "min-height:26px!important;box-shadow:0 3px 10px #00000044!important}"
@@ -2164,7 +2164,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "switch model item": "executeCommand(`model`)" in js,
         "chat restyle": ('[class*="userMessageAttachments"]{order:2' in css
                          and '[class*="timelineMessage_"]:before' in css
-                         and '[class*="thumbnailAttachment"]:hover' in css),
+                         and '[class*="userMessageAttachments"] [class*="pill"]' in css),
         "fork action row": ('"ccPatchForkRow"' in js
                             and ".ccPatchForkRow" in css
                             and ".ccPatchForkBtnAlt" in css),
