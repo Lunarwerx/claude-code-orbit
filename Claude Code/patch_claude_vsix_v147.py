@@ -1560,10 +1560,12 @@ def patch_webview_js(webview_js: Path) -> bool:
             f'title:"Fork conversation from here"}},'
             f'{ico}{RE}.default.createElement("path",{{d:"M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"}})),'
             f'{RE}.default.createElement("span",null,"Fork")),'
+            f'{P}&&{RE}.default.createElement("span",{{className:"ccPatchForkDot"}},"\\u00b7"),'
             f'{P}&&{RE}.default.createElement("button",{{className:"ccPatchForkBtn",onClick:{U},'
             f'title:"Rewind code to here"}},'
             f'{ico}{RE}.default.createElement("path",{{d:"M3 4v5h5M3.05 13A9 9 0 1 0 6 5.3L3 9"}})),'
             f'{RE}.default.createElement("span",null,"Rewind")),'
+            f'{P}&&{RE}.default.createElement("span",{{className:"ccPatchForkDot"}},"\\u00b7"),'
             f'{P}&&{RE}.default.createElement("button",{{className:"ccPatchForkBtn ccPatchForkBtnAlt",'
             f'onClick:{K},title:"Fork conversation and rewind code"}},'
             f'{ico}{RE}.default.createElement("path",{{d:"M3 4v5h5M3.05 13A9 9 0 1 0 6 5.3L3 9"}}),'
@@ -1909,13 +1911,14 @@ def patch_webview_css(webview_css: Path) -> bool:
         "height:1px;background:rgba(255,255,255,.16)}"
         ".ccPatchForkRow:hover,.ccPatchForkRow:focus-within{opacity:1}"
         ".ccPatchForkBtn{display:inline-flex;align-items:center;gap:5px;"
-        "background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);"
+        "background:transparent;border:1px solid transparent;"
         "color:#fff;border-radius:7px;padding:3px 10px 3px 8px;"
         "font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap;"
         "transition:background .12s,border-color .12s}"
-        ".ccPatchForkBtn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}"
-        ".ccPatchForkBtnAlt:hover{background:rgba(55,148,255,.28);border-color:rgba(55,148,255,.6)}"
+        ".ccPatchForkBtn:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.22)}"
+        ".ccPatchForkBtnAlt:hover{background:rgba(55,148,255,.28);border-color:rgba(55,148,255,.55)}"
         ".ccPatchForkIco{flex:0 0 auto;opacity:.95}"
+        ".ccPatchForkDot{opacity:.4;user-select:none;pointer-events:none;font-size:11px;line-height:1}"
         # Sticky header DELETED. Claude's sticky-mode pins each user message to
         # the top of the scroll ("the top thing"). Neutralize it so messages
         # just scroll normally — no floating box. This ALSO removes the old
@@ -2165,7 +2168,8 @@ def verify_extension_dir(extension_dir: Path) -> None:
                          and '[class*="userMessageAttachments"] [class*="pill"]' in css),
         "fork action row": ('"ccPatchForkRow"' in js
                             and ".ccPatchForkRow" in css
-                            and ".ccPatchForkBtnAlt" in css),
+                            and ".ccPatchForkBtnAlt" in css
+                            and ".ccPatchForkDot" in css),
         "fork row dividers": ".ccPatchForkRow::before" in css,
         "image hover preview": ("ccPatchImgPreviewShow" in js
                                 and ".ccPatchImgPreview" in css),
