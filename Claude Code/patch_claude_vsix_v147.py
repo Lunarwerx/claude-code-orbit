@@ -1524,6 +1524,61 @@ def patch_webview_js(webview_js: Path) -> bool:
         new_rew = f"let {Brw}={qrw}?.filesChanged&&{qrw}.filesChanged.length>0," f"{Wrw}={qrw}?.canRewind&&!{Qrw};"
         text = text[: m_rew.start()] + new_rew + text[m_rew.end() :]
 
+    # ──────────────────────────────────────────────────────────────────────
+    # 17. Fork/rewind action row — replace the single hover-only dropdown
+    #     button + its conditionally-rendered popup with three always-visible
+    #     inline buttons (Fork / Rewind / Fork + rewind) above each user
+    #     message. The native menu lives in a popup that only exists in the
+    #     DOM while open, so CSS alone cannot surface the three actions; we
+    #     swap the render for an inline row that reuses the component's own
+    #     handlers (fork-from-here `S`, rewind `U`, fork+rewind `K`) and the
+    #     `P` (message-uuid) gate. The confirm modal that follows is untouched.
+    #     Anchored on the stable popup option strings; identifiers captured.
+    # ──────────────────────────────────────────────────────────────────────
+    fork_re = re.compile(
+        rf'(?P<RE>{JS_ID})\.default\.createElement\("div",\{{className:`\$\{{(?P<CZ>{JS_ID})\.container\}} '
+        rf'.*?'
+        rf'onClick:(?P<S>{JS_ID})\}},(?P=RE)\.default\.createElement\("span",\{{className:(?P=CZ)\.optionText\}},"Fork conversation from here"\)\),'
+        rf'(?P<P>{JS_ID})&&(?P=RE)\.default\.createElement\((?P=RE)\.default\.Fragment,null,'
+        rf'(?P=RE)\.default\.createElement\("button",\{{className:(?P=CZ)\.popupOption,onClick:(?P<U>{JS_ID})\}},'
+        rf'(?P=RE)\.default\.createElement\("span",\{{className:(?P=CZ)\.optionText\}},"Rewind code to here"\)\),'
+        rf'(?P=RE)\.default\.createElement\("button",\{{className:(?P=CZ)\.popupOption,onClick:(?P<K>{JS_ID})\}},'
+        rf'(?P=RE)\.default\.createElement\("span",\{{className:(?P=CZ)\.optionText\}},"Fork conversation and rewind code"\)\)\)\)\)',
+        re.S,
+    )
+    m_fork = fork_re.search(text)
+    if m_fork is None:
+        log("Note: fork/rewind action-row anchor not found; skipping")
+    else:
+        RE = m_fork.group("RE")
+        S = m_fork.group("S")
+        U = m_fork.group("U")
+        K = m_fork.group("K")
+        P = m_fork.group("P")
+        ico = (
+            f'{RE}.default.createElement("svg",{{className:"ccPatchForkIco",width:"12",'
+            f'height:"12",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",'
+            f'strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"}},'
+        )
+        new_fork = (
+            f'{RE}.default.createElement("div",{{className:"ccPatchForkRow"}},'
+            f'{RE}.default.createElement("button",{{className:"ccPatchForkBtn",onClick:{S},'
+            f'title:"Fork conversation from here"}},'
+            f'{ico}{RE}.default.createElement("path",{{d:"M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"}})),'
+            f'{RE}.default.createElement("span",null,"Fork")),'
+            f'{P}&&{RE}.default.createElement("button",{{className:"ccPatchForkBtn",onClick:{U},'
+            f'title:"Rewind code to here"}},'
+            f'{ico}{RE}.default.createElement("path",{{d:"M3 4v5h5M3.05 13A9 9 0 1 0 6 5.3L3 9"}})),'
+            f'{RE}.default.createElement("span",null,"Rewind")),'
+            f'{P}&&{RE}.default.createElement("button",{{className:"ccPatchForkBtn ccPatchForkBtnAlt",'
+            f'onClick:{K},title:"Fork conversation and rewind code"}},'
+            f'{ico}{RE}.default.createElement("path",{{d:"M3 4v5h5M3.05 13A9 9 0 1 0 6 5.3L3 9"}}),'
+            f'{RE}.default.createElement("path",{{d:"M16 14v6M13 17h6"}})),'
+            f'{RE}.default.createElement("span",null,"Fork + rewind"))'
+            f')'
+        )
+        text = text[: m_fork.start()] + new_fork + text[m_fork.end() :]
+
     write(webview_js, text)
     return True
 
@@ -1776,20 +1831,23 @@ def patch_webview_css(webview_css: Path) -> bool:
         "flex-direction:column;background:transparent!important;border:none!important;"
         "border-radius:0!important;padding:0!important;overflow:visible!important;max-width:100%!important}"
         "[class*=\"userMessage_\"] [class*=\"expandableContainer_\"]{"
-        "background:var(--app-input-background);border:1px solid var(--app-input-border);"
-        "border-left:2px solid var(--vscode-textLink-foreground,#3794ff);"
-        "border-radius:6px;padding:7px 11px;max-width:100%}"
-        "[class*=\"userMessageContainer\"]{padding-left:6px}"
+        "background:var(--vscode-input-background,rgba(255,255,255,.045));"
+        "border:1px solid var(--app-input-border,rgba(255,255,255,.07));"
+        "border-radius:11px;padding:8px 13px;max-width:100%}"
+        "[class*=\"userMessageContainer\"]{padding-left:18px}"
         # Pasted images: detached row BELOW the text bubble (order:2), no
         # border/bg, wraps, overflow visible so a hovered image can grow.
         "[class*=\"userMessageAttachments\"]{order:2!important;padding:8px 0 0!important;"
         "margin:0!important;background:transparent!important;border:none!important;"
         "overflow:visible!important;flex-wrap:wrap}"
-        # Hover an attached image to enlarge it in place (Codex-style).
-        "[class*=\"userMessageAttachments\"] img{transition:transform .15s ease,box-shadow .15s ease;"
-        "transform-origin:left top;cursor:zoom-in;border-radius:4px}"
-        "[class*=\"userMessageAttachments\"] img:hover{transform:scale(2);"
-        "box-shadow:0 8px 28px #000000aa;position:relative;z-index:60}"
+        # Hover an attached image to enlarge it in place (Codex-style). The
+        # thumbnail wrapper is a fixed, overflow-clipped box, so scaling the
+        # inner <img> did nothing visible — scale the WRAPPER instead.
+        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"]{display:inline-flex;"
+        "transition:transform .16s ease,box-shadow .16s ease;transform-origin:left center;cursor:zoom-in}"
+        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"] img{border-radius:5px;display:block}"
+        "[class*=\"userMessageAttachments\"] [class*=\"thumbnailAttachment\"]:hover{transform:scale(1.85);"
+        "box-shadow:0 10px 30px #000000aa;position:relative;z-index:60}"
         # "Show more / show less": subtle inline links, not chunky filled pills
         # (covers BOTH expandButton and collapseButton).
         "[class*=\"expandButton\"],[class*=\"collapseButton\"]{background:transparent!important;"
@@ -1798,13 +1856,23 @@ def patch_webview_css(webview_css: Path) -> bool:
         "padding:1px 4px!important;margin:2px!important;font-size:.8em!important;opacity:.85}"
         "[class*=\"expandButton\"]:hover,[class*=\"collapseButton\"]:hover{"
         "opacity:1;text-decoration:underline;transform:none!important}"
-        # Fork / rewind action button: permanently visible above each USER
-        # message (native is hover-only). Exposes the existing menu — Fork from
-        # here / Rewind code / Fork + rewind — Codex-style always-on checkpoint.
-        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"]{opacity:.5!important}"
-        "[class*=\"userMessageContainer\"]:hover [class*=\"actionButton_\"],"
-        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"]:hover,"
-        "[class*=\"userMessageContainer\"] [class*=\"actionButton_\"][aria-expanded=\"true\"]{opacity:1!important}"
+        # Fork / rewind action row: three inline buttons (Fork / Rewind /
+        # Fork + rewind) injected above each user message by the JS patch,
+        # replacing the native hover-only dropdown. Faint by default, full
+        # opacity on message hover (Codex-style checkpoint row).
+        ".ccPatchForkRow{display:flex;gap:5px;align-items:center;flex-wrap:wrap;"
+        "padding:0 0 5px 1px;opacity:.4;transition:opacity .13s ease}"
+        "[class*=\"userMessageContainer\"]:hover .ccPatchForkRow,"
+        ".ccPatchForkRow:focus-within{opacity:1}"
+        ".ccPatchForkBtn{display:inline-flex;align-items:center;gap:4px;background:transparent;"
+        "border:1px solid var(--app-input-border,rgba(255,255,255,.13));"
+        "color:var(--app-secondary-foreground);border-radius:6px;padding:2px 8px 2px 7px;"
+        "font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap;"
+        "transition:background .12s,color .12s,border-color .12s}"
+        ".ccPatchForkBtn:hover{background:var(--app-list-hover-background);"
+        "color:var(--app-primary-foreground)}"
+        ".ccPatchForkBtnAlt:hover{color:var(--vscode-textLink-foreground,#3794ff)}"
+        ".ccPatchForkIco{flex:0 0 auto;opacity:.85}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
         "width:32px;height:18px;flex-shrink:0;margin-left:auto;cursor:pointer}"
@@ -2041,7 +2109,10 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "switch model item": "executeCommand(`model`)" in js,
         "chat restyle": ('[class*="userMessageAttachments"]{order:2' in css
                          and '[class*="timelineMessage_"]:before' in css
-                         and '[class*="actionButton_"]' in css),
+                         and '[class*="thumbnailAttachment"]:hover' in css),
+        "fork action row": ('"ccPatchForkRow"' in js
+                            and ".ccPatchForkRow" in css
+                            and ".ccPatchForkBtnAlt" in css),
         "row height": "min-height:48px" in css,
         "yolo helpers": "ccPatchYoloToggle" in js and "ccPatchYoloDefault" in js,
         "yolo perm init": "permissionMode=" in js and "ccPatchYoloDefault()" in js,
