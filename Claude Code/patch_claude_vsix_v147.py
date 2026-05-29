@@ -237,7 +237,7 @@ function ccPatchQueueCancelEdit(){globalThis.ccPatchQueueEditId=null;ccPatchQueu
 function ccPatchQueueCommitEdit(id,t){t=(t||``).trim();globalThis.ccPatchQueueEditId=null;if(!t){ccPatchQueueRemove(id);return}globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).map(function(x){return x.id===id?Object.assign({},x,{text:t}):x});ccPatchQueueNotify()}
 function ccPatchQueueSendNow(id){var item=null;globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){if(x.id===id){item=x;return!1}return!0});ccPatchQueueNotify();if(!item)return;globalThis.ccPatchQueueWasBusy=!1;var s=ccPatchActiveSession();try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchSendText(item.text,item.files,item.sel)},90)}
 function ccPatchComposerAction(mode,form){form=form||ccPatchComposerForm(document.activeElement);var inp=ccPatchComposerInput(form);var text=inp?(inp.textContent||``).trim():``;if(!text)return;if(mode===`stopsend`){globalThis.ccPatchQueueIntent=!1;ccPatchStopAndSendForm(form);return}globalThis.ccPatchQueueIntent=(mode===`queue`);ccPatchTriggerSend(form);globalThis.ccPatchQueueIntent=!1}
-function ccPatchRenderQueue(R,G2,sess){try{if(sess)globalThis.ccPatchChatSession=sess;var q=globalThis.ccPatchQueue||[];if(!q.length)return null;var ce=R.default.createElement,editId=globalThis.ccPatchQueueEditId;function ic(inner){return ce(`svg`,{width:13,height:13,viewBox:`0 0 13 13`,fill:`none`,stroke:`currentColor`,strokeWidth:1.4,strokeLinecap:`round`,strokeLinejoin:`round`,"aria-hidden":!0},inner)}var rows=q.map(function(it){var ctrls=ce(`div`,{className:`ccPatchQueueControls`},ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Edit`,onClick:function(){ccPatchQueueEdit(it.id)}},ic(ce(`path`,{d:`M8.4 2l2.6 2.6L4.6 11H2V8.4z`}))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Send now`,onClick:function(){ccPatchQueueSendNow(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:6.5,y1:10.5,x2:6.5,y2:2.5}),ce(`polyline`,{points:`3,6 6.5,2.5 10,6`})))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Remove`,onClick:function(){ccPatchQueueRemove(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:3,y1:3,x2:10,y2:10}),ce(`line`,{x1:10,y1:3,x2:3,y2:10})))));var att=(Array.isArray(it.files)&&it.files.length)?ce(`div`,{className:`ccPatchQueueAtt`},it.files.map(function(f,fi){var nm=(f&&(f.name||(f.file&&f.file.name)||f.fileName||f.filename))||`attachment`;var src=f&&(f.url||f.dataUrl||f.dataURL||f.src||f.data);var kids=[ce(`span`,{className:`ccPatchQueueAttName`,key:`n`},nm)];if(src&&typeof src===`string`&&src.indexOf(`data:`)===0)kids.unshift(ce(`img`,{className:`ccPatchQueueAttImg`,src:src,key:`i`}));return ce(`div`,{className:`ccPatchQueueAttPill`,key:`a`+fi},kids)})):null;var body;if(editId===it.id){body=ce(`textarea`,{className:G2.userMessage+` ccPatchQueueEdit`,defaultValue:it.text,rows:1,ref:function(el){if(el)setTimeout(function(){try{el.focus();el.setSelectionRange(el.value.length,el.value.length)}catch(e){}},0)},onKeyDown:function(ev){if(ev.key===`Enter`&&!ev.shiftKey){ev.preventDefault();ccPatchQueueCommitEdit(it.id,ev.target.value)}else if(ev.key===`Escape`){ev.preventDefault();ccPatchQueueCancelEdit()}},onBlur:function(ev){ccPatchQueueCommitEdit(it.id,ev.target.value)}})}else{body=ce(`div`,{className:G2.userMessage},it.text)}return ce(`div`,{className:G2.message+` ccPatchQueuedMsg`,key:`ccq-`+it.id},ce(`div`,{className:G2.userMessageContainer},ctrls,att,body))});return ce(`div`,{className:`ccPatchQueueWrap`,key:`ccPatchQueueWrap`},[ce(`div`,{className:`ccPatchQueueHeader`,key:`ccqh`},`QUEUED`)].concat(rows))}catch(ccRE){console.error(`Orbit queue render error:`,ccRE);return null}}
+function ccPatchRenderQueue(R,G2,sess){try{if(sess)globalThis.ccPatchChatSession=sess;var q=globalThis.ccPatchQueue||[];if(!q.length)return null;var ce=R.default.createElement,editId=globalThis.ccPatchQueueEditId;function ic(inner){return ce(`svg`,{width:13,height:13,viewBox:`0 0 13 13`,fill:`none`,stroke:`currentColor`,strokeWidth:1.4,strokeLinecap:`round`,strokeLinejoin:`round`,"aria-hidden":!0},inner)}var rows=q.map(function(it){var ctrls=ce(`div`,{className:`ccPatchQueueControls`},ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Edit`,onClick:function(){ccPatchQueueEdit(it.id)}},ic(ce(`path`,{d:`M8.4 2l2.6 2.6L4.6 11H2V8.4z`}))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Send now`,onClick:function(){ccPatchQueueSendNow(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:6.5,y1:10.5,x2:6.5,y2:2.5}),ce(`polyline`,{points:`3,6 6.5,2.5 10,6`})))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Remove`,onClick:function(){ccPatchQueueRemove(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:3,y1:3,x2:10,y2:10}),ce(`line`,{x1:10,y1:3,x2:3,y2:10})))));var att=(Array.isArray(it.files)&&it.files.length)?ce(`div`,{className:`ccPatchQueueAtt`},it.files.map(function(f,fi){var nm=(f&&(f.name||(f.file&&f.file.name)||f.fileName||f.filename))||`attachment`;var src=f&&(f.url||f.dataUrl||f.dataURL||f.src||f.data);var kids=[ce(`span`,{className:`ccPatchQueueAttName`,key:`n`},nm)];if(src&&typeof src===`string`&&src.indexOf(`data:`)===0)kids.unshift(ce(`img`,{className:`ccPatchQueueAttImg`,src:src,key:`i`}));return ce(`div`,{className:`ccPatchQueueAttPill`,key:`a`+fi},kids)})):null;var body;if(editId===it.id){body=ce(`textarea`,{className:G2.userMessage+` ccPatchQueueEdit`,defaultValue:it.text,rows:1,ref:function(el){if(el)setTimeout(function(){try{el.focus();el.setSelectionRange(el.value.length,el.value.length)}catch(e){}},0)},onKeyDown:function(ev){if(ev.key===`Enter`&&!ev.shiftKey){ev.preventDefault();ccPatchQueueCommitEdit(it.id,ev.target.value)}else if(ev.key===`Escape`){ev.preventDefault();ccPatchQueueCancelEdit()}},onBlur:function(ev){ccPatchQueueCommitEdit(it.id,ev.target.value)}})}else{body=ce(`div`,{className:G2.userMessage},ce(`div`,{className:`expandableContainer_ccpatch`},it.text))}return ce(`div`,{className:G2.message+` ccPatchQueuedMsg`,key:`ccq-`+it.id},ce(`div`,{className:G2.userMessageContainer},ctrls,body,att))});return ce(`div`,{className:`ccPatchQueueWrap`,key:`ccPatchQueueWrap`},[ce(`div`,{className:`ccPatchQueueHeader`,key:`ccqh`},`QUEUED`)].concat(rows))}catch(ccRE){console.error(`Orbit queue render error:`,ccRE);return null}}
 function ccPatchCloseSendMenu(){let m=document.querySelector(`.ccPatchSendMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSendChevron.ccPatchSendChevronOpen`)?.classList.remove(`ccPatchSendChevronOpen`)}
 function ccPatchComposerForm(node){try{return node&&node.closest?node.closest(`form`):null}catch(e){return null}}
 function ccPatchTriggerSend(form){if(!form)return;try{if(form.requestSubmit)form.requestSubmit();else form.dispatchEvent(new Event(`submit`,{cancelable:!0,bubbles:!0}))}catch(e){}}
@@ -1773,16 +1773,17 @@ def patch_webview_js(webview_js: Path) -> bool:
     he1_G2 = m_mc.group("G2")
 
     # Injection point: the bottom spacer `,<h5>,<RE>.createElement("div",{ref:<X>,style:{height:`${<U>}px`...`.
-    # Splice our queue render in as the child immediately before the spinner row.
+    # Splice our queue render in AFTER the spinner row (so the working/status
+    # indicator stays above the queued items) and before the bottom spacer.
     inj_re = re.compile(
-        rf',{JS_ID},{re.escape(he1_RE)}\.default\.createElement\("div",\{{ref:{JS_ID},'
-        rf'style:\{{height:`\$\{{{JS_ID}\}}px`'
+        rf',(?P<h5>{JS_ID}),(?P<spc>{re.escape(he1_RE)}\.default\.createElement\("div",\{{ref:{JS_ID},'
+        rf'style:\{{height:`\$\{{{JS_ID}\}}px`)'
     )
     m_inj = inj_re.search(text)
     if m_inj is None:
         raise RuntimeError("Lost transcript spacer (queue injection) anchor")
-    inject = f',ccPatchRenderQueue({he1_RE},{he1_G2},{he1_S})'
-    text = text[: m_inj.start()] + inject + text[m_inj.start() :]
+    new_seg = f',{m_inj.group("h5")},ccPatchRenderQueue({he1_RE},{he1_G2},{he1_S}),{m_inj.group("spc")}'
+    text = text[: m_inj.start()] + new_seg + text[m_inj.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
     # 21. Route the queue through Claude's OWN submit callback (`C`) so queued
@@ -1914,8 +1915,9 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchQueueWrap{display:flex;flex-direction:column;gap:2px;padding:6px 0 2px}"
         ".ccPatchQueueHeader{font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.5;"
         "padding:0 0 2px 2px;text-transform:uppercase}"
-        ".ccPatchQueuedMsg{opacity:.7}"
-        ".ccPatchQueuedMsg:hover{opacity:1}"
+        # Queued message = a real chat bubble, just grayed/pending until it sends.
+        ".ccPatchQueuedMsg{opacity:.55;filter:grayscale(.25)}"
+        ".ccPatchQueuedMsg:hover{opacity:.85;filter:none}"
         ".ccPatchQueuedMsg .ccPatchQueueControls{display:none;position:absolute;top:-11px;right:0;"
         "gap:1px;padding:2px;border-radius:6px;background:var(--app-primary-background);"
         "border:1px solid var(--app-primary-border-color);box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:3}"
@@ -1927,7 +1929,7 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchQueueEdit{width:100%;min-width:220px;resize:vertical;font:inherit;line-height:inherit;"
         "color:var(--app-primary-foreground);background:transparent;border:none;outline:none}"
         # Queued-message attachment pills (carried images)
-        ".ccPatchQueueAtt{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 3px}"
+        ".ccPatchQueueAtt{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0 20px}"
         ".ccPatchQueueAttPill{display:inline-flex;align-items:center;gap:5px;max-width:220px;"
         "padding:2px 7px;border-radius:6px;background:var(--app-input-background);"
         "border:1px solid var(--app-input-border,var(--app-primary-border-color));font-size:11px;opacity:.9}"
