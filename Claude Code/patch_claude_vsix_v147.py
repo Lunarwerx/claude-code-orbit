@@ -2126,6 +2126,12 @@ def patch_webview_css(webview_css: Path) -> bool:
         "color:var(--app-primary-foreground);text-align:left;padding:6px 10px;"
         "border-radius:4px;cursor:pointer}"
         ".claudePatchContextMenu button:hover{background:var(--app-list-hover-background)}"
+        # Right-click color swatches: a 4-col grid under Pin/Star/Archive.
+        ".ccPatchCtxColors{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;"
+        "padding:8px 8px 4px;margin-top:4px;border-top:1px solid var(--app-menu-border)}"
+        ".claudePatchContextMenu .ccPatchCtxColors button.ccPatchColorSwatch{display:inline-block;"
+        "width:20px;height:20px;padding:0;text-align:center;border-radius:50%}"
+        ".claudePatchContextMenu .ccPatchCtxColors button.ccPatchColorSwatch:hover{background:initial;transform:scale(1.18)}"
         # Section headers
         ".ccPatchArchiveSectionHeader{display:flex;align-items:center;justify-content:space-between;"
         "width:100%;background:transparent;border:0;border-top:1px solid var(--app-primary-border-color);"
@@ -2273,7 +2279,10 @@ def patch_webview_css(webview_css: Path) -> bool:
         # sticky-scoped rule that was hiding .ccPatchForkRow on every message
         # (the stickyHeader class is on all user messages), which is why the
         # fork/rewind buttons had gone "perma-gone".
-        "[class*=\"stickyHeader\"]{position:static!important;background:transparent!important;"
+        # Gated behind html:not(.ccPatchStickyPreview): the "Chat preview header"
+        # settings toggle adds .ccPatchStickyPreview to <html>, which lifts this
+        # neutralization so Claude's native faded title-at-top header returns.
+        "html:not(.ccPatchStickyPreview) [class*=\"stickyHeader\"]{position:static!important;background:transparent!important;"
         "background-image:none!important;border:0!important;box-shadow:none!important}"
         # YOLO toggle slider in settings dropdown
         ".ccPatchYoloToggle{position:relative;display:inline-flex;align-items:center;"
