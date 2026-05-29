@@ -1831,10 +1831,15 @@ def patch_webview_js(webview_js: Path) -> bool:
     cB = m_csend.group("B")
     cK5 = m_csend.group("k5")
     cW = m_csend.group("W")
+    # Queue ONLY if the SUBMITTING chat (cS) is actually busy. The queue-intent
+    # flag is set off a global "active session" busy check, which a streaming
+    # BACKGROUND chat can hijack — so a brand-new/idle chat would wrongly queue
+    # (and never flush, since its own session never goes busy->idle) instead of
+    # sending. Gating on cS.busy.value makes an idle chat always send to itself.
     new_csend = (
-        f'(globalThis.ccPatchQueueIntent?'
+        f'((globalThis.ccPatchQueueIntent&&{cS}.busy&&{cS}.busy.value)?'
         f'(globalThis.ccPatchQueueIntent=!1,ccPatchQueueAddFull({cX1},{cB},{cK5},{cS})):'
-        f'await {cS}.send({cX1},{cB},{cK5})),{cW}([])'
+        f'(globalThis.ccPatchQueueIntent=!1,await {cS}.send({cX1},{cB},{cK5}))),{cW}([])'
     )
     text = text[: m_csend.start()] + new_csend + text[m_csend.end() :]
 
