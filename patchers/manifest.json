@@ -94,6 +94,14 @@
       "file": "patch_claude-1.2.63.py",
       "date": "2026-05-31",
       "notes": "remove custom fork wrapper; leave Claude built-in fork behavior stock"
+    },
+    {
+      "version": "1.2.64",
+      "build": 106,
+      "claude": "2.1.159",
+      "file": "patch_claude-1.2.64.py",
+      "date": "2026-05-31",
+      "notes": "fork buttons call Claude native handlers with shielded button click events"
     }
   ]
 }
