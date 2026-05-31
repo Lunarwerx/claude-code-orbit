@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "comment": "Registry of installable Orbit patcher versions. ONE source of truth for the 'Previous versions' picker. Each entry pairs an archived patcher (patchers/<file>) with the Claude Code version it is verified against (claude) \u2014 that pin is what an install re-installs, so every pick is a known-good (patcher, Claude) pair. Newest entry last. Maintained by tools/archive_patcher.py; do not hand-edit unless you know the format.",
+  "patchers": [
+    {
+      "version": "1.2.52",
+      "build": null,
+      "claude": "2.1.154",
+      "file": "patch_claude-1.2.52.py",
+      "date": "2026-05-29",
+      "notes": "right-click color swatches + Chat-preview-header toggle"
+    },
+    {
+      "version": "1.2.53",
+      "build": null,
+      "claude": "2.1.154",
+      "file": "patch_claude-1.2.53.py",
+      "date": "2026-05-29",
+      "notes": "queue keyed by live session object (kill cross-chat + fork bleed)"
+    },
+    {
+      "version": "1.2.54",
+      "build": null,
+      "claude": "2.1.154",
+      "file": "patch_claude-1.2.54.py",
+      "date": "2026-05-29",
+      "notes": "floating preview bar \u2014 fade bottom + hide fork row (pinned only)"
+    },
+    {
+      "version": "1.2.55",
+      "build": null,
+      "claude": "2.1.154",
+      "file": "patch_claude-1.2.55.py",
+      "date": "2026-05-29",
+      "notes": "add Glow Default theme (Glow animation on default colors)"
+    },
+    {
+      "version": "1.2.56",
+      "build": null,
+      "claude": "2.1.154",
+      "file": "patch_claude-1.2.56.py",
+      "date": "2026-05-29",
+      "notes": "Glow themes \u2014 twirling AI-gradient composer border + restored selected-chat glow"
+    },
+    {
+      "version": "1.2.57",
+      "build": 97,
+      "claude": "2.1.158",
+      "file": "patch_claude-1.2.57.py",
+      "date": "2026-05-31",
+      "notes": "Glow themes \u2014 soften selected-chat glow ring (less fierce)"
+    },
+    {
+      "version": "1.2.58",
+      "build": 97,
+      "claude": "2.1.158",
+      "file": "patch_claude-1.2.58.py",
+      "date": "2026-05-31"
+    }
+  ]
+}
