@@ -1323,6 +1323,7 @@ function applyIdleState(state, info) {
     statusEl.hidden = true;                // hide redundant pill — hero card says it
     checkUpdatesBtn.hidden = false;
     versionsBtn.hidden = !hasOtherVersions;
+    versionsBtn.textContent = "Previous versions";
     if (claudeUpdateAvailable) {
       // A newer Claude Code shipped — surface "install newest" right in the hero.
       patchedHero.classList.add("updateAvailable");
@@ -1376,6 +1377,7 @@ function applyIdleState(state, info) {
     enableBtn.title = "Download Claude Code and patch it with the newest patcher (v" + (bundledVersion || "?") + ").";
     checkUpdatesBtn.hidden = false;
     versionsBtn.hidden = !hasOtherVersions;
+    versionsBtn.textContent = "Previous versions";
     disableBtn.title = "Uninstall Orbit and restore the original, unpatched Claude Code.";
     idleHint.innerHTML = '';
   } else if (state === "stock") {
@@ -1388,15 +1390,24 @@ function applyIdleState(state, info) {
     enableBtn.classList.add("primary");
     enableBtn.title = "";
     disableBtn.hidden = true;              // hide entirely — nothing to restore
+    versionsBtn.hidden = !hasOtherVersions;
+    versionsBtn.textContent = "Install specific version";
     idleHint.innerHTML = 'Install newest downloads <code>anthropic.claude-code</code>, pulls the latest patcher, and installs it.';
   } else {
+    // "none" — Claude Code is not installed.  Offer both "Install newest"
+    // (downloads newest Claude + newest patcher) and "Install specific version"
+    // (picker of archived patcher → Claude pairs from the bundled registry).
     patchedHero.hidden = true;
     stockHero.hidden = true;
-    enableBtn.disabled = true;
-    enableBtn.title = "Install Claude Code first.";
-    disableBtn.disabled = true;
-    disableBtn.title = "Install Claude Code first.";
-    idleHint.innerHTML = 'Install <code>anthropic.claude-code</code> from the Marketplace, then come back here.';
+    statusEl.hidden = true;
+    enableBtn.disabled = false;
+    enableBtn.classList.add("primary");
+    enableBtn.title = "Download the newest Claude Code, pull the latest patcher, and install.";
+    disableBtn.hidden = true;
+    checkUpdatesBtn.hidden = true;
+    versionsBtn.hidden = !hasOtherVersions;
+    versionsBtn.textContent = "Install specific version";
+    idleHint.innerHTML = '<b>Install newest</b> downloads <code>anthropic.claude-code</code>, pulls the latest patcher, and installs it.<br><b>Install specific version</b> picks an archived patcher + its verified Claude Code from the registry.';
   }
 }
 
@@ -1853,8 +1864,13 @@ function detectState(context) {
   // globalState. This is the PRIMARY source of truth for "is my patcher
   // outdated?" — the bundled version only serves as an offline fallback.
   const remoteVersion = context.globalState.get(GS_REMOTE_PATCHER_VERSION);
+  // Load the rollback registry now so both "none" and "stock" states can
+  // offer "Install specific version" — the picker needs version entries
+  // and the bundled manifest is always present even before any OTA fetch.
+  const manifest = getEffectiveManifest(context);
+  const patcherHistoryFallback = patcherHistoryFromManifest(manifest);
   const ext = vscode.extensions.getExtension(STOCK_ID);
-  if (!ext) return { state: "none", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion: null, latestClaudeVersion: null, latestClaudeVerified: false, onLatestClaude: false, onStable: false, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: [] };
+  if (!ext) return { state: "none", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion: null, latestClaudeVersion: null, latestClaudeVerified: false, onLatestClaude: false, onStable: false, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryFallback };
 
   // Claude Code's own version, read straight from its package.json via the
   // Extensions API. Lets us show "Patches active on Claude Code v2.1.150"
@@ -1920,7 +1936,7 @@ function detectState(context) {
       }
     }
   } catch (_) {}
-  return { state: "stock", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion, latestClaudeVersion, latestClaudeVerified, onLatestClaude, onStable, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: [] };
+  return { state: "stock", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion, latestClaudeVersion, latestClaudeVerified, onLatestClaude, onStable, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryFallback };
 }
 
 async function findPython() {
