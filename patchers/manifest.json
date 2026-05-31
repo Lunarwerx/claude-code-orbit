@@ -86,6 +86,14 @@
       "file": "patch_claude-1.2.62.py",
       "date": "2026-05-31",
       "notes": "fork fallback opens real forked session id in editor tab if same-pane activation misses"
+    },
+    {
+      "version": "1.2.63",
+      "build": 105,
+      "claude": "2.1.159",
+      "file": "patch_claude-1.2.63.py",
+      "date": "2026-05-31",
+      "notes": "remove custom fork wrapper; leave Claude built-in fork behavior stock"
     }
   ]
 }
