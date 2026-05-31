@@ -1638,93 +1638,6 @@ def patch_webview_js(webview_js: Path) -> bool:
         text = text[: m_fork.start()] + new_fork + text[m_fork.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
-    # 22. Rewind confirm-dialog fix — the native Us component disables the
-    #     "Rewind" button when no files were changed (W = q?.canRewind && !Q
-    #     && (B || J), where B = hasFileChanges). For plain Rewind (J=false),
-    #     this means the button is grayed out whenever Claude didn't edit any
-    #     files — even though the user may want to rewind context only.
-    #     Remove the (B||J) gate so the button is enabled whenever canRewind
-    #     is true and the dry-run is done loading. Fork+Rewind already worked
-    #     because J=true made the gate pass; this change only affects plain
-    #     Rewind.
-    # ──────────────────────────────────────────────────────────────────────
-    rewind_gate_re = re.compile(
-        rf'(?P<B>{JS_ID})=(?P<q>{JS_ID})\?\.filesChanged&&(?P=q)\.filesChanged\.length>0,'
-        rf'(?P<W>{JS_ID})=(?P=q)\?\.canRewind&&!(?P<Q>{JS_ID})&&\((?P=B)\|\|(?P<J>{JS_ID})\)'
-    )
-    m_rg = rewind_gate_re.search(text)
-    if m_rg is None:
-        log("Note: rewind button-gate anchor not found; skipping rewind fix")
-    else:
-        Bv = m_rg.group("B")
-        qv = m_rg.group("q")
-        Wv = m_rg.group("W")
-        Qv = m_rg.group("Q")
-        old_gate = m_rg.group(0)
-        new_gate = f'{Bv}={qv}?.filesChanged&&{qv}.filesChanged.length>0,{Wv}={qv}?.canRewind&&!{Qv}'
-        text = text.replace(old_gate, new_gate, 1)
-        log("Rewind confirm-dialog gate removed — button now enabled whenever canRewind is true")
-
-    # ──────────────────────────────────────────────────────────────────────
-    # 23. Fork fix — the native $.forkConversation() can silently return an
-    #     empty string when the comms connection is unavailable, without ever
-    #     hitting the .catch() path.  Add a .then() guard that detects the
-    #     empty-result case and falls back to Q(X) (onCreateNewSession), so
-    #     the user always gets a working session even when the RPC can't fire.
-    #     The .catch() already shows a notification; we also append Q(X) there
-    #     so an explicit error still delivers a working fallback session.
-    # ──────────────────────────────────────────────────────────────────────
-    fork_func_re = re.compile(
-        rf'function\s+(?P<fn>{JS_ID})\(\)\{{'
-        rf'if\((?P<x>{JS_ID})\)\{{(?P<Q>{JS_ID})\((?P<X>{JS_ID})\);return\}}'
-        rf'if\(!(?P<N>{JS_ID})\)\{{(?P<Z>{JS_ID})\.showNotification\("Failed to fork conversation: Unknown session id","error"\);return\}}'
-        rf'(?P<ctx>{JS_ID})\.forkConversation\((?P=N),(?P=X),(?P<I>{JS_ID})\)\.catch'
-    )
-    m_ff = fork_func_re.search(text)
-    if m_ff is None:
-        log("Note: fork $1() function anchor not found; skipping fork fix")
-    else:
-        fn   = m_ff.group("fn")
-        Qn   = m_ff.group("Q")
-        Xn   = m_ff.group("X")
-        Nn   = m_ff.group("N")
-        Zn   = m_ff.group("Z")
-        In   = m_ff.group("I")
-        ctxn = m_ff.group("ctx")
-        # Find the full function body — from 'function $1(){' to the final '}'
-        func_start = m_ff.start()
-        depth = 0
-        i = text.index("{", func_start)
-        end_idx = -1
-        while i < len(text):
-            c = text[i]
-            if c == "{":
-                depth += 1
-            elif c == "}":
-                depth -= 1
-                if depth == 0:
-                    end_idx = i + 1
-                    break
-            i += 1
-        if end_idx < 0:
-            log("Note: could not bracket $1() function body; skipping fork fix")
-        else:
-            # Build a replacement that keeps the real forkConversation call
-            # but adds a .then() guard for the silent-empty-result case and
-            # appends Q(X) fallback to the .catch() so errors also recover.
-            new_func = (
-                f"function {fn}(){{"
-                f"if({m_ff.group('x')}){{{Qn}({Xn});return}}"
-                f"if(!{Nn}){{{Zn}.showNotification(\"Failed to fork conversation: Unknown session id\",\"error\");return}}"
-                f"{ctxn}.forkConversation({Nn},{Xn},{In})"
-                f".then(function(r){{if(!r||r===\"\"){Qn}({Xn})}})"
-                f".catch(function(r){{{Zn}.showNotification(\"Fork failed, creating new session.\",\"error\");{Qn}({Xn})}})"
-                f"}}"
-            )
-            text = text[:func_start] + new_func + text[end_idx:]
-            log("Fork $1() patched — forkConversation with empty-result guard + error fallback")
-
-    # ──────────────────────────────────────────────────────────────────────
     # 18. "Show more" always visible — the native expandable text only renders
     #     its "Show more" button while the row is hovered (the `&&z&&` gate).
     #     Since we hide the dark truncation-fade gradient (CSS), a collapsed
@@ -2682,14 +2595,6 @@ def verify_extension_dir(extension_dir: Path) -> None:
                                   and "html:not(.ccPatchStickyPreview) [class*=\"stickyHeader\"]" in css),
         "sticky floating bar": ("ccPatchStickySweep" in js and "data-cc-stuck" in js
                                 and "[data-cc-stuck=\"1\"] .ccPatchForkRow{display:none" in css),
-        # Block 22 — rewind confirm-dialog gate removed: the (B||J) file-changes
-        # gate should no longer gate the Rewind button. Verify the old pattern
-        # .canRewind&&!<id>&&(...) is gone.
-        "rewind gate removed": re.search(r'\.canRewind&&!\w+&&\(', js) is None,
-        # Block 23 — fork $1() patched with empty-result guard + error fallback.
-        # The .then() guard catches the silent-empty-string return from the
-        # context wrapper when the connection is unavailable.
-        "fork fallback guard": '.then(function(r){if(!r||r==="")' in js,
     }
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
