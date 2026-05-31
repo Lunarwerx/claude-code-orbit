@@ -52,7 +52,7 @@
     },
     {
       "version": "1.2.58",
-      "build": 97,
+      "build": 98,
       "claude": "2.1.158",
       "file": "patch_claude-1.2.58.py",
       "date": "2026-05-31"
