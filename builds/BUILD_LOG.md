@@ -26,3 +26,5 @@ Every `python build.py` appends one line here. Highest build number = newest bui
 - **Build #98** — `claude-code-orbit-build-98.vsix` — pkg 1.1.8, stable Claude 2.1.158, patcher 1.2.58 — 2026-05-31 14:28:05
 - **Build #99** — `claude-code-orbit-build-99.vsix` — pkg 1.1.8, stable Claude 2.1.158, patcher 1.2.59 — 2026-05-31 14:59:26
 - **Build #100** — `claude-code-orbit-build-100.vsix` — pkg 1.1.8, stable Claude 2.1.158, patcher 1.2.60 — 2026-05-31 15:09:06
+- **Build #101** — `claude-code-orbit-build-101.vsix` — pkg 1.1.8, stable Claude 2.1.158, patcher 1.2.61 — 2026-05-31 15:43:53
+- **Build #102** — `claude-code-orbit-build-102.vsix` — pkg 1.1.8, stable Claude 2.1.159, patcher 1.2.61 — 2026-05-31 15:50:10
