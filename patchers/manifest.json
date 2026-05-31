@@ -63,6 +63,13 @@
       "claude": "2.1.158",
       "file": "patch_claude-1.2.59.py",
       "date": "2026-05-31"
+    },
+    {
+      "version": "1.2.60",
+      "build": 100,
+      "claude": "2.1.158",
+      "file": "patch_claude-1.2.60.py",
+      "date": "2026-05-31"
     }
   ]
 }
