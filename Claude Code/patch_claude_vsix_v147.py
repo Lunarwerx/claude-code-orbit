@@ -274,7 +274,29 @@ function ccPatchSyncWsTheme(sess,ctx){var cwd=``;try{cwd=(sess&&sess.defaultCwd&
 function ccPatchApplyTheme(key){var t=ccPatchThemes[key]||ccPatchThemes.default;var el=ccPatchThemeStyleEl();var out=``;if(t.vars){var body=``;for(var k in t.vars){if(Object.prototype.hasOwnProperty.call(t.vars,k))body+=k+`:`+t.vars[k]+`!important;`}out=`:root{`+body+`}`}if(t.css)out+=t.css;el.textContent=out;globalThis.ccPatchThemeKey=ccPatchThemes[key]?key:`default`;try{localStorage.setItem(`ccPatchTheme:`+(globalThis.ccPatchWsKey||``),globalThis.ccPatchThemeKey)}catch(e){}var g=document.querySelector(`.ccPatchThemeGrid`);if(g)Array.from(g.children).forEach(function(c){c.classList.toggle(`ccPatchThemeCardActive`,c.dataset.theme===globalThis.ccPatchThemeKey)})}
 function ccPatchThemeModal(){try{ccPatchCloseSettingsMenu()}catch(e){}var ex=document.querySelector(`.ccPatchThemeOverlay`);if(ex){ex.remove();return}var cur=globalThis.ccPatchThemeKey||`default`;var overlay=document.createElement(`div`);overlay.className=`ccPatchConfirmOverlay ccPatchThemeOverlay`;var box=document.createElement(`div`);box.className=`ccPatchConfirmBox ccPatchThemeBox`;var title=document.createElement(`div`);title.className=`ccPatchConfirmTitle`;title.textContent=`Color theme`;var desc=document.createElement(`div`);desc.className=`ccPatchConfirmDesc`;desc.textContent=`Recolor the whole interface. Applies instantly and is remembered.`;var grid=document.createElement(`div`);grid.className=`ccPatchThemeGrid`;[`default`,`ai`,`glowdefault`,`black`,`bright`,`neon`,`midnight`,`crimson`,`magenta`,`forest`].forEach(function(key){var t=ccPatchThemes[key];if(!t)return;var card=document.createElement(`button`);card.type=`button`;card.className=key===cur?`ccPatchThemeCard ccPatchThemeCardActive`:`ccPatchThemeCard`;card.dataset.theme=key;var sw=document.createElement(`span`);sw.className=`ccPatchThemeSw`;sw.style.background=t.sw[0];var dot=document.createElement(`span`);dot.className=`ccPatchThemeDot`;dot.style.background=t.sw[1];sw.appendChild(dot);var nm=document.createElement(`span`);nm.className=`ccPatchThemeName`;nm.textContent=t.name;card.appendChild(sw);card.appendChild(nm);card.onclick=function(){ccPatchApplyTheme(key)};grid.appendChild(card)});var actions=document.createElement(`div`);actions.className=`ccPatchConfirmActions`;var done=document.createElement(`button`);done.className=`ccPatchConfirmConfirmBtn`;done.type=`button`;done.textContent=`Done`;done.onclick=function(){overlay.remove()};actions.appendChild(done);box.appendChild(title);box.appendChild(desc);box.appendChild(grid);box.appendChild(actions);overlay.appendChild(box);overlay.onclick=function(e){if(e.target===overlay)overlay.remove()};document.addEventListener(`keydown`,function ccPTK(e){if(e.key===`Escape`){overlay.remove();document.removeEventListener(`keydown`,ccPTK)}});document.body.appendChild(overlay)}
 try{ccPatchApplyTheme(ccPatchWsTheme())}catch(e){}
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle});
+// ── Account usage meter ─────────────────────────────────────────────────────
+// Why this exists: people love seeing their limits at a glance — a "battery for
+// your account" — instead of finding out they're throttled mid-turn. Claude's
+// connection store (session.connection.value) already carries a reactive
+// `utilization` signal the host pushes via `usage_update`:
+//   {fiveHour,sevenDay,sevenDaySonnet?} each {utilization:0-100, resetsAt:<date>}.
+// We don't invent or fetch anything new — we surface that ONE source of truth as
+// rings in a composer popover, and refresh it on open via requestUsageUpdate().
+// The footer button's icon reads the signal during render, so it stays live with
+// zero extra machinery (the whole webview is signals-based).
+function ccPatchUsageConn(){try{var s=globalThis.ccPatchComposerSession;var c=s&&s.connection&&s.connection.value;return c||null}catch(e){return null}}
+function ccPatchUsageData(){try{var c=ccPatchUsageConn();return c&&c.utilization?(c.utilization.value||null):null}catch(e){return null}}
+function ccPatchUsageRefresh(){try{var c=ccPatchUsageConn();if(c&&typeof c.requestUsageUpdate===`function`)c.requestUsageUpdate()}catch(e){}}
+function ccPatchUsageColor(p){if(p==null)return`var(--app-secondary-foreground,#888)`;if(p>=90)return`#e5484d`;if(p>=70)return`#f5a524`;if(p>=45)return`#e2b714`;return`#3fb950`}
+function ccPatchUsageResetText(r){try{if(r==null)return``;var t=typeof r===`number`?(r<1e12?r*1000:r):new Date(r).getTime();if(!t||isNaN(t))return``;var d=t-Date.now();if(d<=0)return`resets now`;var m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);if(m<60)return`resets in `+m+`m`;if(h<24)return`resets in `+h+`h`;return`resets in `+dy+`d`}catch(e){return``}}
+function ccPatchUsageEsc(s){return String(s==null?``:s).replace(/[&<>"]/g,function(c){return({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`})[c]})}
+function ccPatchUsageRing(pct,size){var sz=size||66,sw=Math.max(4,Math.round(sz*0.11)),r=(sz-sw)/2,cx=sz/2,C=2*Math.PI*r;var has=typeof pct===`number`;var p=has?Math.max(0,Math.min(100,pct)):0;var off=C*(1-p/100);var col=ccPatchUsageColor(has?pct:null);var label=has?Math.round(p)+`%`:`—`;return `<svg class="ccPatchUsageSvg" width="`+sz+`" height="`+sz+`" viewBox="0 0 `+sz+` `+sz+`">`+`<circle class="ccPatchUsageTrack" cx="`+cx+`" cy="`+cx+`" r="`+r+`" fill="none" stroke-width="`+sw+`"/>`+`<circle class="ccPatchUsageArc" cx="`+cx+`" cy="`+cx+`" r="`+r+`" fill="none" stroke="`+col+`" stroke-width="`+sw+`" stroke-linecap="round" stroke-dasharray="`+C.toFixed(2)+`" stroke-dashoffset="`+C.toFixed(2)+`" data-off="`+off.toFixed(2)+`" transform="rotate(-90 `+cx+` `+cx+`)"/>`+`<text class="ccPatchUsageNum" x="`+cx+`" y="`+cx+`" text-anchor="middle" dominant-baseline="central" fill="`+col+`">`+label+`</text>`+`</svg>`}
+function ccPatchUsageBtnIcon(){var u=null;try{u=ccPatchUsageData()}catch(e){}var p=null;if(u){var arr=[u.fiveHour&&u.fiveHour.utilization,u.sevenDay&&u.sevenDay.utilization,u.sevenDaySonnet&&u.sevenDaySonnet.utilization].filter(function(x){return typeof x===`number`});if(arr.length)p=Math.max.apply(null,arr)}var sz=15,sw=2.4,r=(sz-sw)/2-0.3,cx=sz/2,C=2*Math.PI*r;var has=typeof p===`number`;var pc=has?Math.max(0,Math.min(100,p)):0;var off=C*(1-pc/100);var col=has?ccPatchUsageColor(p):`currentColor`;return `<svg width="`+sz+`" height="`+sz+`" viewBox="0 0 `+sz+` `+sz+`" fill="none" aria-hidden="true">`+`<circle cx="`+cx+`" cy="`+cx+`" r="`+r.toFixed(2)+`" stroke="currentColor" stroke-opacity="0.28" stroke-width="`+sw+`"/>`+(has?`<circle cx="`+cx+`" cy="`+cx+`" r="`+r.toFixed(2)+`" stroke="`+col+`" stroke-width="`+sw+`" stroke-linecap="round" stroke-dasharray="`+C.toFixed(2)+`" stroke-dashoffset="`+off.toFixed(2)+`" transform="rotate(-90 `+cx+` `+cx+`)"/>`:``)+`</svg>`}
+function ccPatchUsageWindows(u){var out=[];if(!u)return out;if(u.fiveHour)out.push({key:`fiveHour`,label:`Session`,sub:`5 hour`,d:u.fiveHour});if(u.sevenDay)out.push({key:`sevenDay`,label:`Weekly`,sub:`7 day`,d:u.sevenDay});if(u.sevenDaySonnet)out.push({key:`sevenDaySonnet`,label:`Weekly`,sub:`Sonnet`,d:u.sevenDaySonnet});return out}
+function ccPatchUsageRenderBody(menu){if(!menu)return;var body=menu.querySelector(`.ccPatchUsageBody`);if(!body)return;var u=ccPatchUsageData();if(u&&u.unavailableReason){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+ccPatchUsageEsc(u.unavailableReason)+`</div>`;return}var wins=ccPatchUsageWindows(u);if(!wins.length){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+((menu._ccPatchTries||0)>4?`Usage data unavailable for this account.`:`Loading usage…`)+`</div>`;return}var sig=wins.map(function(w){return w.key}).join(`,`);if(menu._ccPatchSig!==sig){menu._ccPatchSig=sig;var html=`<div class="ccPatchUsageRings">`;wins.forEach(function(w){html+=`<div class="ccPatchUsageCell" data-key="`+w.key+`"><div class="ccPatchUsageRingWrap">`+ccPatchUsageRing(w.d.utilization,66)+`</div><div class="ccPatchUsageLabel">`+ccPatchUsageEsc(w.label)+`</div><div class="ccPatchUsageSub">`+ccPatchUsageEsc(w.sub)+`</div><div class="ccPatchUsageReset">`+ccPatchUsageEsc(ccPatchUsageResetText(w.d.resetsAt))+`</div></div>`});html+=`</div>`;body.innerHTML=html;requestAnimationFrame(function(){var arcs=body.querySelectorAll(`.ccPatchUsageArc`);Array.prototype.forEach.call(arcs,function(a){a.style.strokeDashoffset=a.getAttribute(`data-off`)})})}else{wins.forEach(function(w){var cell=body.querySelector(`.ccPatchUsageCell[data-key="`+w.key+`"]`);if(!cell)return;var has=typeof w.d.utilization===`number`;var p=has?Math.max(0,Math.min(100,w.d.utilization)):0;var col=ccPatchUsageColor(has?w.d.utilization:null);var arc=cell.querySelector(`.ccPatchUsageArc`);if(arc){var C=parseFloat(arc.getAttribute(`stroke-dasharray`))||0;arc.style.strokeDashoffset=(C*(1-p/100)).toFixed(2);arc.setAttribute(`stroke`,col)}var num=cell.querySelector(`.ccPatchUsageNum`);if(num){num.textContent=has?Math.round(p)+`%`:`—`;num.setAttribute(`fill`,col)}var rs=cell.querySelector(`.ccPatchUsageReset`);if(rs)rs.textContent=ccPatchUsageResetText(w.d.resetsAt)})}}
+function ccPatchCloseUsageMenu(){var m=document.querySelector(`.ccPatchUsageMenu`);if(m){if(m._ccPatchPoll){clearInterval(m._ccPatchPoll);m._ccPatchPoll=0}if(m._ccPatchOutsideHandler)document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler);if(m._ccPatchKey)document.removeEventListener(`keydown`,m._ccPatchKey);m.remove()}var b=document.querySelector(`.ccPatchUsageBtn.ccPatchUsageBtnOpen`);if(b)b.classList.remove(`ccPatchUsageBtnOpen`)}
+function ccPatchShowUsageMenu(ev){if(document.querySelector(`.ccPatchUsageMenu`)){ccPatchCloseUsageMenu();return}var btn=ev&&ev.currentTarget;if(!btn)return;try{ccPatchCloseSendMenu()}catch(e){}try{ccPatchCloseSettingsMenu()}catch(e){}btn.classList.add(`ccPatchUsageBtnOpen`);ccPatchUsageRefresh();var menu=document.createElement(`div`);menu.className=`ccPatchUsageMenu`;menu._ccPatchTries=0;menu.innerHTML=`<div class="ccPatchUsageHead"><span class="ccPatchUsageTitle">Usage</span><button type="button" class="ccPatchUsageReload" title="Refresh" aria-label="Refresh"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.6-3.7"/><polyline points="12,1.4 12,4 9.4,4"/></svg></button></div><div class="ccPatchUsageBody"></div>`;menu.style.left=`-9999px`;menu.style.top=`0px`;document.body.appendChild(menu);ccPatchUsageRenderBody(menu);var r=btn.getBoundingClientRect(),mw=menu.offsetWidth||240,mh=menu.offsetHeight||170;var left=Math.round(r.left+r.width/2-mw/2);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;var top=Math.round(r.top-mh-8);if(top<8)top=Math.round(r.bottom+8);menu.style.left=left+`px`;menu.style.top=top+`px`;var rl=menu.querySelector(`.ccPatchUsageReload`);if(rl)rl.onclick=function(e){e.preventDefault();e.stopPropagation();ccPatchUsageRefresh();rl.classList.add(`ccPatchUsageSpin`);setTimeout(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;ccPatchUsageRenderBody(menu);rl.classList.remove(`ccPatchUsageSpin`)},360)};menu._ccPatchPoll=setInterval(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;if(menu._ccPatchTries===3)ccPatchUsageRefresh();ccPatchUsageRenderBody(menu)},1400);setTimeout(function(){var h=function(g){if(!menu.contains(g.target)&&!btn.contains(g.target))ccPatchCloseUsageMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseUsageMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
@@ -1805,6 +1827,33 @@ def patch_webview_js(webview_js: Path) -> bool:
     text = text[: m_sb.start()] + new_btn + text[m_sb.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
+    # 19c. Usage meter button — sits in the composer footer immediately after
+    #      the "Show command menu (/)" button. Clicking it opens a popover with
+    #      one ring per limit window (5hr session / weekly), driven by the
+    #      connection's reactive `utilization` signal (see ccPatch usage helpers).
+    #      The icon itself reads that signal during render, so it stays live.
+    #      Anchored on the stable native title string so it survives minifier
+    #      churn; we capture the React alias and insert a sibling after it.
+    # ──────────────────────────────────────────────────────────────────────
+    menubtn_re = re.compile(
+        rf'(?P<react>{JS_ID})\.default\.createElement\("button",\{{type:"button",'
+        rf'className:(?P<mod>{JS_ID})\.menuButton,title:"Show command menu \(/\)",'
+        rf'onClick:(?P<oc>{JS_ID})\}},'
+        rf'(?P=react)\.default\.createElement\((?P<icon>{JS_ID}),null\)\)'
+    )
+    m_mb = menubtn_re.search(text)
+    if m_mb is None:
+        raise RuntimeError("Lost composer command-menu button anchor (usage button)")
+    MRE = m_mb.group("react")
+    usage_btn = (
+        f',{MRE}.default.createElement("button",{{type:"button",'
+        f'className:"ccPatchUsageBtn",title:"Usage",'
+        f'onClick:function(ccE){{try{{ccPatchShowUsageMenu(ccE)}}catch(ccErr){{}}}},'
+        f'dangerouslySetInnerHTML:{{__html:ccPatchUsageBtnIcon()}}}})'
+    )
+    text = text[: m_mb.end()] + usage_btn + text[m_mb.end() :]
+
+    # ──────────────────────────────────────────────────────────────────────
     # 20. Inline queued-message bubbles in the transcript (Codex-style).
     #     Queued messages are held client-side (the harness has no queue) and
     #     rendered as user-style bubbles at the bottom of the message list,
@@ -1998,6 +2047,34 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchSendCheck:hover{opacity:1;border-color:var(--app-primary-foreground)}"
         ".ccPatchSendCheckOn{background:var(--app-claude-clay-button-orange,#c6613f);"
         "border-color:var(--app-claude-clay-button-orange,#c6613f);opacity:1}"
+        # ── Account usage meter: a ghost button beside the slash-command button,
+        #    and a popover with one ring per limit window (5hr / weekly). ──
+        ".ccPatchUsageBtn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+        "width:26px;height:26px;padding:0;border:none;border-radius:5px;background:transparent;"
+        "color:var(--app-secondary-foreground);flex:0 0 auto}"
+        ".ccPatchUsageBtn:hover,.ccPatchUsageBtn.ccPatchUsageBtnOpen{"
+        "background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
+        ".ccPatchUsageBtn svg{display:block}"
+        ".ccPatchUsageMenu{position:fixed;z-index:100000;padding:13px 15px 14px;min-width:200px;"
+        "background:var(--app-primary-background);border:1px solid var(--app-primary-border-color);"
+        "border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.45);color:var(--app-primary-foreground)}"
+        ".ccPatchUsageHead{display:flex;align-items:center;justify-content:space-between;margin:0 0 11px}"
+        ".ccPatchUsageTitle{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.6}"
+        ".ccPatchUsageReload{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;"
+        "border:none;border-radius:5px;background:transparent;color:var(--app-secondary-foreground);cursor:pointer;opacity:.75}"
+        ".ccPatchUsageReload:hover{background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground);opacity:1}"
+        ".ccPatchUsageReload.ccPatchUsageSpin svg{animation:ccPatchUsageSpin .6s linear}"
+        "@keyframes ccPatchUsageSpin{to{transform:rotate(360deg)}}"
+        ".ccPatchUsageRings{display:flex;gap:20px;align-items:flex-start;justify-content:center}"
+        ".ccPatchUsageCell{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:66px}"
+        ".ccPatchUsageRingWrap{line-height:0}"
+        ".ccPatchUsageTrack{stroke:var(--app-primary-border-color,#444);opacity:.5}"
+        ".ccPatchUsageArc{transition:stroke-dashoffset .85s cubic-bezier(.34,.1,.2,1)}"
+        ".ccPatchUsageNum{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}"
+        ".ccPatchUsageLabel{margin-top:8px;font-size:12px;font-weight:600}"
+        ".ccPatchUsageSub{font-size:10.5px;opacity:.5;letter-spacing:.02em}"
+        ".ccPatchUsageReset{margin-top:3px;font-size:10.5px;opacity:.62;white-space:nowrap}"
+        ".ccPatchUsageMsg{font-size:12px;opacity:.7;padding:10px 4px;text-align:center;min-width:160px}"
         # inline queued-message bubbles in the transcript (Codex-style)
         ".ccPatchQueueWrap{display:flex;flex-direction:column;gap:2px;padding:6px 0 2px}"
         ".ccPatchQueueHeader{font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.5;"
@@ -2635,6 +2712,11 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "send menu": ("ccPatchSendMenu" in js and "ccPatchSendChevron" in js
                       and "ccPatchComposerSession=" in js
                       and ".ccPatchSendMenu" in css and ".ccPatchSendArrow" in css),
+        "usage meter": ("ccPatchShowUsageMenu" in js
+                        and 'className:"ccPatchUsageBtn"' in js
+                        and "dangerouslySetInnerHTML:{__html:ccPatchUsageBtnIcon()}" in js
+                        and "requestUsageUpdate" in js
+                        and ".ccPatchUsageMenu" in css and ".ccPatchUsageArc" in css),
         "queue display": ("ccPatchRenderQueue(" in js and "ccPatchQueueListeners" in js
                           and "ccPatchComposerAction(" in js
                           and ".ccPatchQueueWrap" in css and ".ccPatchQueuedMsg" in css
