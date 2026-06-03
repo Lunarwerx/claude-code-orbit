@@ -110,6 +110,14 @@
       "file": "patch_claude-1.2.65.py",
       "date": "2026-06-03",
       "notes": "preserve native binary exec bit on re-zip (fixes macOS/Linux 'native binary exists but failed to launch'); guard refuses to ship a non-executable binary"
+    },
+    {
+      "version": "1.2.66",
+      "build": 106,
+      "claude": "2.1.159",
+      "file": "patch_claude-1.2.66.py",
+      "date": "2026-06-03",
+      "notes": "red status dot for hard usage/rate-limit stops (rateLimitWarning); verified against Claude Code 2.1.161"
     }
   ]
 }
