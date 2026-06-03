@@ -22,12 +22,14 @@ and will not satisfy `Check experimental updates`.
 - Wrapper/sidebar/updater fix: bump `Claude Code Orbit/package.json`, run
   `python build.py`, commit `wrapper_version.txt` and
   `latest/claude-code-orbit.vsix`, and push to `orbit main`.
-- Stable promotion: update `stable/` only after Jacob explicitly approves a
-  known-good production pair, then build and push the wrapper update path.
+- Certified Claude pin: when the patcher has been verified against a new Claude
+  Code release, update `certified_claude.txt` so the next archived entry records
+  it. There is no separate "stable" channel to promote.
 
-The intended user flow is: click `Check experimental updates`, see an available
-patcher or wrapper update, click the update button, then reload. Manual VSIX
-reinstall should be the exception, not the normal release path.
+The intended user flow is: click `Check for updates`, see an available patcher or
+wrapper update, click the update button, then reload. If a release misbehaves,
+`Previous versions` rolls back to an earlier registry entry. Manual VSIX reinstall
+should be the exception, not the normal release path.
 
 See `RELEASE_RULES.md` for the full operating rules.
 
@@ -45,8 +47,9 @@ Claude Code/                 ← The patcher script (Python)
 
 build.py                     ← Build script: packages Orbit + patcher into a VSIX
 builds/                      ← Output VSIX files (claude-code-orbit-N.vsix)
+patchers/                    ← Rollback registry: manifest.json + every archived patcher
 patcher_version.txt          ← OTA patcher version pin — lives on GitHub
-stable_version.txt           ← OTA Claude Code version pin — lives on GitHub
+certified_claude.txt         ← Claude Code version the current patcher is certified against
 ```
 
 ## The OTA Update Architecture
@@ -67,8 +70,8 @@ stable_version.txt           ← OTA Claude Code version pin — lives on GitHub
 │  Lunarwerx/claude-code-orbit                            │
 │                                                         │
 │  ├── Claude Code/patch_claude_vsix_v147.py  ← patcher   │
-│  ├── stable_version.txt    ← Claude Code version pin    │
-│  └── patcher_version.txt   ← PATCHER version pin (NEW)  │
+│  ├── patchers/manifest.json ← rollback registry         │
+│  └── patcher_version.txt   ← PATCHER version pin        │
 └──────────────┬──────────────────────────────────────────┘
                │ raw.githubusercontent.com
                ▼
@@ -113,23 +116,26 @@ stable_version.txt           ← OTA Claude Code version pin — lives on GitHub
 ### You do NOT need to publish a new Orbit VSIX. Just:
 
 1. **Edit the patcher** → `Claude Code/patch_claude_vsix_v147.py` on GitHub
-2. **Bump the patcher version** → Edit `patcher_version.txt` on GitHub (e.g., `1.1.4` → `1.1.5`)
-3. **Do not touch stable** unless Jacob explicitly approves a production stable promotion.
-4. **Done.** Within 4 hours, every user gets a notification: *"Patcher v1.1.5 is available. Update now?"*
+2. **Bump the patcher version** → Edit `patcher_version.txt` on GitHub (e.g., `1.2.65` → `1.2.66`)
+3. **Archive it** → run `python tools/archive_patcher.py` so the new version (and its `certified_claude.txt` pin) lands in the rollback registry.
+4. **Done.** Within 4 hours, every user gets a notification: *"Patcher v1.2.66 is available. Update now?"*
 
 ### The Release Checklist (every time you ship a patcher update)
 
 ```
 □ 1. Test the patcher against the LATEST Claude Code from the marketplace
 □ 2. Fix any breakage caused by Claude Code's webview changes
-□ 3. Bump patcher_version.txt on GitHub to the new version
-□ 4. Push patcher_version.txt + the updated patcher to GitHub
-□ 5. Confirm Orbit's Check experimental updates path sees the new patcher
+□ 3. Update certified_claude.txt if you verified against a newer Claude Code
+□ 4. Bump patcher_version.txt on GitHub to the new version
+□ 5. Archive: python tools/archive_patcher.py (registry + rollback)
+□ 6. Push patcher_version.txt + patcher + patchers/ to GitHub
+□ 7. Confirm Orbit's "Check for updates" path sees the new patcher
 ```
 
-**Why not update `stable_version.txt` every time?** The "Use stable" button in Orbit exists so users can fall back to a *known-good* Claude Code + patcher combination. Experimental is the fast-moving path. Stable is the recovery path. Only promote stable after the exact patcher and Claude Code version have been tested together and Jacob explicitly approves the production promotion.
-
-**What if the pinned stable version disappears from the marketplace?** The patcher now handles this gracefully: if the exact pinned version isn't found, it logs a warning and falls back to the latest available version. Users still get a working install — just not the exact pinned version.
+**If the newest patcher breaks for someone:** they click **Previous versions** and
+install an earlier registry entry — each pinned (via `--version`) to the Claude
+Code version it was certified against, so the rollback is always a known-good
+(patcher, Claude) pair. There is no separate channel to maintain.
 
 ### When you DO need to publish a new Orbit VSIX:
 
@@ -137,12 +143,14 @@ Only when `extension.js` or `package.json` changes (new features in the wrapper 
 ```bash
 python build.py
 ```
-This auto-increments the build number, bumps `patch_version.txt` (bundled fallback) to match `package.json` version, and outputs to `builds/`.
+This auto-increments the build number, archives the current patcher into the
+registry, bundles the registry (newest entry = offline fallback), writes
+`patch_version.txt`, and outputs to `builds/`.
 
 ### Important: keep these in sync when publishing a new VSIX:
 - `package.json` → `"version"` field
 - `patcher_version.txt` on GitHub → same version
-- `stable/` → only changes after explicit stable promotion approval
+- `patchers/manifest.json` → archived by `build.py` / `archive_patcher.py`
 - The Marketplace upload will carry the new `patch_version.txt` (bundled fallback)
 
 ## globalState Keys
@@ -163,8 +171,9 @@ The extension uses VS Code's `globalState` for cross-session persistence:
 | `checkForPatcherUpdate(context, provider, statusBarItem)` | Core poll cycle: fetch → compare → notify → update status bar. |
 | `startBackgroundPolling(context, provider, statusBarItem)` | Sets up the 30s-delayed initial check + 4-hour interval. |
 | `detectState(context)` | Synchronous state detection for the sidebar. Uses remote (globalState) as primary, bundled as fallback. |
-| `fetchOtaPatcher(context, log)` | Fetches the full patcher `.py` file from GitHub on every Enable click. |
-| `fetchOtaStableVersion(log)` | Fetches `stable_version.txt` (Claude Code version pin). |
+| `fetchOtaPatcher(context, log)` | Fetches the full patcher `.py` file from GitHub on every Install click. |
+| `bundledFallbackPatcher(context)` / `newestBundledEntry(context)` | Resolve the offline fallback patcher (newest bundled registry entry) and its certified-Claude tag. |
+| `enablePrevious(version)` | Installs an archived patcher pinned to its certified Claude version (the "Previous versions" rollback). |
 | `SidebarProvider.triggerEnable()` | Entry point for the notification's "Update" button. Delegates to `onMessage({ type: "action", action: "enable" })`. |
 
 ## Notification Dedup Logic
@@ -190,8 +199,7 @@ This means:
 **DO NOT bump any version number without Jacob's explicit permission.** This includes:
 - `package.json` → `"version"` field
 - `patcher_version.txt` on GitHub
-- `stable_version.txt` on GitHub
-- `STABLE_CLAUDE_VERSION` constant in `extension.js`
+- `certified_claude.txt` (the Claude version the patcher is certified against)
 - Any other version pin anywhere in the codebase
 
 Rebuilding the VSIX for local testing does **not** require a version bump — `build.py` auto-increments the build number in the filename (`claude-code-orbit-N.vsix`) without touching `package.json`.
@@ -211,8 +219,7 @@ Enable dev mode in VS Code settings (`Ctrl+,` → search "Orbit dev") or add to 
 **What dev mode does:**
 | Behavior | Normal | Dev Mode |
 |----------|--------|----------|
-| Patcher source | GitHub OTA (primary), bundled (fallback) | **Bundled only** (skips GitHub) |
-| Stable version source | GitHub OTA (primary), hardcoded (fallback) | **Hardcoded only** (skips GitHub) |
+| Patcher source | GitHub OTA (primary), bundled registry (fallback) | **Bundled only** (skips GitHub) |
 | Poll interval | 4 hours | **60 seconds** |
 | Startup delay | 30 seconds | **5 seconds** |
 | Status bar | "✓ Orbit" or "⬇ Orbit Update" | **"🧪 Orbit Dev"** |

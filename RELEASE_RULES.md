@@ -3,37 +3,32 @@
 These are production notes for future agents. Follow them unless Jacob
 explicitly says otherwise.
 
-## Version numbers — there are THREE, and they are INDEPENDENT
+## Version numbers — there are TWO, plus a certified tag
 
-Do not assume any two of these move together. They do not.
+Do not assume any two move together.
 
-1. **Patcher version** — files: root `patcher_version.txt` and
-   `stable/patcher_version.txt`. Series: **1.2.x** (e.g. 1.2.20, 1.2.21).
-   What it versions: the patch SCRIPT (`Claude Code/patch_claude_vsix_v147.py`)
-   that rewrites Claude Code's webview. How it ships: over-the-air from the
-   GitHub `orbit` repo — the user gets it by clicking **"Check experimental
-   updates."** This is the "GitHub experimental version." It is the number meant
-   when we say things like **"promote 1.2.20 to stable."** It is INDEPENDENT of
-   package.json and is fine to bump for every patcher fix.
+1. **Patcher version** — file: `patcher_version.txt`. Series: **1.2.x** (e.g.
+   1.2.65, 1.2.66). What it versions: the patch SCRIPT
+   (`Claude Code/patch_claude_vsix_v147.py`) that rewrites Claude Code's webview.
+   How it ships: over-the-air from the GitHub `orbit` repo — the user gets it by
+   clicking **"Check for updates."** Independent of package.json; fine to bump for
+   every patcher fix. Each bump is archived into the rollback registry
+   (`patchers/`) by `tools/archive_patcher.py`.
 
 2. **Wrapper / VSIX version** — files: `Claude Code Orbit/package.json`
    (`"version"`) → `wrapper_version.txt` (derived by `build.py`).
-   Series: **1.1.x** (e.g. 1.1.5). What it versions: the Orbit extension itself
+   Series: **1.1.x** (e.g. 1.1.9). What it versions: the Orbit extension itself
    (the VSIX). This MUST track the VS Code Marketplace line. Bump it ONLY at a
    push/release, and ONLY when Jacob says so.
 
-3. **Stable Claude pin** — files: `stable_version.txt` /
-   `stable/stable_version.txt`. Value: **2.1.152**. What it is: Anthropic's
-   Claude Code version that the stable patcher has been tested against. This is
-   NOT an Orbit version number; it changes only on an explicit stable promotion
-   to a new Claude Code release.
+**Certified Claude tag** — file: `certified_claude.txt`. Anthropic's Claude Code
+version the current patcher has been verified against. NOT an Orbit version
+number. `archive_patcher.py` stamps it onto each registry entry so a rollback
+re-installs that patcher against a Claude version it's known to work with. Update
+it when you verify the patcher against a newer Claude Code release.
 
-**"Promote <patcher version> to stable"** means: copy the experimental patcher
-(`Claude Code/patch_claude_vsix_v147.py` + root `patcher_version.txt`) into
-`stable/patch_claude.py` + `stable/patcher_version.txt`. That moves only the
-patcher channel into the bundled production fallback. It does NOT touch
-`package.json`. (Shipping that promoted stable to users in their VSIX is a
-separate step that DOES bump package.json — see "Stable Promotion Checklist".)
+There is **no "stable" channel.** The newest patcher is what everyone runs; if it
+breaks, **Previous versions** rolls back to an earlier registry entry.
 
 ## Building — there is exactly ONE way
 
@@ -51,15 +46,16 @@ build`, no manual zipping, no second script). Every run:
   that number is the proof a build actually happened.
 - appends a line to `builds/BUILD_LOG.md` (tracked in git, so the history is
   visible on GitHub). The numbered `build-*.vsix` files are also tracked.
-- always bundles the current `stable/` files and copies the result to
+- archives the current patcher into the rollback registry (`patchers/`), bundles
+  that registry (newest entry = offline fallback), and copies the result to
   `latest/claude-code-orbit.vsix`.
 
 A plain build NEVER changes a version number:
 
 - It does NOT touch `Claude Code Orbit/package.json`. That version bumps ONLY at
   push/release time, and ONLY when Jacob says so.
-- It does NOT touch `stable_version.txt` or `stable/`. Stable moves ONLY on an
-  explicit stable promotion (see "Stable Promotion Checklist").
+- It does NOT touch `patcher_version.txt` or `certified_claude.txt`. It DOES write
+  `patchers/` — saving the current version so users can roll back to it.
 
 So: "build" = make the next numbered VSIX. "push" = bump package.json + ship.
 They are separate actions.
@@ -172,51 +168,30 @@ During that window, Orbit's "Check experimental updates" will correctly report
    to expire (typically 2–5 minutes). Do not just guess — confirm you actually
    checked the URL and saw it was stale.
 4. If the CDN returns the new version: the update is live. Tell the user they
-   can click "Check experimental updates" now.
+   can click "Check for updates" now.
 
 Never claim an update is available until the raw CDN confirms it is serving the
 new version marker.
 
-## Stable Is Different
+## Recovery is "Previous versions", not a stable channel
 
-Stable is the production fallback shipped inside the Orbit VSIX — a HARDCODED,
-specific Claude Code version that's been verified to work, kept as the recovery
-path if experimental breaks for someone.
+There is no separately-promoted stable build. The newest patcher is what everyone
+installs (always patching the newest Claude Code). If a release breaks for
+someone, the recovery path is **Previous versions**: install an earlier entry
+from the rollback registry (`patchers/manifest.json`).
 
-- Stable lives in `stable/`, bundled into the wrapper VSIX by `build.py`.
-- Stable is a FIXED PIN, not auto-latest. Experimental dynamically pulls the
-  newest Claude Code on every run; stable stays frozen at whatever we last
-  pinned until a deliberate promotion.
-- Stable does NOT auto-update — not when experimental changes, and not merely
-  because Anthropic shipped a new Claude Code. It moves only on a deliberate
-  promotion.
-- **When we DO promote stable, we pin it to Anthropic's CURRENT NEWEST Claude
-  Code version** (after verifying the patcher patches that version cleanly).
-  Pinning stable to an *older* version is wrong — the whole reason to promote is
-  "make stable work with the newest one." So a promotion = verify patcher vs the
-  newest version, set `stable_version.txt` + `stable/stable_version.txt` to that
-  newest version, and copy the verified patcher into `stable/`.
-- The only reasons to touch stable: (1) promote it forward to the current newest
-  Claude Code once the patcher is verified against it, or (2) Jacob explicitly
-  asks. Otherwise leave it frozen.
+- Every build/release archives the current patcher into `patchers/` via
+  `tools/archive_patcher.py`. The newest entry doubles as the offline fallback
+  bundled in the VSIX; the rest are the rollback ladder.
+- Each registry entry records the Claude version the patcher was **certified
+  against** (`claude` field, sourced from `certified_claude.txt`). A rollback
+  re-installs that patcher pinned (via `--version`) to its certified Claude, so
+  every previous-version install is a known-good (patcher, Claude) pair — never an
+  old patcher fired blind at whatever Claude is installed.
+- Update `certified_claude.txt` whenever you verify the patcher against a newer
+  Claude Code release, so the next archived entry carries the right pin.
 
-Verify-before-pin (ALWAYS, no exceptions):
+Verify-before-certify (ALWAYS, no exceptions):
 `python "Claude Code/patch_claude_vsix_v147.py" anthropic.claude-code --version <newest> --out tmp.vsix --download-dir tmp`
-must end with "Verification passed (62 checks)" before <newest> becomes stable.
-
-Cadence: experimental moves immediately (it is always latest). Stable moves when
-we promote it — and a promotion always targets the newest version, never a lagged
-one. The "lag" is only the gap between a new Claude release and our next verified
-stable promotion, not a deliberate hold on an old version.
-
-## Stable Promotion Checklist
-
-Only promote stable when all of these are true:
-
-1. The experimental patcher works against the target Claude Code version.
-2. The exact pair has been tested manually.
-3. `node --check` and patcher verification pass.
-4. Jacob explicitly says to promote stable.
-5. Copy the approved patcher and version files into `stable/`.
-6. Build a new Orbit VSIX.
-7. Commit and push the wrapper update path so users can update through Orbit.
+must end with "Verification passed (N checks)" before you set `certified_claude.txt`
+to `<newest>`.

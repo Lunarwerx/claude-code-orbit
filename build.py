@@ -10,12 +10,11 @@ ad-hoc zipping). Every run:
   * produces a freshly NUMBERED artifact: builds/claude-code-orbit-build-<N>.vsix
     where N strictly increases each build. The highest number is always the
     newest build — that number is your proof a build actually happened.
-  * snapshots the current experimental patcher into the rollback registry
-    (patchers/) via tools/archive_patcher.py, then bundles the NEWEST registry
-    entry as the known-good. There is no separately-promoted "stable" patcher
-    anymore: the newest archived version IS the floor; older ones are the
-    rollback ladder ("Use previous version"). Falls back to the legacy stable/
-    folder only if the registry is unavailable.
+  * snapshots the current patcher into the rollback registry (patchers/) via
+    tools/archive_patcher.py, then bundles the NEWEST registry entry as the
+    offline floor. The newest archived version IS the current build; older ones
+    are the rollback ladder ("Previous versions"). The registry is the only
+    source — a build fails loudly if it's empty.
   * appends a line to builds/BUILD_LOG.md (the visible, version-controlled
     record of every build).
   * copies the new artifact to latest/claude-code-orbit.vsix (the "newest build"
@@ -24,9 +23,9 @@ ad-hoc zipping). Every run:
 INVARIANTS — a plain build NEVER changes a version NUMBER:
   * It does NOT touch Claude Code Orbit/package.json (that bumps only at push,
     only when Jacob says so).
-  * It does NOT bump patcher_version.txt or the Claude target stable_version.txt
-    — it only READS them. The one human-set value that survives is the Claude
-    target (stable_version.txt = "the Claude Code version we've verified the
+  * It does NOT bump patcher_version.txt or the certified Claude target
+    (certified_claude.txt) — it only READS them. That certified target is the one
+    human-set value that survives ("the Claude Code version we've verified the
     patcher against"); the archiver stamps each snapshot with it.
   * It DOES write patchers/ (the snapshot of the current version) — that's the
     whole point: every build saves the version so users can roll back to it.
@@ -45,11 +44,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 WRAPPER_DIR = ROOT / "Claude Code Orbit"
-STABLE_DIR = ROOT / "stable"
-PATCHER_SRC = STABLE_DIR / "patch_claude.py"
-STABLE_VERSION_SRC = STABLE_DIR / "stable_version.txt"
-STABLE_PATCHER_VERSION_SRC = STABLE_DIR / "patcher_version.txt"
-STABLE_README_SRC = STABLE_DIR / "README.md"
 README_SRC = ROOT / "README.md"
 BUILDS_DIR = ROOT / "builds"
 LATEST_DIR = ROOT / "latest"
@@ -131,36 +125,15 @@ def get_patcher_version(manifest: dict) -> str:
     return v
 
 
-def read_required_text(path: Path, label: str) -> str:
-    if not path.exists():
-        raise SystemExit(f"Missing stable {label}: {path}")
-    v = path.read_text(encoding="utf-8").strip()
-    if not v:
-        raise SystemExit(f"Stable {label} is empty: {path}")
-    return v
-
-
-def get_stable_patcher_version() -> str:
-    """Read the locked production patcher version. This intentionally does not
-    follow package.json; VSIX releases can happen without promoting a new
-    stable patcher."""
-    return read_required_text(STABLE_PATCHER_VERSION_SRC, "patcher version").split()[0]
-
-
-def get_stable_version() -> str:
-    return read_required_text(STABLE_VERSION_SRC, "Claude version").split()[0]
-
-
 def _ver_key(v: str):
     return tuple(int(x) if x.isdigit() else 0 for x in str(v).split("."))
 
 
 def newest_registry_entry():
     """The newest entry in the rollback registry (patchers/manifest.json), or
-    None if the registry is missing/empty. This is the 'known-good' Orbit bundles
-    — there is no separately-promoted 'stable' anymore: the newest archived
-    version IS the floor, and older ones are the rollback ladder. The matching
-    patcher file (patchers/<file>) is what gets bundled."""
+    None if the registry is missing/empty. The newest archived version IS the
+    floor Orbit bundles; older ones are the rollback ladder. The matching patcher
+    file (patchers/<file>) is what gets bundled."""
     manifest_path = ROOT / "patchers" / "manifest.json"
     if not manifest_path.exists():
         return None
@@ -180,10 +153,10 @@ def build(out: Path | None = None) -> Path:
     if out.exists():
         out.unlink()
 
-    # Snapshot the current experimental patcher into the rollback registry FIRST,
-    # so "newest archived version" below already includes what we're about to
-    # ship. Idempotent; non-fatal. This REPLACES the old hand-promotion of a
-    # patcher into stable/ — there is no separate stable patcher to maintain.
+    # Snapshot the current patcher into the rollback registry FIRST, so "newest
+    # archived version" below already includes what we're about to ship.
+    # Idempotent; non-fatal. Every build saving its version to the registry is
+    # what makes "just bump and push, roll back if it breaks" work.
     archive_info = None
     try:
         sys.path.insert(0, str(ROOT / "tools"))
@@ -192,26 +165,23 @@ def build(out: Path | None = None) -> Path:
     except Exception as e:
         print(f"  archive:  SKIPPED — {e} (rollback registry not updated)")
 
-    # The bundled known-good = the NEWEST entry in the registry. Fall back to the
-    # legacy stable/ folder only if the registry is somehow unavailable, so a
-    # build never silently ships nothing.
+    # The bundled known-good = the NEWEST entry in the rollback registry. The
+    # registry is the single source of truth; if it's empty there's nothing to
+    # ship, so fail loudly rather than guess.
     entry = newest_registry_entry()
-    if entry:
-        patcher_src = (ROOT / "patchers" / entry["file"]).resolve()
-        patcher_version = entry["version"]
-        stable_version = entry["claude"]
-        source_label = f"registry patchers/{entry['file']}"
-    else:
-        patcher_src = PATCHER_SRC
-        patcher_version = get_stable_patcher_version()
-        stable_version = get_stable_version()
-        source_label = f"legacy {PATCHER_SRC.relative_to(ROOT)} (registry empty)"
+    if not entry:
+        raise SystemExit("Rollback registry (patchers/manifest.json) is empty — "
+                         "run tools/archive_patcher.py first.")
+    patcher_src = (ROOT / "patchers" / entry["file"]).resolve()
+    patcher_version = entry["version"]
+    certified_claude = entry["claude"]
+    source_label = f"registry patchers/{entry['file']}"
     if not patcher_src.exists():
         raise SystemExit(f"Bundled patcher not found: {patcher_src}")
 
     print(f"Bundling Claude Code Orbit -> {out.name}")
     print(f"  patcher src:       {source_label}")
-    print(f"  known-good Claude: {stable_version}")
+    print(f"  certified Claude:  {certified_claude}")
     print(f"  patcher ver:       {patcher_version}")
     files_added = []
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -235,37 +205,25 @@ def build(out: Path | None = None) -> Path:
             if not src.exists():
                 raise SystemExit(f"Missing wrapper file: {rel}")
             add(src, f"extension/{rel.as_posix()}")
-        # Bundle the registry-selected patcher + its derived version pins under
-        # the same extension/stable/ paths the wrapper already reads, so the
-        # extension needs zero changes — only the SOURCE of "known-good" moved
-        # from a hand-promoted folder to the newest registry entry.
-        add(patcher_src, "extension/stable/patch_claude.py")
-        zf.writestr("extension/stable/stable_version.txt", stable_version + "\n")
-        zf.writestr("extension/stable/patcher_version.txt", patcher_version + "\n")
-        files_added.append(f"extension/stable/stable_version.txt ({stable_version})")
-        files_added.append(f"extension/stable/patcher_version.txt ({patcher_version})")
-        if STABLE_README_SRC.exists():
-            add(STABLE_README_SRC, "extension/stable/README.md")
-
-        # Bundle the rollback registry (manifest + every archived patcher) so the
-        # "Previous versions" picker works the moment Orbit is installed — no push,
-        # no network. detectState() reads this bundled copy when the OTA cache is
-        # empty, and enablePrevious() installs straight from the bundled .py.
+        # Bundle the rollback registry (manifest + every archived patcher). The
+        # NEWEST entry is the offline fallback patcher; the rest power the
+        # "Previous versions" picker — both work the moment Orbit is installed,
+        # no push, no network. detectState()/enable() read this bundled copy when
+        # the OTA cache is empty; enablePrevious() installs straight from a
+        # bundled .py. This is the sole bundled patcher source.
         patchers_dir = ROOT / "patchers"
-        if (patchers_dir / "manifest.json").exists():
-            add(patchers_dir / "manifest.json", "extension/patchers/manifest.json")
-            for pf in sorted(patchers_dir.glob("patch_claude-*.py")):
-                add(pf, f"extension/patchers/{pf.name}")
+        if not (patchers_dir / "manifest.json").exists():
+            raise SystemExit("patchers/manifest.json missing — cannot bundle the registry")
+        add(patchers_dir / "manifest.json", "extension/patchers/manifest.json")
+        for pf in sorted(patchers_dir.glob("patch_claude-*.py")):
+            add(pf, f"extension/patchers/{pf.name}")
 
         # patch_version.txt — Orbit reads this at runtime to know which patcher
-        # version it ships with, then compares against the version baked into
-        # the installed Claude Code's webview/index.js to detect outdated installs.
-        # Pinned to package.json's version so the Marketplace version IS the
-        # patcher version (one number to bump, not two).
+        # version it ships with (the newest bundled registry entry), then compares
+        # against the version baked into the installed Claude Code's
+        # webview/index.js to detect outdated installs.
         zf.writestr("extension/patch_version.txt", patcher_version)
-        zf.writestr("extension/STABLE_VERSION.txt", stable_version)
-        files_added.append(f"extension/patch_version.txt (stable v{patcher_version})")
-        files_added.append(f"extension/STABLE_VERSION.txt ({stable_version})")
+        files_added.append(f"extension/patch_version.txt (v{patcher_version})")
 
         # README — copy with path rewrite so the GitHub-relative logo image
         # ("Claude Code Orbit/media/...") resolves inside the VSIX where the
@@ -293,7 +251,7 @@ def build(out: Path | None = None) -> Path:
     if build_number is not None:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line = (f"- **Build #{build_number}** — `{out.name}` — "
-                f"pkg {manifest['version']}, stable Claude {stable_version}, "
+                f"pkg {manifest['version']}, certified Claude {certified_claude}, "
                 f"patcher {patcher_version} — {ts}\n")
         if BUILD_LOG.exists():
             BUILD_LOG.write_text(BUILD_LOG.read_text(encoding="utf-8") + line, encoding="utf-8")
@@ -302,7 +260,7 @@ def build(out: Path | None = None) -> Path:
                 "# Build log\n\n"
                 "Every `python build.py` appends one line here. "
                 "Highest build number = newest build. "
-                "package.json/stable versions are NOT changed by a build.\n\n"
+                "The package.json version is NOT changed by a build.\n\n"
                 + line,
                 encoding="utf-8",
             )
@@ -329,7 +287,7 @@ def build(out: Path | None = None) -> Path:
     print("\n" + "=" * 56)
     print(f"  BUILD {bn} COMPLETE")
     print(f"     file:     {out.name}")
-    print(f"     bundled:  stable Claude {stable_version} / patcher {patcher_version}")
+    print(f"     bundled:  certified Claude {certified_claude} / patcher {patcher_version}")
     print(f"     pkg ver:  {manifest['version']}  (verified UNCHANGED by build)")
     print("=" * 56)
     return out

@@ -113,8 +113,8 @@
     },
     {
       "version": "1.2.66",
-      "build": 106,
-      "claude": "2.1.159",
+      "build": 108,
+      "claude": "2.1.161",
       "file": "patch_claude-1.2.66.py",
       "date": "2026-06-03",
       "notes": "red status dot for hard usage/rate-limit stops (rateLimitWarning); verified against Claude Code 2.1.161"

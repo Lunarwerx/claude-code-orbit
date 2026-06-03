@@ -6,12 +6,12 @@
 
 Better session management, status indicators, search, filters, and a one-click YOLO mode — applied on top of the official extension, not as a fork.
 
-> **Architecture:** Orbit is a thin wrapper VSIX that ships a Python patcher. The patcher uses regex-based dynamic capture to identify minified identifiers at runtime, making it resilient to upstream minifier changes. Patcher updates are delivered OTA from this repo — users click "Enable Orbit" or "Update patches" and get the latest without reinstalling the VSIX. A hardcoded fallback and `stable_version.txt` ensure users can always pin to a known-good Claude Code version if a new upstream release breaks compatibility.
+> **Architecture:** Orbit is a thin wrapper VSIX that ships a Python patcher. The patcher uses regex-based dynamic capture to identify minified identifiers at runtime, making it resilient to upstream minifier changes. Patcher updates are delivered OTA from this repo — users click "Install newest" or "Check for updates" and get the latest without reinstalling the VSIX. Every release is archived into a rollback registry, so if a new upstream release breaks compatibility users can install a previous version — each one pinned to the Claude Code version it was certified against.
 
-> **Release rule:** Experimental fixes are pushed to GitHub so users can click
-> **Check experimental updates** and install them from Orbit. Stable is bundled
-> in the VSIX and is not promoted until a tested production pair is explicitly
-> approved.
+> **Release rule:** Fixes are pushed to GitHub so users can click
+> **Check for updates** and install the newest from Orbit. If a release ever
+> breaks, **Previous versions** rolls back to an earlier one — each pinned to the
+> Claude Code version it was certified against.
 
 <img src="https://res.cloudinary.com/dicsgc72e/image/upload/f_auto,q_auto:best,w_960,r_12/v1779639822/Seasions_f1joam.png" alt="Claude Code Orbit — patched sessions panel" />
 
@@ -56,14 +56,13 @@ Orbit downloads the official `anthropic.claude-code` VSIX from the Marketplace, 
 
 ## Updates
 
-Orbit has two update paths:
+Orbit updates the patcher from GitHub: **Install newest** pulls the latest
+patcher and patches the newest Claude Code. Use **Check for updates** in the
+Orbit sidebar to get new patcher releases without reinstalling the VSIX.
 
-- **Experimental:** pulled from GitHub. This is the fast-moving patcher track for
-  new Claude Code releases and urgent fixes. Use **Check experimental updates**
-  in the Orbit sidebar.
-- **Stable:** bundled into the Orbit VSIX. Stable is the known-good fallback and
-  is only updated when a tested Claude Code + patcher pair is intentionally
-  promoted.
+If a release ever misbehaves, **Previous versions** installs an earlier one from
+the rollback registry — each entry pinned to the Claude Code version it was
+certified against, so every rollback is a known-good (patcher, Claude) pair.
 
 Wrapper/sidebar fixes are also published through GitHub as
 `latest/claude-code-orbit.vsix`, so the sidebar can offer an Orbit wrapper

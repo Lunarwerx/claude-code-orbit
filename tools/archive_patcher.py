@@ -10,20 +10,21 @@ bump patcher_version.txt and before/with the push to `orbit`). It is the "save
 every version" half of the rollback feature.
 
 What it does (idempotent):
-  * reads patcher_version.txt        — the experimental patcher version (e.g. 1.2.58)
-  * reads stable/stable_version.txt  — the verified Claude Code pin to record
+  * reads patcher_version.txt   — the current patcher version (e.g. 1.2.66)
+  * reads certified_claude.txt  — the Claude Code version this patcher was
+                                  verified against (the certified tag to record)
   * copies Claude Code/patch_claude_vsix_v147.py -> patchers/patch_claude-<ver>.py
   * upserts that version's entry in patchers/manifest.json (newest last)
 
 Why record a Claude pin per patcher: the patcher is NOT version-independent — its
-anchors only match a window of Claude Code releases. Rollback re-installs the
-archived patcher pinned to THIS recorded Claude version (same mechanism as "Use
-verified build"), so a rollback is always a known-good (patcher, Claude) pair —
-never an old patcher fired blind at whatever Claude happens to be installed.
+anchors only match a window of Claude Code releases. Rolling back re-installs the
+archived patcher pinned to THIS certified Claude version, so a previous-version
+install is always a known-good (patcher, Claude) pair — never an old patcher
+fired blind at whatever Claude happens to be installed.
 
-This NEVER bumps a version number and NEVER touches stable/. It only reads the
-version pins and snapshots the experimental patcher. Re-running on an
-already-archived version refreshes its file + entry in place (no duplicate).
+This NEVER bumps a version number. It only reads the version pins and snapshots
+the current patcher. Re-running on an already-archived version refreshes its
+file + entry in place (no duplicate).
 """
 from __future__ import annotations
 
@@ -35,7 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTAL_PATCHER = ROOT / "Claude Code" / "patch_claude_vsix_v147.py"
 PATCHER_VERSION_SRC = ROOT / "patcher_version.txt"
-STABLE_VERSION_SRC = ROOT / "stable" / "stable_version.txt"
+CERTIFIED_CLAUDE_SRC = ROOT / "certified_claude.txt"
 PATCHERS_DIR = ROOT / "patchers"
 MANIFEST = PATCHERS_DIR / "manifest.json"
 BUILDS_DIR = ROOT / "builds"
@@ -94,7 +95,7 @@ def archive_current(verbose: bool = True, build_number: "int | None" = None) -> 
     if not EXPERIMENTAL_PATCHER.exists():
         raise SystemExit(f"Experimental patcher not found: {EXPERIMENTAL_PATCHER}")
     version = read_version(PATCHER_VERSION_SRC, "patcher_version.txt")
-    claude = read_version(STABLE_VERSION_SRC, "stable/stable_version.txt")
+    claude = read_version(CERTIFIED_CLAUDE_SRC, "certified_claude.txt")
 
     PATCHERS_DIR.mkdir(exist_ok=True)
     dest_name = f"patch_claude-{version}.py"

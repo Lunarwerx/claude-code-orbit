@@ -8,6 +8,90 @@ entry whenever you touch a surface that lacks one.
 
 ---
 
+## Account usage meter — 5hr/weekly rings in the composer footer
+
+**Files:** `Claude Code/patch_claude_vsix_v147.py` — added the `ccPatchUsage*`
+helper family inside `CLAUDE_HELPER_JS` (data accessor, ring SVG, popover,
+button icon) + exported them on `globalThis`; added patch block **19c** (inject
+the button after the "Show command menu (/)" button in `We1`); added the
+`.ccPatchUsage*` CSS rules in `patch_webview_css`; added the `"usage meter"`
+verification check.
+
+**Job:** Let the user see how much of their 5-hour (session) and weekly limits
+they've burned, at a glance, without leaving the composer or guessing — a
+"battery for your account." A ghost button sits beside the slash-command button;
+clicking it opens a popover with one ring per limit window (Session 5hr / Weekly
+/ Weekly Sonnet when present), each showing % used, a green→amber→red arc, and a
+"resets in Xh" countdown. The button icon itself is a live mini-ring.
+
+**Why THIS way (read the native `utilization` signal) vs rejected alternatives:**
+The connection store (`session.connection.value`) already carries a reactive
+`utilization` signal the host pushes via `usage_update`, shaped exactly as
+`{fiveHour,sevenDay,sevenDaySonnet}` with `{utilization:0-100, resetsAt}`. The
+native Account & Usage panel renders the same signal as flat bars (`Mq1`/`_t1`).
+So we invent NO new data path, no scraping, no separate fetch loop — we surface
+the one source of truth that already exists, refreshing it on open with the
+native `requestUsageUpdate()` RPC. Rejected: (a) a second polling/estimation
+layer — would be a parallel truth that drifts from the host's; (b) reusing the
+existing settings-dropdown "Account & usage" item only — it executes the native
+`account-usage` command (full modal), not the at-a-glance footer affordance the
+user asked for. The button icon reads `.value` during `We1`'s render, so it
+re-renders live on `usage_update` with zero extra ticker — idiomatic for this
+signals-based webview.
+
+**Unified primitive / reuse:** `globalThis.ccPatchComposerSession` (already
+stashed by block 19a for the send/queue controls) is the single handle to the
+session; usage reads `session.connection.value` off it. Popover open/close
+mirrors the existing menu pattern (`_ccPatchOutsideHandler` + Escape, like
+`ccPatchShowFilterMenu`/`ccPatchShowSettingsMenu`). Anchored on the stable native
+string `title:"Show command menu (/)"` (unique, count=1) so it survives minifier
+churn; React alias captured, not hard-coded.
+
+**Prune verdict:** KEEP. WATCH: (1) if Anthropic adds a `sevenDayOpus` window or
+renames the keys, `ccPatchUsageWindows` silently shows fewer rings — the verify
+check only guards the button/CSS/RPC presence, not the field names; teach the
+Dark Knight to flag a webview release where `fiveHour`/`sevenDay` vanish from the
+bundle. (2) Reading `utilization.value` in `We1`'s render subscribes the whole
+footer to usage updates (rare, cheap) — revisit only if usage events ever become
+chatty. (3) Untested in a live webview here (node syntax-checked + 81 verify
+checks pass on stock 2.1.160); the rings/animation/countdown still need an
+eyeball in the running app.
+
+---
+
+## "Stable" channel dissolved → current + Previous-versions rollback
+
+**Files:** deleted `stable/` + root `stable_version.txt`; added
+`certified_claude.txt`; changed `tools/archive_patcher.py`, `build.py`,
+`Claude Code Orbit/extension.js` (enable/disable, detectState, read helpers, UI).
+
+**Job:** Recovery if a release breaks. The old model advertised three things
+(experimental / a hand-promoted "Stable" channel / the rollback registry), but
+"Stable" had already dissolved into the registry — `build.py` bundles the newest
+archived entry as the offline floor. The leftover `enableStable` action,
+`onStable` two-tier "verified/unverified" wording, and `STABLE_*` constants were
+UI for a channel wired to no button.
+
+**Why THIS way (one registry, Codex-style) vs rejected alternative (keep a
+promoted Stable pin):** two recovery mechanisms for one job is the "47
+workarounds" the prime directive forbids. The registry already pins each patcher
+to a certified Claude version, so "Previous versions" is a strictly more general
+recovery than a single frozen Stable pin — and needs no hand-promotion step.
+Subtract the channel; keep the one primitive that does the job.
+
+**Unified primitive / reuse:** the rollback registry (`patchers/manifest.json`)
+is the single source of truth. `newestBundledEntry()` derives the offline
+fallback patcher, its version, and its certified-Claude tag from that one source
+(replacing the separate `stable/` files + `readBundledStableVersion`). The
+certified tag survives as each entry's `claude` field, sourced from
+`certified_claude.txt`.
+
+**Verdict:** KEEP (registry + Previous versions). REMOVED: stable/ channel,
+enableStable, onStable, latestClaudeVerified, STABLE_* constants,
+fetchOtaStableVersion.
+
+---
+
 ## Claude Code version-update detection (Orbit wrapper)
 
 **Files:** `Claude Code Orbit/extension.js` — `fetchLatestClaudeVersion()`,
@@ -30,30 +114,21 @@ the real newest release. VS Code's built-in signal only reflects what its own
 lazy refresh cycle has discovered and can lag a fresh release — unacceptable for
 a tool whose whole point is tracking the newest version.
 
-**Unified primitive / reuse:** reuses `cmpVer`, `readBundledStableVersion`, the
+**Unified primitive / reuse:** reuses `cmpVer`, `readBundledCertifiedClaude`, the
 existing `globalState` cache pattern (mirrors `GS_REMOTE_PATCHER_VERSION`), and
 the existing poller/`detectState`/`applyIdleState` flow. One fetch → one cache →
 three consumers (poller, button, hero). No parallel mechanism introduced.
 
-**Two-tier wording (verified vs unverified):** when a newer Claude exists, the
-wording forks on `latestClaudeVerified = cmpVer(latest, stablePin) <= 0`:
-- `<= stable pin` → "Update to vX" (we test-ran the patcher against that exact
-  version at promotion time, so it's verified/safe).
-- `> stable pin` → "Try experimental vX (unverified, may break)" + the safe
-  "Use verified build vPin" option alongside.
-Crucially this REUSES the stable pin as the "verified up to" line rather than
-adding a third version number to keep in sync — a new number would be debt.
-`stablePin` is the single source of truth for "newest Claude we've verified."
+**Wording (single-tier, post-stable):** when a newer Claude exists, Orbit simply
+prompts "Update to vX" — re-patching pulls the newest and re-applies the
+version-agnostic patcher. The old two-tier "verified vs unverified / Use verified
+build" fork was removed with the Stable channel (see the dissolution entry above);
+the certified-Claude tag now only labels the patched panel ("built for vX").
 
-**Gating:** suppressed when `onStable` — stable is a deliberate frozen pin, not a
-stale snapshot, so stable users are never nagged to move off it. Returns `null`
-on any network/parse failure so a flaky connection never produces a false alarm.
-
-**Known limitation (WATCH):** `onStable` is version-equality only
-(`claudeCodeVersion === stablePin`), so an experimental user who happens to be on
-the stable-pinned version is treated as a stable user and not nagged about a
-newer-than-pin release until stable is promoted. Acceptable: it matches the
-existing "(Stable)" heuristic and avoids adding channel-tracking state.
+**Gating:** `fetchLatestClaudeVersion` returns `null` on any network/parse
+failure so a flaky connection never produces a false "newer Claude" alarm. (The
+old `onStable` suppression was removed with the Stable channel — there's no
+frozen pin to protect anymore.)
 
 **Prune verdict:** KEEP. Closes a real UX hole (the "Check for updates" button
 checked only Orbit's own patcher version, never Claude Code's). WATCH the
