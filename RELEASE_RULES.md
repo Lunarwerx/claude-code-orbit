@@ -60,6 +60,12 @@ A plain build NEVER changes a version number:
 So: "build" = make the next numbered VSIX. "push" = bump package.json + ship.
 They are separate actions.
 
+Do **not** run `python build.py` just because code changed. Build a new VSIX only
+when the change explicitly needs a wrapper/package artifact, such as wrapper UI
+changes, package metadata changes, bundled offline fallback changes, or an
+explicit request from Jacob to produce/install a VSIX. Patcher-only/source-only
+edits should not create a new numbered VSIX unless packaging is required.
+
 ## Two Update Channels
 
 Orbit has two separate update channels.
