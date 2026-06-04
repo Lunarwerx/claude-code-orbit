@@ -176,6 +176,14 @@
       "file": "patch_claude-1.2.74.py",
       "date": "2026-06-04",
       "notes": "session recency ordering (newest-to-top via local touchedAt); theme-independent selected-chat indicator on ALL themes (foreground left notch + static outline + bold name, no longer the blue bar that vanished on a blue chat); visible row hover on default + non-Glow themes (key off --vscode-list-hoverBackground instead of the near-invisible app token)"
+    },
+    {
+      "version": "1.2.75",
+      "build": 129,
+      "claude": "2.1.162",
+      "file": "patch_claude-1.2.75.py",
+      "date": "2026-06-04",
+      "notes": "compact confirmation — the native 'context used · click to compact' button now opens an 'Are you sure?' dialog (reusing the existing confirm-overlay primitive) instead of compacting the instant it's touched; compact runs only on confirm. Non-fatal interception. Carries forward 1.2.74's selection notch/outline + hover fixes"
     }
   ]
 }
