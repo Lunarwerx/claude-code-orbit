@@ -84,6 +84,7 @@ const REAPER_DEFAULT_INTERVAL_MINUTES = 3;
 const REAPER_DEFAULT_MAX_RESUME_SESSIONS = 3;
 const REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES = 15;
 const REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT = 1;
+const REAPER_MIN_SAFE_AGE_MINUTES = 5;
 const REAPER_COMMAND_TIMEOUT_MS = 20000;
 
 function activate(context) {
@@ -148,11 +149,11 @@ function activate(context) {
 function getReaperConfig() {
   const cfg = vscode.workspace.getConfiguration("claudeCodeOrbit");
   const enabled = cfg.get("reaper.enabled", true);
-  const minAgeMinutes = Math.max(1, Number(cfg.get("reaper.minAgeMinutes", REAPER_DEFAULT_MIN_AGE_MINUTES)) || REAPER_DEFAULT_MIN_AGE_MINUTES);
+  const minAgeMinutes = Math.max(REAPER_MIN_SAFE_AGE_MINUTES, Number(cfg.get("reaper.minAgeMinutes", REAPER_DEFAULT_MIN_AGE_MINUTES)) || REAPER_DEFAULT_MIN_AGE_MINUTES);
   const intervalMinutes = Math.max(1, Number(cfg.get("reaper.intervalMinutes", REAPER_DEFAULT_INTERVAL_MINUTES)) || REAPER_DEFAULT_INTERVAL_MINUTES);
   const trimResumeEnabled = cfg.get("reaper.trimResumeSessions.enabled", false);
   const maxResumeSessions = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.maxSessions", REAPER_DEFAULT_MAX_RESUME_SESSIONS)) || REAPER_DEFAULT_MAX_RESUME_SESSIONS);
-  const resumeMinAgeMinutes = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.minAgeMinutes", REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES)) || REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES);
+  const resumeMinAgeMinutes = Math.max(REAPER_MIN_SAFE_AGE_MINUTES, Number(cfg.get("reaper.trimResumeSessions.minAgeMinutes", REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES)) || REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES);
   const resumeMaxCpuPercent = Math.max(0, Number(cfg.get("reaper.trimResumeSessions.maxCpuPercent", REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT)) || REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT);
   return { enabled, minAgeMinutes, intervalMinutes, trimResumeEnabled, maxResumeSessions, resumeMinAgeMinutes, resumeMaxCpuPercent };
 }

@@ -2,7 +2,7 @@
   "name": "claude-code-orbit",
   "displayName": "Claude Code Orbit",
   "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "publisher": "LunarWerx",
   "license": "MIT",
   "icon": "media/claude-code-orbit.png",
@@ -37,8 +37,8 @@
         "claudeCodeOrbit.reaper.minAgeMinutes": {
           "type": "number",
           "default": 6,
-          "minimum": 1,
-          "description": "Minimum age before an orphaned Claude Code native process is eligible for cleanup."
+          "minimum": 5,
+          "description": "Minimum age before an orphaned Claude Code native process is eligible for cleanup. Values below 5 are clamped to 5 minutes."
         },
         "claudeCodeOrbit.reaper.intervalMinutes": {
           "type": "number",
@@ -60,8 +60,8 @@
         "claudeCodeOrbit.reaper.trimResumeSessions.minAgeMinutes": {
           "type": "number",
           "default": 15,
-          "minimum": 1,
-          "description": "Minimum age before an idle resumed Claude Code native session can be trimmed."
+          "minimum": 5,
+          "description": "Minimum age before an idle resumed Claude Code native session can be trimmed. Values below 5 are clamped to 5 minutes; live resume trimming is opt-in."
         },
         "claudeCodeOrbit.reaper.trimResumeSessions.maxCpuPercent": {
           "type": "number",
