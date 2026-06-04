@@ -60,10 +60,13 @@ A plain build NEVER changes a version number:
 So: "build" = make the next numbered VSIX. "push" = bump package.json + ship.
 They are separate actions.
 
-Do **not** run `python build.py` just because code changed. Build a new VSIX only
-when the change explicitly needs a wrapper/package artifact, such as wrapper UI
-changes, package metadata changes, bundled offline fallback changes, or an
-explicit request from Jacob to produce/install a VSIX. Patcher-only/source-only
+Jacob's explicit rule: do **not** build him a new wrapper VSIX unless the thing
+you changed genuinely requires a wrapper/package artifact. Do not run
+`python build.py` as a reflex, as a generic verification step, or just because
+code changed. A new VSIX is warranted only for wrapper UI/updater changes,
+package metadata changes, bundled offline fallback changes, release-marker
+changes that the wrapper must carry, or an explicit request from Jacob to
+produce/install a VSIX. Patcher-only/source-only/docs-only/investigation-only
 edits should not create a new numbered VSIX unless packaging is required.
 
 ## Two Update Channels
