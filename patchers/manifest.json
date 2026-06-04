@@ -183,7 +183,15 @@
       "claude": "2.1.162",
       "file": "patch_claude-1.2.75.py",
       "date": "2026-06-04",
-      "notes": "compact confirmation — the native 'context used · click to compact' button now opens an 'Are you sure?' dialog (reusing the existing confirm-overlay primitive) instead of compacting the instant it's touched; compact runs only on confirm. Non-fatal interception. Carries forward 1.2.74's selection notch/outline + hover fixes"
+      "notes": "compact confirmation \u2014 the native 'context used \u00b7 click to compact' button now opens an 'Are you sure?' dialog (reusing the existing confirm-overlay primitive) instead of compacting the instant it's touched; compact runs only on confirm. Non-fatal interception. Carries forward 1.2.74's selection notch/outline + hover fixes"
+    },
+    {
+      "version": "1.2.76",
+      "build": 130,
+      "claude": "2.1.163",
+      "file": "patch_claude-1.2.76.py",
+      "date": "2026-06-04",
+      "notes": "re-certify for Claude Code 2.1.163. Claude's minifier renamed the session-row event-handler arrow param (M -> C), which broke the hard-coded OR0 status-insert + sessionMeta hover-action anchors ('Lost OR0 ... anchor'). Made those 5 arrow params match any identifier (backward-compatible with 2.1.162). Carries 1.2.74 selection/hover + 1.2.75 compact-confirm. Full patch verified against stock 2.1.163: node --check + all 86 gate checks pass"
     }
   ]
 }
