@@ -13,7 +13,7 @@ const https = require("https");
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 const STOCK_ID = "anthropic.claude-code";
-// Fallback for this product's own Marketplace id. The recs hide their OWN entry
+// Default for this product's own Marketplace id. The recs hide their OWN entry
 // (no self-advertising); at render time we prefer the LIVE id from
 // context.extension.id, so the kit needs zero per-product edits — whatever the
 // extension is named, it hides itself and shows only its sibling.
@@ -30,8 +30,8 @@ const TOGGLEABLE_PATCHES = [
 ];
 
 // OTA: Enable always fetches the latest working patcher from this public repo
-// and patches the newest Claude Code. The offline fallback is the newest patcher
-// bundled in the VSIX's rollback registry (extension/patchers/).
+// and patches the newest Claude Code. No patcher is bundled in the wrapper VSIX:
+// if the authoritative remote cannot be reached, Orbit fails loudly.
 const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main";
 const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
 const OTA_WRAPPER_VERSION_URL = OTA_BASE + "/wrapper_version.txt";
@@ -549,60 +549,13 @@ function pickPreviousPatcher(manifest, installedVersion) {
 }
 
 /**
- * Read the rollback registry bundled inside the Orbit VSIX
- * (extension/patchers/manifest.json). This is the always-available baseline —
- * the picker works the moment Orbit is installed, with no push and no network.
- * Returns the parsed object or null when absent/malformed.
- */
-function readBundledManifest(context) {
-  try {
-    const p = path.join(context.extensionUri.fsPath, "patchers", "manifest.json");
-    if (!fs.existsSync(p)) return null;
-    const data = JSON.parse(fs.readFileSync(p, "utf8"));
-    if (!data || !Array.isArray(data.patchers)) return null;
-    return data;
-  } catch (_) {
-    return null;
-  }
-}
-
-/**
- * The newest entry in the bundled rollback registry. build.py bundles the whole
- * registry and the newest archived version IS the offline floor, so this single
- * helper backs the offline fallback patcher, the bundled patcher version, and the
- * certified-Claude tag — one source, no separate certified file.
- */
-function newestBundledEntry(context) {
-  const m = readBundledManifest(context);
-  if (!m) return null;
-  const entries = m.patchers
-    .filter((p) => p && p.version && p.file && p.claude)
-    .sort((a, b) => cmpVer(b.version, a.version));
-  return entries.length ? entries[0] : null;
-}
-
-/**
- * Absolute path to the offline fallback patcher (the newest bundled registry
- * .py), or null when unavailable. Used by enable()/disable() when the OTA patcher
- * can't be fetched.
- */
-function bundledFallbackPatcher(context) {
-  const e = newestBundledEntry(context);
-  if (!e) return null;
-  const p = path.join(context.extensionUri.fsPath, "patchers", e.file);
-  return fs.existsSync(p) ? p : null;
-}
-
-/**
  * The registry detectState/enablePrevious actually use: the OTA-cached manifest
- * when the poller has fetched a non-empty one (it's the superset pushed to
- * orbit), otherwise the copy bundled in the VSIX. So rollback works offline /
- * pre-push from the bundle, and picks up newer versions once they're pushed.
+ * when the poller has fetched a non-empty one.
  */
 function getEffectiveManifest(context) {
   const ota = context.globalState.get(GS_PATCHER_MANIFEST);
   if (ota && Array.isArray(ota.patchers) && ota.patchers.length) return ota;
-  return readBundledManifest(context);
+  return null;
 }
 
 /**
@@ -781,7 +734,7 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
       // In dev mode, still fetch the remote version so you can test
       // the notification flow, but mark the status bar clearly.
       statusBarItem.text = "$(beaker) Orbit Dev";
-      statusBarItem.tooltip = "Claude Code Orbit — DEV MODE (bundled patcher, fast polling)";
+      statusBarItem.tooltip = "Claude Code Orbit — DEV MODE (fast polling)";
       statusBarItem.backgroundColor = undefined;
       statusBarItem.show();
     }
@@ -1036,7 +989,7 @@ class SidebarProvider {
               // certified tag) — never as a peer "version" that competes with the
               // Claude Code number. (All version strings are server-validated
               // semver — safe as HTML.)
-              const certified = readBundledCertifiedClaude(this.context);
+              const certified = readCachedCertifiedClaude(this.context, installedVersion || remoteVersion);
               const claudeIsNewest = !!latestClaude && !!claudeCodeVersion && cmpVer(claudeCodeVersion, latestClaude) >= 0;
               // Build number = trailing segment of the patcher version (1.2.66 -> 66),
               // so it reads as a build counter, not a version. Fall back to the whole
@@ -1155,27 +1108,18 @@ class SidebarProvider {
     if (!python) throw new Error("Python not found on PATH. Install Python 3 and retry.");
     this.log("Using Python: " + python);
 
-    const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
-    const bundledPatcher = bundledFallbackPatcher(this.context);
-    const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
-    if (devMode) this.log("[DEV] Skipping OTA patcher — using bundled");
-    const patcher = otaPatcher || bundledPatcher;
-    if (!patcher) throw new Error("No patcher available (OTA unreachable and none bundled).");
-    const patcherSource = otaPatcher ? "OTA" : "bundled";
+    const patcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    if (!patcher) throw new Error("No patcher available: OTA patcher fetch failed.");
+    const patcherSource = "OTA";
     const out = path.join(work, "patched.vsix");
 
     // Pass the active patcher version so the patcher stamps it as ccPatchBuildVersion
     // in the patched webview. detectState() reads it back later to know whether
     // an installed patch is current or behind a newer Orbit release.
-    let patcherVersion = readBundledPatcherVersion(this.context) || "dev";
-    if (otaPatcher) {
-      const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
-      if (remoteVersion) {
-        patcherVersion = remoteVersion;
-        await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
-      }
-    }
+    const patcherVersion = await fetchRemotePatcherVersion((l) => this.log(l));
+    if (!patcherVersion) throw new Error("No patcher version available: remote version marker fetch failed.");
+    await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, patcherVersion);
     // Always patch the LATEST Claude Code (no --version pin). If it ever breaks,
     // recovery is "Previous versions", which pins each archived patcher to the
     // Claude version it was certified against.
@@ -1206,7 +1150,11 @@ class SidebarProvider {
   // pinned to that entry's certified version (--version) — so a previous-version
   // install is always a known-good (patcher, Claude) pair.
   async enablePrevious(version) {
-    const manifest = getEffectiveManifest(this.context);
+    let manifest = getEffectiveManifest(this.context);
+    if (!manifest || !Array.isArray(manifest.patchers) || !manifest.patchers.length) {
+      manifest = await fetchPatcherManifest((l) => this.log(l));
+      if (manifest) await this.context.globalState.update(GS_PATCHER_MANIFEST, manifest);
+    }
     const entry = manifest && Array.isArray(manifest.patchers)
       ? manifest.patchers.find((p) => p && p.version === version) : null;
     if (!entry || !entry.file || !entry.claude) {
@@ -1217,18 +1165,9 @@ class SidebarProvider {
     this.log("Using Python: " + python);
 
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-prev-"));
-    // Prefer the patcher bundled in the VSIX (offline, instant); only fetch from
-    // GitHub when this version isn't one we shipped with.
-    const bundled = path.join(this.context.extensionUri.fsPath, "patchers", entry.file);
-    let patcherPath;
-    if (fs.existsSync(bundled)) {
-      patcherPath = bundled;
-      this.log("Using bundled patcher v" + entry.version);
-    } else {
-      patcherPath = path.join(work, entry.file);
-      this.log("Downloading archived patcher v" + entry.version + " from GitHub");
-      await httpsDownload(OTA_PATCHERS_BASE + "/" + encodeURIComponent(entry.file) + "?t=" + Date.now(), patcherPath, OTA_TIMEOUT_MS * 4);
-    }
+    const patcherPath = path.join(work, entry.file);
+    this.log("Downloading archived patcher v" + entry.version + " from GitHub");
+    await httpsDownload(OTA_PATCHERS_BASE + "/" + encodeURIComponent(entry.file) + "?t=" + Date.now(), patcherPath, OTA_TIMEOUT_MS * 4);
     this.checkCancelled();
 
     const out = path.join(work, "patched.vsix");
@@ -1268,14 +1207,10 @@ class SidebarProvider {
     if (!python) throw new Error("Python not found on PATH. Install Python 3 and retry.");
     this.log("Using Python: " + python);
 
-    const devMode = vscode.workspace.getConfiguration("claudeCodeOrbit").get("devMode", false);
     const work = fs.mkdtempSync(path.join(os.tmpdir(), "claude-orbit-"));
-    // For disable we only need the marketplace download logic; both OTA and
-    // bundled patchers do that identically. In dev mode skip OTA.
-    const bundledPatcher = bundledFallbackPatcher(this.context);
-    const otaPatcher = devMode ? null : await fetchOtaPatcher(this.context, (l) => this.log(l));
-    const patcher = otaPatcher || bundledPatcher;
-    if (!patcher) throw new Error("No patcher available (OTA unreachable and none bundled).");
+    // For disable we use the authoritative OTA patcher only for marketplace download logic.
+    const patcher = await fetchOtaPatcher(this.context, (l) => this.log(l));
+    if (!patcher) throw new Error("No patcher available: OTA patcher fetch failed.");
 
     this.checkCancelled();
     this.log("Downloading original " + STOCK_ID);
@@ -1440,7 +1375,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   border:1px solid rgba(249,115,22,.18);animation:fadeIn .3s ease}
 .patchedHero[hidden]{display:none}
 /* updateAvailable variant — same hero shape, blue accent instead of orange,
-   signals "your patched build is behind the bundled patcher" */
+   signals "your patched build is behind the remote patcher" */
 .patchedHero.updateAvailable{
   background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(59,130,246,.02));
   border:1px solid rgba(59,130,246,.28)}
@@ -1753,7 +1688,7 @@ const ICON_REFRESH = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor"
 
 function applyIdleState(state, info) {
   const installedVersion = info && info.installedVersion;
-  const bundledVersion = info && info.bundledVersion;
+  const targetVersion = info && info.targetVersion;
   const claudeCodeVersion = info && info.claudeCodeVersion;
   const latestClaudeVersion = info && info.latestClaudeVersion;
   const onLatestClaude = info && info.onLatestClaude;
@@ -1831,15 +1766,15 @@ function applyIdleState(state, info) {
     patchedTitle.textContent = "Update available";
     {
       let line = (installedVersion
-        ? "Patcher v" + installedVersion + " -> v" + (bundledVersion || "?")
-        : "Legacy patches -> v" + (bundledVersion || "?"))
+        ? "Patcher v" + installedVersion + " -> v" + (targetVersion || "?")
+        : "Legacy patches -> v" + (targetVersion || "?"))
         + (claudeCodeVersion ? " · Claude Code v" + claudeCodeVersion : "");
       patchedSub.textContent = line + ".";
     }
     enableBtnIcon.innerHTML = ICON_REFRESH;
     enableBtnLabel.textContent = "Install newest";
     enableBtn.classList.add("primary");
-    enableBtn.title = "Download Claude Code and patch it with the newest patcher (v" + (bundledVersion || "?") + ").";
+    enableBtn.title = "Download Claude Code and patch it with the newest patcher (v" + (targetVersion || "?") + ").";
     checkUpdatesBtn.hidden = false;
     versionsBtn.hidden = !hasOtherVersions;
     versionsBtn.textContent = "Previous versions";
@@ -1861,7 +1796,7 @@ function applyIdleState(state, info) {
   } else {
     // "none" — Claude Code is not installed.  Offer both "Install newest"
     // (downloads newest Claude + newest patcher) and "Install specific version"
-    // (picker of archived patcher → Claude pairs from the bundled registry).
+    // (picker of archived patcher -> Claude pairs from the remote registry).
     patchedHero.hidden = true;
     stockHero.hidden = true;
     statusEl.hidden = true;
@@ -2133,7 +2068,7 @@ window.addEventListener("message", (ev) => {
     statusEl.innerHTML = '<span class="dot ' + cls + '"></span><span class="label">' + text + '</span>';
     applyIdleState(m.state, {
       installedVersion: m.installedVersion,
-      bundledVersion: m.bundledVersion,
+      targetVersion: m.targetVersion,
       claudeCodeVersion: m.claudeCodeVersion,
       latestClaudeVersion: m.latestClaudeVersion,
       onLatestClaude: m.onLatestClaude,
@@ -2273,7 +2208,7 @@ function httpsDownload(url, dest, timeoutMs) {
 // Pull the latest patcher from the public OTA repo. Sanity-checks the payload
 // looks like our patcher (must contain `patch_webview_js`) so a misconfigured
 // raw URL doesn't silently write garbage. Returns the cached file path on
-// success, or null to signal the caller should use the bundled fallback.
+// success, or null to signal the caller should fail loudly.
 async function fetchOtaPatcher(context, log) {
   try {
     const url = OTA_PATCHER_URL + "?t=" + Date.now();
@@ -2289,32 +2224,27 @@ async function fetchOtaPatcher(context, log) {
     log("OTA patcher loaded (" + body.length + " bytes)");
     return outPath;
   } catch (err) {
-    log("OTA patcher unavailable (" + (err && err.message ? err.message : err) + ") — using bundled");
+    log("OTA patcher unavailable (" + (err && err.message ? err.message : err) + ")");
     return null;
   }
 }
 
-// Read the patcher version shipped inside this VSIX (the newest bundled registry
-// entry). detectState() uses this as an offline fallback when the remote patcher
-// version from GitHub is unavailable.
-function readBundledPatcherVersion(context) {
-  try {
-    const p = path.join(context.extensionUri.fsPath, "patch_version.txt");
-    if (fs.existsSync(p)) {
-      const v = fs.readFileSync(p, "utf8").trim();
-      if (v) return v;
-    }
-  } catch (_) {}
-  const e = newestBundledEntry(context);
-  return e ? e.version : null;
+// Read the latest patcher version seen from the authoritative remote.
+function readRemotePatcherVersion(context) {
+  return context.globalState.get(GS_REMOTE_PATCHER_VERSION) || null;
 }
 
-// The Claude Code version the bundled patcher was certified against (the newest
-// registry entry's claude tag). Used only for display ("built for vX"); returns
-// null when the bundled registry is unavailable.
-function readBundledCertifiedClaude(context) {
-  const e = newestBundledEntry(context);
-  return e ? e.claude : null;
+// The Claude Code version the installed/current remote patcher was certified against.
+function readCachedCertifiedClaude(context, patcherVersion) {
+  const manifest = getEffectiveManifest(context);
+  if (!manifest || !Array.isArray(manifest.patchers)) return null;
+  const entry = manifest.patchers.find((p) => p && p.version === patcherVersion && p.claude);
+  if (entry) return entry.claude;
+  const sorted = manifest.patchers
+    .filter((p) => p && p.version && p.claude)
+    .slice()
+    .sort((a, b) => cmpVer(b.version, a.version));
+  return sorted.length ? sorted[0].claude : null;
 }
 
 function cmpVer(a, b) {
@@ -2329,18 +2259,17 @@ function cmpVer(a, b) {
 }
 
 function detectState(context) {
-  const bundledVersion = readBundledPatcherVersion(context);
+  const remoteVersion = readRemotePatcherVersion(context);
+  const targetVersion = remoteVersion;
   // Read the remote patcher version cached by the background poller into
   // globalState. This is the PRIMARY source of truth for "is my patcher
-  // outdated?" — the bundled version only serves as an offline fallback.
-  const remoteVersion = context.globalState.get(GS_REMOTE_PATCHER_VERSION);
-  // Load the rollback registry now so both "none" and "stock" states can
-  // offer "Install specific version" — the picker needs version entries
-  // and the bundled manifest is always present even before any OTA fetch.
+  // outdated?"
+  // Load the cached rollback registry now so both "none" and "stock" states can
+  // offer "Install specific version" when the remote manifest has been fetched.
   const manifest = getEffectiveManifest(context);
-  const patcherHistoryFallback = patcherHistoryFromManifest(manifest);
+  const patcherHistoryCached = patcherHistoryFromManifest(manifest);
   const ext = vscode.extensions.getExtension(STOCK_ID);
-  if (!ext) return { state: "none", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion: null, latestClaudeVersion: null, onLatestClaude: false, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryFallback };
+  if (!ext) return { state: "none", installedVersion: null, targetVersion, remoteVersion, claudeCodeVersion: null, latestClaudeVersion: null, onLatestClaude: false, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryCached };
 
   // Claude Code's own version, read straight from its package.json via the
   // Extensions API. Lets us show "Patches active on Claude Code v2.1.150".
@@ -2364,26 +2293,22 @@ function detectState(context) {
         // Determine "outdated" status:
         //   1. Primary: compare installed vs remote (fetched from GitHub by the
         //      background poller and cached in globalState).
-        //   2. Fallback: if no remote version cached (offline / first launch),
-        //      compare installed vs bundled (shipped in the Orbit VSIX).
-        //   3. No marker at all => pre-versioning build, always treat as outdated.
+        //   2. No marker at all => pre-versioning build, always treat as outdated.
         const isOutdated = !installedVersion
-          || (remoteVersion && cmpVer(installedVersion, remoteVersion) < 0)
-          || (!remoteVersion && bundledVersion && cmpVer(installedVersion, bundledVersion) < 0);
+          || (remoteVersion && cmpVer(installedVersion, remoteVersion) < 0);
         // Installed Claude Code is behind the newest published version:
         // re-patching pulls the newer Claude and re-applies the same patcher.
         const claudeUpdateAvailable = !!claudeCodeVersion && !!latestClaudeVersion
           && cmpVer(claudeCodeVersion, latestClaudeVersion) < 0;
         // Full version list (newest-first) for the "Previous versions" picker,
         // plus the single newest-older entry (kept for any internal callers).
-        // Uses the bundled registry when the OTA cache is empty (pre-push).
         const manifest = getEffectiveManifest(context);
         const previousPatcher = pickPreviousPatcher(manifest, installedVersion);
         const patcherHistory = patcherHistoryFromManifest(manifest);
         return {
           state: isOutdated ? "outdated" : "patched",
           installedVersion,
-          bundledVersion,
+          targetVersion,
           remoteVersion,
           claudeCodeVersion,
           latestClaudeVersion,
@@ -2395,7 +2320,7 @@ function detectState(context) {
       }
     }
   } catch (_) {}
-  return { state: "stock", installedVersion: null, bundledVersion, remoteVersion, claudeCodeVersion, latestClaudeVersion, onLatestClaude, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryFallback };
+  return { state: "stock", installedVersion: null, targetVersion, remoteVersion, claudeCodeVersion, latestClaudeVersion, onLatestClaude, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryCached };
 }
 
 async function findPython() {

@@ -10,11 +10,10 @@ ad-hoc zipping). Every run:
   * produces a freshly NUMBERED artifact: builds/claude-code-orbit-build-<N>.vsix
     where N strictly increases each build. The highest number is always the
     newest build — that number is your proof a build actually happened.
-  * snapshots the current patcher into the rollback registry (patchers/) via
-    tools/archive_patcher.py, then bundles the NEWEST registry entry as the
-    offline floor. The newest archived version IS the current build; older ones
-    are the rollback ladder ("Previous versions"). The registry is the only
-    source — a build fails loudly if it's empty.
+  * snapshots the current patcher into the remote rollback registry (patchers/)
+    via tools/archive_patcher.py. The wrapper VSIX does not bundle patchers or
+    a local registry; runtime patching and rollback fetch from the
+    authoritative remote.
   * appends a line to builds/BUILD_LOG.md (the visible, version-controlled
     record of every build).
   * copies the new artifact to latest/claude-code-orbit.vsix (the "newest build"
@@ -27,8 +26,8 @@ INVARIANTS — a plain build NEVER changes a version NUMBER:
     (certified_claude.txt) — it only READS them. That certified target is the one
     human-set value that survives ("the Claude Code version we've verified the
     patcher against"); the archiver stamps each snapshot with it.
-  * It DOES write patchers/ (the snapshot of the current version) — that's the
-    whole point: every build saves the version so users can roll back to it.
+  * It DOES write patchers/ (the remote rollback snapshot of the current
+    version) so users can roll back to it after the commit is pushed.
 The build NUMBER is independent of the package.json version and increments on
 its own.
 """
@@ -133,9 +132,8 @@ def _ver_key(v: str):
 
 def newest_registry_entry():
     """The newest entry in the rollback registry (patchers/manifest.json), or
-    None if the registry is missing/empty. The newest archived version IS the
-    floor Orbit bundles; older ones are the rollback ladder. The matching patcher
-    file (patchers/<file>) is what gets bundled."""
+    None if the registry is missing/empty. The wrapper does not bundle this
+    entry; it is recorded so the pushed repo can serve remote rollbacks."""
     manifest_path = ROOT / "patchers" / "manifest.json"
     if not manifest_path.exists():
         return None
@@ -159,30 +157,19 @@ def build(out: Path | None = None) -> Path:
     # archived version" below already includes what we're about to ship.
     # Idempotent; non-fatal. Every build saving its version to the registry is
     # what makes "just bump and push, roll back if it breaks" work.
-    archive_info = None
     try:
         sys.path.insert(0, str(ROOT / "tools"))
         import archive_patcher
         archive_info = archive_patcher.archive_current(verbose=False, build_number=build_number)
     except Exception as e:
-        print(f"  archive:  SKIPPED — {e} (rollback registry not updated)")
+        raise SystemExit(f"Archive failed: {e}. Refusing to build without updating remote rollback registry.")
 
-    # The bundled known-good = the NEWEST entry in the rollback registry. The
-    # registry is the single source of truth; if it's empty there's nothing to
-    # ship, so fail loudly rather than guess.
-    entry = newest_registry_entry()
-    if not entry:
-        raise SystemExit("Rollback registry (patchers/manifest.json) is empty — "
-                         "run tools/archive_patcher.py first.")
-    patcher_src = (ROOT / "patchers" / entry["file"]).resolve()
-    patcher_version = entry["version"]
-    certified_claude = entry["claude"]
-    source_label = f"registry patchers/{entry['file']}"
-    if not patcher_src.exists():
-        raise SystemExit(f"Bundled patcher not found: {patcher_src}")
+    patcher_version = archive_info["version"]
+    certified_claude = archive_info["claude"]
+    source_label = f"registry patchers/{archive_info['file']}"
 
     print(f"Bundling Claude Code Orbit -> {out.name}")
-    print(f"  patcher src:       {source_label}")
+    print(f"  patcher registry:  {source_label}")
     print(f"  certified Claude:  {certified_claude}")
     print(f"  patcher ver:       {patcher_version}")
     files_added = []
@@ -207,25 +194,8 @@ def build(out: Path | None = None) -> Path:
             if not src.exists():
                 raise SystemExit(f"Missing wrapper file: {rel}")
             add(src, f"extension/{rel.as_posix()}")
-        # Bundle the rollback registry (manifest + every archived patcher). The
-        # NEWEST entry is the offline fallback patcher; the rest power the
-        # "Previous versions" picker — both work the moment Orbit is installed,
-        # no push, no network. detectState()/enable() read this bundled copy when
-        # the OTA cache is empty; enablePrevious() installs straight from a
-        # bundled .py. This is the sole bundled patcher source.
-        patchers_dir = ROOT / "patchers"
-        if not (patchers_dir / "manifest.json").exists():
-            raise SystemExit("patchers/manifest.json missing — cannot bundle the registry")
-        add(patchers_dir / "manifest.json", "extension/patchers/manifest.json")
-        for pf in sorted(patchers_dir.glob("patch_claude-*.py")):
-            add(pf, f"extension/patchers/{pf.name}")
-
-        # patch_version.txt — Orbit reads this at runtime to know which patcher
-        # version it ships with (the newest bundled registry entry), then compares
-        # against the version baked into the installed Claude Code's
-        # webview/index.js to detect outdated installs.
-        zf.writestr("extension/patch_version.txt", patcher_version)
-        files_added.append(f"extension/patch_version.txt (v{patcher_version})")
+        # No patcher files or registry are bundled in the wrapper VSIX. Runtime
+        # patching and rollback both fetch from the authoritative remote.
         wrapper_build = str(build_number or 0)
         zf.writestr("extension/wrapper_build.txt", wrapper_build)
         files_added.append(f"extension/wrapper_build.txt (#{wrapper_build})")
@@ -296,7 +266,7 @@ def build(out: Path | None = None) -> Path:
     print("\n" + "=" * 56)
     print(f"  BUILD {bn} COMPLETE")
     print(f"     file:     {out.name}")
-    print(f"     bundled:  certified Claude {certified_claude} / patcher {patcher_version}")
+    print(f"     registry: certified Claude {certified_claude} / patcher {patcher_version}")
     print(f"     pkg ver:  {manifest['version']}  (verified UNCHANGED by build)")
     print("=" * 56)
     return out

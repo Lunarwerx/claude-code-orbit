@@ -46,9 +46,9 @@ build`, no manual zipping, no second script). Every run:
   that number is the proof a build actually happened.
 - appends a line to `builds/BUILD_LOG.md` (tracked in git, so the history is
   visible on GitHub). The numbered `build-*.vsix` files are also tracked.
-- archives the current patcher into the rollback registry (`patchers/`), bundles
-  that registry (newest entry = offline fallback), and copies the result to
-  `latest/claude-code-orbit.vsix`.
+- archives the current patcher into the remote rollback registry (`patchers/`)
+  and copies the wrapper artifact to `latest/claude-code-orbit.vsix`. The VSIX
+  must not bundle patchers, `patchers/manifest.json`, or `patch_version.txt`.
 
 A plain build NEVER changes a version number:
 
@@ -64,9 +64,9 @@ Jacob's explicit rule: do **not** build him a new wrapper VSIX unless the thing
 you changed genuinely requires a wrapper/package artifact. Do not run
 `python build.py` as a reflex, as a generic verification step, or just because
 code changed. A new VSIX is warranted only for wrapper UI/updater changes,
-package metadata changes, bundled offline fallback changes, release-marker
-changes that the wrapper must carry, or an explicit request from Jacob to
-produce/install a VSIX. Patcher-only/source-only/docs-only/investigation-only
+package metadata changes, release-marker changes that the wrapper must carry,
+or an explicit request from Jacob to produce/install a VSIX.
+Patcher-only/source-only/docs-only/investigation-only
 edits should not create a new numbered VSIX unless packaging is required.
 
 ## Two Update Channels
@@ -190,8 +190,8 @@ someone, the recovery path is **Previous versions**: install an earlier entry
 from the rollback registry (`patchers/manifest.json`).
 
 - Every build/release archives the current patcher into `patchers/` via
-  `tools/archive_patcher.py`. The newest entry doubles as the offline fallback
-  bundled in the VSIX; the rest are the rollback ladder.
+  `tools/archive_patcher.py`. Those entries are the remote rollback ladder; none
+  of them are bundled into the wrapper VSIX.
 - Each registry entry records the Claude version the patcher was **certified
   against** (`claude` field, sourced from `certified_claude.txt`). A rollback
   re-installs that patcher pinned (via `--version`) to its certified Claude, so

@@ -59,7 +59,6 @@ certified_claude.txt         ← Claude Code version the current patcher is cert
 | Tier | File | Location | Purpose |
 |------|------|----------|---------|
 | **Primary** | `patcher_version.txt` | GitHub repo root | The live patcher version. Bump this when you push a patcher fix. Polled every 4 hours. |
-| **Bundled** | `patch_version.txt` | Inside the VSIX (`extension/patch_version.txt`) | Offline fallback. Set by `build.py` from `package.json` version. Only changes when a new VSIX is published. |
 | **Installed** | `ccPatchBuildVersion` | Injected into Claude Code's `webview/index.js` | What's actually running. Read by `detectState()` to determine if an update is needed. |
 
 ### Data Flow
@@ -94,7 +93,6 @@ certified_claude.txt         ← Claude Code version the current patcher is cert
 │  │  • Reads globalState for remoteVersion       │       │
 │  │  • Reads Claude Code webview for installed   │       │
 │  │  • PRIMARY: compare installed vs remote      │       │
-│  │  • FALLBACK: compare installed vs bundled    │       │
 │  │  → Returns: patched | outdated | stock | none│       │
 │  └──────────────────────────────────────────────┘       │
 │                         │                               │
@@ -102,7 +100,7 @@ certified_claude.txt         ← Claude Code version the current patcher is cert
 │  ┌──────────────────────────────────────────────┐       │
 │  │         enable() — Update Flow                │       │
 │  │  1. Fetch OTA patcher from GitHub            │       │
-│  │  2. Fall back to bundled if offline           │       │
+│  │  2. Fail loudly if remote fetch fails         │       │
 │  │  3. Download stock Claude Code VSIX           │       │
 │  │  4. Run patcher (--patcher-version X.Y.Z)    │       │
 │  │  5. Uninstall old Claude Code                 │       │
@@ -144,14 +142,14 @@ Only when `extension.js` or `package.json` changes (new features in the wrapper 
 python build.py
 ```
 This auto-increments the build number, archives the current patcher into the
-registry, bundles the registry (newest entry = offline fallback), writes
-`patch_version.txt`, and outputs to `builds/`.
+remote rollback registry, and outputs to `builds/`. The VSIX does not bundle
+patcher files, `patchers/manifest.json`, or `patch_version.txt`.
 
 ### Important: keep these in sync when publishing a new VSIX:
 - `package.json` → `"version"` field
 - `patcher_version.txt` on GitHub → same version
 - `patchers/manifest.json` → archived by `build.py` / `archive_patcher.py`
-- The Marketplace upload will carry the new `patch_version.txt` (bundled fallback)
+- The Marketplace upload must carry no local patcher payload.
 
 ## globalState Keys
 
@@ -170,9 +168,8 @@ The extension uses VS Code's `globalState` for cross-session persistence:
 | `readInstalledPatcherVersion()` | Reads `ccPatchBuildVersion` from Claude Code's patched webview. |
 | `checkForPatcherUpdate(context, provider, statusBarItem)` | Core poll cycle: fetch → compare → notify → update status bar. |
 | `startBackgroundPolling(context, provider, statusBarItem)` | Sets up the 30s-delayed initial check + 4-hour interval. |
-| `detectState(context)` | Synchronous state detection for the sidebar. Uses remote (globalState) as primary, bundled as fallback. |
+| `detectState(context)` | Synchronous state detection for the sidebar. Uses remote globalState only for patcher freshness. |
 | `fetchOtaPatcher(context, log)` | Fetches the full patcher `.py` file from GitHub on every Install click. |
-| `bundledFallbackPatcher(context)` / `newestBundledEntry(context)` | Resolve the offline fallback patcher (newest bundled registry entry) and its certified-Claude tag. |
 | `enablePrevious(version)` | Installs an archived patcher pinned to its certified Claude version (the "Previous versions" rollback). |
 | `SidebarProvider.triggerEnable()` | Entry point for the notification's "Update" button. Delegates to `onMessage({ type: "action", action: "enable" })`. |
 
@@ -207,7 +204,9 @@ Rebuilding the VSIX for local testing does **not** require a version bump — `b
 ## 🧪 Local Testing Workflow (Dev Mode)
 
 ### The problem
-Normally, Orbit fetches the patcher from GitHub on every "Enable" click. This means you can't test local patcher changes without pushing to GitHub first.
+Orbit fetches the patcher from GitHub on every "Enable" click. Local wrapper
+builds do not carry a patcher copy, so patcher changes must be published to the
+remote branch before the normal install flow can exercise them.
 
 ### The solution: `claudeCodeOrbit.devMode`
 
@@ -219,30 +218,29 @@ Enable dev mode in VS Code settings (`Ctrl+,` → search "Orbit dev") or add to 
 **What dev mode does:**
 | Behavior | Normal | Dev Mode |
 |----------|--------|----------|
-| Patcher source | GitHub OTA (primary), bundled registry (fallback) | **Bundled only** (skips GitHub) |
+| Patcher source | GitHub OTA only | GitHub OTA only |
 | Poll interval | 4 hours | **60 seconds** |
 | Startup delay | 30 seconds | **5 seconds** |
 | Status bar | "✓ Orbit" or "⬇ Orbit Update" | **"🧪 Orbit Dev"** |
 
-### Step-by-step: test a patcher change locally
+### Step-by-step: test wrapper changes locally
 
 ```
-□ 1. Edit the patcher:    Claude Code/patch_claude_vsix_v147.py
+□ 1. Edit wrapper code:    Claude Code Orbit/extension.js
 □ 2. Rebuild the VSIX:    python build.py
 □ 3. Install the VSIX:    code --install-extension builds/claude-code-orbit-N.vsix
 □ 4. Reload VS Code:      Ctrl+Shift+P → "Reload Window"
 □ 5. Enable dev mode:     Settings → claudeCodeOrbit.devMode = true
 □ 6. Reload again:        (dev mode only takes effect on activation)
-□ 7. Open Orbit sidebar → Click "Enable Orbit"
-□ 8. Verify your changes work
-□ 9. Iterate:             Edit → python build.py → install → reload → test
+□ 7. Open Orbit sidebar → verify wrapper behavior
+□ 8. Iterate only when the wrapper change actually needs packaging
 ```
 
 **Rebuilding does NOT bump the version.** You can run `python build.py` 30 times in a row — it just creates `claude-code-orbit-40.vsix`, `claude-code-orbit-41.vsix`, etc. The version in `package.json` stays the same.
 
-### When you're ready to ship
+### When you're ready to ship a patcher change
 
 1. Turn OFF dev mode
-2. Push the patcher + `patcher_version.txt` to GitHub
-3. Bump `patcher_version.txt` (this is the only version bump needed for a patcher-only update)
+2. Bump `patcher_version.txt`
+3. Push the patcher + `patcher_version.txt` + `patchers/` registry to GitHub
 4. Users get notified within 4 hours
