@@ -35,6 +35,7 @@ const TOGGLEABLE_PATCHES = [
 const OTA_BASE = "https://raw.githubusercontent.com/Lunarwerx/claude-code-orbit/main";
 const OTA_PATCHER_URL = OTA_BASE + "/Claude%20Code/patch_claude_vsix_v147.py";
 const OTA_WRAPPER_VERSION_URL = OTA_BASE + "/wrapper_version.txt";
+const OTA_WRAPPER_BUILD_URL = OTA_BASE + "/wrapper_build.txt";
 const OTA_WRAPPER_VSIX_URL = OTA_BASE + "/latest/claude-code-orbit.vsix";
 const OTA_TIMEOUT_MS = 8000;
 
@@ -78,6 +79,13 @@ const GS_LAST_NOTIFIED_CLAUDE = "claudeCodeOrbit.lastNotifiedClaudeVersion";
 const GS_PATCHER_MANIFEST = "claudeCodeOrbit.patcherManifest";
 const GS_DISABLED_PATCHES = "claudeCodeOrbit.disabledPatches";
 
+const REAPER_DEFAULT_MIN_AGE_MINUTES = 6;
+const REAPER_DEFAULT_INTERVAL_MINUTES = 3;
+const REAPER_DEFAULT_MAX_RESUME_SESSIONS = 3;
+const REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES = 15;
+const REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT = 1;
+const REAPER_COMMAND_TIMEOUT_MS = 20000;
+
 function activate(context) {
   const provider = new SidebarProvider(context);
   context.subscriptions.push(
@@ -108,8 +116,375 @@ function activate(context) {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claudeCodeOrbit.reapClaudeZombies", async () => {
+      try {
+        const result = await reapClaudeZombies("manual command");
+        const count = result && typeof result.killedCount === "number" ? result.killedCount : 0;
+        vscode.window.showInformationMessage("Claude Code Orbit reaper killed " + count + " stale process" + (count === 1 ? "." : "es."));
+      } catch (err) {
+        vscode.window.showErrorMessage("Claude Code Orbit reaper failed: " + (err && err.message ? err.message : String(err)));
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claudeCodeOrbit.trimClaudeResumeSessions", async () => {
+      try {
+        const result = await trimClaudeResumeSessions("manual command");
+        const count = result && typeof result.killedCount === "number" ? result.killedCount : 0;
+        vscode.window.showInformationMessage("Claude Code Orbit trimmed " + count + " idle resumed Claude session" + (count === 1 ? "." : "s."));
+      } catch (err) {
+        vscode.window.showErrorMessage("Claude Code Orbit resume trim failed: " + (err && err.message ? err.message : String(err)));
+      }
+    })
+  );
+
+  startClaudeZombieReaper(context);
+
   // --- Background patcher-version polling ---
   startBackgroundPolling(context, provider, statusBarItem);
+}
+
+function getReaperConfig() {
+  const cfg = vscode.workspace.getConfiguration("claudeCodeOrbit");
+  const enabled = cfg.get("reaper.enabled", true);
+  const minAgeMinutes = Math.max(1, Number(cfg.get("reaper.minAgeMinutes", REAPER_DEFAULT_MIN_AGE_MINUTES)) || REAPER_DEFAULT_MIN_AGE_MINUTES);
+  const intervalMinutes = Math.max(1, Number(cfg.get("reaper.intervalMinutes", REAPER_DEFAULT_INTERVAL_MINUTES)) || REAPER_DEFAULT_INTERVAL_MINUTES);
+  const trimResumeEnabled = cfg.get("reaper.trimResumeSessions.enabled", true);
+  const maxResumeSessions = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.maxSessions", REAPER_DEFAULT_MAX_RESUME_SESSIONS)) || REAPER_DEFAULT_MAX_RESUME_SESSIONS);
+  const resumeMinAgeMinutes = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.minAgeMinutes", REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES)) || REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES);
+  const resumeMaxCpuPercent = Math.max(0, Number(cfg.get("reaper.trimResumeSessions.maxCpuPercent", REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT)) || REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT);
+  return { enabled, minAgeMinutes, intervalMinutes, trimResumeEnabled, maxResumeSessions, resumeMinAgeMinutes, resumeMaxCpuPercent };
+}
+
+function startClaudeZombieReaper(context) {
+  if (process.platform !== "win32") return;
+  const run = (reason) => {
+    const cfg = getReaperConfig();
+    if (!cfg.enabled) return;
+    reapClaudeZombies(reason, cfg).then((result) => {
+      if (result && result.killedCount > 0) {
+        console.log("[Claude Code Orbit] Reaped " + result.killedCount + " stale Claude Code process(es): " + (result.killed || []).map((p) => p.pid + ":" + p.name).join(", "));
+      }
+    }).catch((err) => {
+      console.warn("[Claude Code Orbit] Reaper failed: " + (err && err.message ? err.message : err));
+    });
+    if (cfg.trimResumeEnabled) {
+      trimClaudeResumeSessions(reason, cfg).then((result) => {
+        if (result && result.killedCount > 0) {
+          console.log("[Claude Code Orbit] Trimmed " + result.killedCount + " idle resumed Claude session(s): " + (result.killed || []).map((p) => p.pid + ":" + p.resumeId).join(", "));
+        }
+      }).catch((err) => {
+        console.warn("[Claude Code Orbit] Resume trim failed: " + (err && err.message ? err.message : err));
+      });
+    }
+  };
+
+  const startup = setTimeout(() => run("orbit startup"), 5000);
+  const interval = setInterval(() => run("orbit interval"), getReaperConfig().intervalMinutes * 60 * 1000);
+  context.subscriptions.push({ dispose: () => clearTimeout(startup) });
+  context.subscriptions.push({ dispose: () => clearInterval(interval) });
+}
+
+function reapClaudeZombies(reason, config) {
+  const cfg = config || getReaperConfig();
+  if (process.platform !== "win32") {
+    return Promise.resolve({ killedCount: 0, killed: [], skipped: "non-windows" });
+  }
+
+  const script = `
+$ErrorActionPreference = "SilentlyContinue"
+$now = Get-Date
+$minAgeMinutes = ${JSON.stringify(Number(cfg.minAgeMinutes))}
+$reason = ${JSON.stringify(String(reason || "unspecified"))}
+$processes = @(Get-CimInstance Win32_Process)
+$byId = @{}
+foreach ($p in $processes) { $byId[[int]$p.ProcessId] = $p }
+
+function Get-ProcessAgeMinutes($p) {
+  try {
+    if ($p.CreationDate) {
+      $created = [Management.ManagementDateTimeConverter]::ToDateTime($p.CreationDate)
+      return [math]::Round(($now - $created).TotalMinutes, 2)
+    }
+  } catch {}
+  return 999999
+}
+
+function Has-CodeAncestor($p) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $parent = $byId[$parentId]
+    if ($parent.Name -ieq "Code.exe") { return $true }
+    $cur = $parent
+  }
+  return $false
+}
+
+function Has-TargetAncestor($p, $targetIds) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($targetIds.ContainsKey($parentId)) { return $true }
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $cur = $byId[$parentId]
+  }
+  return $false
+}
+
+$claudeTargets = @()
+foreach ($p in $processes) {
+  if ($p.Name -ine "claude.exe") { continue }
+  $exe = [string]$p.ExecutablePath
+  $cmd = [string]$p.CommandLine
+  $isClaudeCodeBinary = ($exe -match "\\\\.vscode\\\\extensions\\\\anthropic\\.claude-code-" -or $cmd -match "\\\\.vscode\\\\extensions\\\\anthropic\\.claude-code-")
+  if (-not $isClaudeCodeBinary) { continue }
+  $age = Get-ProcessAgeMinutes $p
+  if ($age -lt $minAgeMinutes) { continue }
+  if (Has-CodeAncestor $p) { continue }
+  $claudeTargets += $p
+}
+
+$targetIds = @{}
+foreach ($p in $claudeTargets) { $targetIds[[int]$p.ProcessId] = $true }
+
+$descendants = @()
+$allowedDescendants = @("conhost.exe", "bash.exe", "wsl.exe", "wslhost.exe")
+if ($targetIds.Count -gt 0) {
+  foreach ($p in $processes) {
+    if ($targetIds.ContainsKey([int]$p.ProcessId)) { continue }
+    if ($allowedDescendants -notcontains $p.Name) { continue }
+    if (Has-TargetAncestor $p $targetIds) { $descendants += $p }
+  }
+}
+
+$killed = @()
+foreach ($p in @($descendants + $claudeTargets)) {
+  $age = Get-ProcessAgeMinutes $p
+  try {
+    Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop
+    $killed += [pscustomobject]@{
+      pid = [int]$p.ProcessId
+      name = [string]$p.Name
+      ageMinutes = $age
+      parentProcessId = [int]$p.ParentProcessId
+      executablePath = [string]$p.ExecutablePath
+    }
+  } catch {}
+}
+
+[pscustomobject]@{
+  reason = $reason
+  minAgeMinutes = $minAgeMinutes
+  killedCount = $killed.Count
+  killed = $killed
+} | ConvertTo-Json -Compress -Depth 6
+`;
+
+  return new Promise((resolve, reject) => {
+    cp.execFile(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+      { windowsHide: true, timeout: REAPER_COMMAND_TIMEOUT_MS },
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error((err.message || String(err)) + (stderr ? "\n" + stderr : "")));
+        try {
+          resolve(stdout && stdout.trim() ? JSON.parse(stdout.trim()) : { killedCount: 0, killed: [] });
+        } catch (parseErr) {
+          reject(new Error("Could not parse reaper output: " + (parseErr && parseErr.message ? parseErr.message : parseErr) + "\n" + stdout));
+        }
+      }
+    );
+  });
+}
+
+function trimClaudeResumeSessions(reason, config) {
+  const cfg = config || getReaperConfig();
+  if (process.platform !== "win32") {
+    return Promise.resolve({ killedCount: 0, killed: [], skipped: "non-windows" });
+  }
+
+  const script = `
+$ErrorActionPreference = "SilentlyContinue"
+$now = Get-Date
+$maxSessions = ${JSON.stringify(Number(cfg.maxResumeSessions))}
+$minAgeMinutes = ${JSON.stringify(Number(cfg.resumeMinAgeMinutes))}
+$maxCpuPercent = ${JSON.stringify(Number(cfg.resumeMaxCpuPercent))}
+$reason = ${JSON.stringify(String(reason || "unspecified"))}
+$sampleSeconds = 2
+$processes = @(Get-CimInstance Win32_Process)
+$byId = @{}
+foreach ($p in $processes) { $byId[[int]$p.ProcessId] = $p }
+
+function Get-ProcessAgeMinutes($p) {
+  try {
+    if ($p.CreationDate -is [datetime]) { return [math]::Round(($now - $p.CreationDate).TotalMinutes, 2) }
+    if ($p.CreationDate) {
+      $created = [Management.ManagementDateTimeConverter]::ToDateTime($p.CreationDate)
+      return [math]::Round(($now - $created).TotalMinutes, 2)
+    }
+  } catch {}
+  return 999999
+}
+
+function Get-CreatedTicks($p) {
+  try {
+    if ($p.CreationDate -is [datetime]) { return $p.CreationDate.Ticks }
+    if ($p.CreationDate) { return ([Management.ManagementDateTimeConverter]::ToDateTime($p.CreationDate)).Ticks }
+  } catch {}
+  return 0
+}
+
+function Has-CodeAncestor($p) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $parent = $byId[$parentId]
+    if ($parent.Name -ieq "Code.exe") { return $true }
+    $cur = $parent
+  }
+  return $false
+}
+
+function Has-TargetAncestor($p, $targetIds) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($targetIds.ContainsKey($parentId)) { return $true }
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $cur = $byId[$parentId]
+  }
+  return $false
+}
+
+$resume = @()
+foreach ($p in $processes) {
+  if ($p.Name -ine "claude.exe") { continue }
+  $cmd = [string]$p.CommandLine
+  $exe = [string]$p.ExecutablePath
+  if (-not ($exe -like "*\\.vscode\\extensions\\anthropic.claude-code-*" -or $cmd -like "*\\.vscode\\extensions\\anthropic.claude-code-*")) { continue }
+  if ($cmd -notlike "*--resume*") { continue }
+  $resumeId = "unknown"
+  $parts = $cmd -split "\\s+"
+  for ($i = 0; $i -lt $parts.Count - 1; $i++) {
+    if ($parts[$i] -eq "--resume") {
+      $resumeId = $parts[$i + 1]
+      break
+    }
+  }
+  if (-not (Has-CodeAncestor $p)) { continue }
+  $resume += [pscustomobject]@{
+    process = $p
+    pid = [int]$p.ProcessId
+    resumeId = $resumeId
+    ageMinutes = Get-ProcessAgeMinutes $p
+    createdTicks = Get-CreatedTicks $p
+  }
+}
+
+if ($resume.Count -le $maxSessions) {
+  [pscustomobject]@{ reason = $reason; killedCount = 0; killed = @(); resumeCount = $resume.Count; maxSessions = $maxSessions } | ConvertTo-Json -Compress -Depth 6
+  exit 0
+}
+
+$before = @{}
+foreach ($r in $resume) {
+  $gp = Get-Process -Id $r.pid -ErrorAction SilentlyContinue
+  if ($gp) {
+    $cpuValue = 0
+    if ($null -ne $gp.CPU) { $cpuValue = [double]$gp.CPU }
+    $before[$r.pid] = $cpuValue
+  }
+}
+Start-Sleep -Seconds $sampleSeconds
+
+$cpuByPid = @{}
+foreach ($r in $resume) {
+  $gp = Get-Process -Id $r.pid -ErrorAction SilentlyContinue
+  if (-not $gp -or -not $before.ContainsKey($r.pid)) { continue }
+  $cpuNow = 0
+  if ($null -ne $gp.CPU) { $cpuNow = [double]$gp.CPU }
+  $delta = [math]::Max(0, ($cpuNow - [double]$before[$r.pid]))
+  $cpuByPid[$r.pid] = [math]::Round(($delta / $sampleSeconds / [Environment]::ProcessorCount) * 100, 2)
+}
+
+$keepIds = @{}
+$resume | Sort-Object createdTicks -Descending | Select-Object -First $maxSessions | ForEach-Object { $keepIds[$_.pid] = $true }
+$eligible = @(
+  $resume |
+    Where-Object { -not $keepIds.ContainsKey($_.pid) -and $_.ageMinutes -ge $minAgeMinutes -and $cpuByPid.ContainsKey($_.pid) -and $cpuByPid[$_.pid] -le $maxCpuPercent } |
+    Sort-Object createdTicks
+)
+
+$targetIds = @{}
+foreach ($r in $eligible) { $targetIds[$r.pid] = $true }
+
+$descendants = @()
+if ($targetIds.Count -gt 0) {
+  foreach ($p in $processes) {
+    if ($targetIds.ContainsKey([int]$p.ProcessId)) { continue }
+    if (Has-TargetAncestor $p $targetIds) { $descendants += $p }
+  }
+}
+
+$killed = @()
+foreach ($p in @($descendants | Sort-Object ProcessId -Descending)) {
+  try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch {}
+}
+
+foreach ($r in $eligible) {
+  try {
+    Stop-Process -Id $r.pid -Force -ErrorAction Stop
+    $killed += [pscustomobject]@{
+      pid = $r.pid
+      resumeId = $r.resumeId
+      ageMinutes = $r.ageMinutes
+      cpuPercent = if ($cpuByPid.ContainsKey($r.pid)) { $cpuByPid[$r.pid] } else { $null }
+    }
+  } catch {}
+}
+
+[pscustomobject]@{
+  reason = $reason
+  resumeCount = $resume.Count
+  maxSessions = $maxSessions
+  minAgeMinutes = $minAgeMinutes
+  maxCpuPercent = $maxCpuPercent
+  killedCount = $killed.Count
+  killed = $killed
+} | ConvertTo-Json -Compress -Depth 6
+`;
+
+  return new Promise((resolve, reject) => {
+    cp.execFile(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+      { windowsHide: true, timeout: REAPER_COMMAND_TIMEOUT_MS },
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error((err.message || String(err)) + (stderr ? "\n" + stderr : "")));
+        try {
+          resolve(stdout && stdout.trim() ? JSON.parse(stdout.trim()) : { killedCount: 0, killed: [] });
+        } catch (parseErr) {
+          reject(new Error("Could not parse resume trim output: " + (parseErr && parseErr.message ? parseErr.message : parseErr) + "\n" + stdout));
+        }
+      }
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +647,17 @@ function readBundledWrapperVersion(context) {
   }
 }
 
+function readBundledWrapperBuild(context) {
+  try {
+    const p = path.join(context.extensionUri.fsPath, "wrapper_build.txt");
+    const raw = fs.readFileSync(p, "utf8").trim().split(/\s+/)[0];
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
 async function fetchRemoteWrapperVersion(log) {
   try {
     const body = await httpsGet(OTA_WRAPPER_VERSION_URL + "?t=" + Date.now(), OTA_TIMEOUT_MS);
@@ -281,6 +667,20 @@ async function fetchRemoteWrapperVersion(log) {
     return v;
   } catch (err) {
     if (log) log("GitHub Orbit wrapper version unavailable (" + (err && err.message ? err.message : err) + ")");
+    return null;
+  }
+}
+
+async function fetchRemoteWrapperBuild(log) {
+  try {
+    const body = await httpsGet(OTA_WRAPPER_BUILD_URL + "?t=" + Date.now(), OTA_TIMEOUT_MS);
+    const raw = body.trim().split(/\s+/)[0];
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) throw new Error("not a build number: " + JSON.stringify(raw));
+    if (log) log("GitHub Orbit wrapper build: #" + n);
+    return n;
+  } catch (err) {
+    if (log) log("GitHub Orbit wrapper build unavailable (" + (err && err.message ? err.message : err) + ")");
     return null;
   }
 }
@@ -593,21 +993,28 @@ class SidebarProvider {
             }
             this.log("Checking GitHub Orbit wrapper version");
             const remoteWrapperVersion = await fetchRemoteWrapperVersion((l) => this.log(l));
+            const remoteWrapperBuild = await fetchRemoteWrapperBuild((l) => this.log(l));
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
             this.log("Checking newest Claude Code on the Marketplace");
             const latestClaude = await fetchLatestClaudeVersion((l) => this.log(l));
             if (latestClaude) await this.context.globalState.update(GS_LATEST_CLAUDE_VERSION, latestClaude);
             const installedVersion = readInstalledPatcherVersion();
             const wrapperVersion = readBundledWrapperVersion(this.context);
+            const wrapperBuild = readBundledWrapperBuild(this.context);
             const claudeCodeVersion = readInstalledClaudeVersion();
             const claudeOutdated = !!installedVersion && !!claudeCodeVersion && !!latestClaude && cmpVer(claudeCodeVersion, latestClaude) < 0;
             this.log("Reading installed Claude Code patcher version: " + (installedVersion || "not patched"));
             this.log("Comparing installed patcher against GitHub experimental");
-            if (remoteWrapperVersion && cmpVer(wrapperVersion, remoteWrapperVersion) < 0) {
+            const wrapperVersionOutdated = remoteWrapperVersion && cmpVer(wrapperVersion, remoteWrapperVersion) < 0;
+            const wrapperBuildOutdated = remoteWrapperVersion && cmpVer(wrapperVersion, remoteWrapperVersion) === 0
+              && remoteWrapperBuild != null && remoteWrapperBuild > wrapperBuild;
+            if (wrapperVersionOutdated || wrapperBuildOutdated) {
               updateAvailable = true;
               updateAction = "updateWrapper";
-              resultMsg = "Orbit wrapper v" + remoteWrapperVersion + " is available.";
-              resultSub = "Installed Orbit wrapper is v" + wrapperVersion + ". This updates the sidebar/updater itself from GitHub. Install wrapper update now?";
+              resultMsg = wrapperVersionOutdated
+                ? "Orbit wrapper v" + remoteWrapperVersion + " is available."
+                : "Orbit wrapper build #" + remoteWrapperBuild + " is available.";
+              resultSub = "Installed Orbit wrapper is v" + wrapperVersion + " build #" + wrapperBuild + ". This updates the sidebar/updater itself from GitHub. Install wrapper update now?";
             } else if (!installedVersion) {
               updateAvailable = true;
               resultMsg = "Claude Code is not patched yet.";

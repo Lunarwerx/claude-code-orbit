@@ -49,6 +49,7 @@ BUILDS_DIR = ROOT / "builds"
 LATEST_DIR = ROOT / "latest"
 LATEST_VSIX = LATEST_DIR / "claude-code-orbit.vsix"
 WRAPPER_VERSION_SRC = ROOT / "wrapper_version.txt"
+WRAPPER_BUILD_SRC = ROOT / "wrapper_build.txt"
 BUILD_LOG = BUILDS_DIR / "BUILD_LOG.md"
 EXT_NAME = "claude-code-orbit"
 
@@ -225,6 +226,9 @@ def build(out: Path | None = None) -> Path:
         # webview/index.js to detect outdated installs.
         zf.writestr("extension/patch_version.txt", patcher_version)
         files_added.append(f"extension/patch_version.txt (v{patcher_version})")
+        wrapper_build = str(build_number or 0)
+        zf.writestr("extension/wrapper_build.txt", wrapper_build)
+        files_added.append(f"extension/wrapper_build.txt (#{wrapper_build})")
 
         # README — copy with path rewrite so the GitHub-relative logo image
         # ("Claude Code Orbit/media/...") resolves inside the VSIX where the
@@ -244,8 +248,12 @@ def build(out: Path | None = None) -> Path:
     LATEST_DIR.mkdir(exist_ok=True)
     shutil.copyfile(out, LATEST_VSIX)
     WRAPPER_VERSION_SRC.write_text(str(manifest["version"]) + "\n", encoding="utf-8")
+    if build_number is not None:
+        WRAPPER_BUILD_SRC.write_text(str(build_number) + "\n", encoding="utf-8")
     print(f"  latest:  {LATEST_VSIX}")
     print(f"  wrapper: {WRAPPER_VERSION_SRC.name} = {manifest['version']}")
+    if build_number is not None:
+        print(f"  build:   {WRAPPER_BUILD_SRC.name} = {build_number}")
 
     # Append to the version-controlled build ledger — the visible proof that this
     # build happened and which number is newest.

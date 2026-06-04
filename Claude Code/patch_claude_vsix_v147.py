@@ -70,6 +70,186 @@ GATEABLE_FEATURES = {
     "fork-row",
 }
 
+CLAUDE_HOST_REAPER_JS = r'''
+;(function ccOrbitZombieReaper(){
+try{
+if(process.platform!=="win32"||globalThis.__ccOrbitZombieReaper)return;
+globalThis.__ccOrbitZombieReaper=1;
+const cp=require("child_process");
+let vscode=null;try{vscode=require("vscode")}catch(_){}
+function cfg(){
+  let c=null;try{c=vscode&&vscode.workspace&&vscode.workspace.getConfiguration("claudeCodeOrbit")}catch(_){}
+  const enabled=c?c.get("reaper.enabled",true):true;
+  const minAge=Math.max(1,Number(c?c.get("reaper.minAgeMinutes",6):6)||6);
+  const interval=Math.max(1,Number(c?c.get("reaper.intervalMinutes",3):3)||3);
+  const trimResumeEnabled=c?c.get("reaper.trimResumeSessions.enabled",true):true;
+  const maxResumeSessions=Math.max(1,Number(c?c.get("reaper.trimResumeSessions.maxSessions",3):3)||3);
+  const resumeMinAgeMinutes=Math.max(1,Number(c?c.get("reaper.trimResumeSessions.minAgeMinutes",15):15)||15);
+  const resumeMaxCpuPercent=Math.max(0,Number(c?c.get("reaper.trimResumeSessions.maxCpuPercent",1):1)||1);
+  return{enabled,minAge,interval,trimResumeEnabled,maxResumeSessions,resumeMinAgeMinutes,resumeMaxCpuPercent};
+}
+function run(reason){
+  const o=cfg();if(!o.enabled)return;
+  const ps=`
+$ErrorActionPreference = "SilentlyContinue"
+$now = Get-Date
+$minAgeMinutes = ${JSON.stringify(o.minAge)}
+$trimResumeEnabled = ${JSON.stringify(!!o.trimResumeEnabled)}
+$maxResumeSessions = ${JSON.stringify(o.maxResumeSessions)}
+$resumeMinAgeMinutes = ${JSON.stringify(o.resumeMinAgeMinutes)}
+$resumeMaxCpuPercent = ${JSON.stringify(o.resumeMaxCpuPercent)}
+$reason = ${JSON.stringify(reason||"claude host")}
+$sampleSeconds = 2
+$processes = @(Get-CimInstance Win32_Process)
+$byId = @{}
+foreach ($p in $processes) { $byId[[int]$p.ProcessId] = $p }
+function Get-Age($p) {
+  try {
+    if ($p.CreationDate) {
+      $created = [Management.ManagementDateTimeConverter]::ToDateTime($p.CreationDate)
+      return [math]::Round(($now - $created).TotalMinutes, 2)
+    }
+  } catch {}
+  return 999999
+}
+function Get-CreatedTicks($p) {
+  try {
+    if ($p.CreationDate -is [datetime]) { return $p.CreationDate.Ticks }
+    if ($p.CreationDate) { return ([Management.ManagementDateTimeConverter]::ToDateTime($p.CreationDate)).Ticks }
+  } catch {}
+  return 0
+}
+function Has-CodeAncestor($p) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $parent = $byId[$parentId]
+    if ($parent.Name -ieq "Code.exe") { return $true }
+    $cur = $parent
+  }
+  return $false
+}
+function Has-TargetAncestor($p, $targetIds) {
+  $seen = @{}
+  $cur = $p
+  for ($i = 0; $i -lt 40 -and $cur; $i++) {
+    $parentId = [int]$cur.ParentProcessId
+    if ($targetIds.ContainsKey($parentId)) { return $true }
+    if ($parentId -le 0 -or $seen.ContainsKey($parentId)) { return $false }
+    $seen[$parentId] = $true
+    if (-not $byId.ContainsKey($parentId)) { return $false }
+    $cur = $byId[$parentId]
+  }
+  return $false
+}
+$claudeTargets = @()
+foreach ($p in $processes) {
+  if ($p.Name -ine "claude.exe") { continue }
+  $exe = [string]$p.ExecutablePath
+  $cmd = [string]$p.CommandLine
+  if (-not ($exe -match "\\.vscode\\extensions\\anthropic\\.claude-code-" -or $cmd -match "\\.vscode\\extensions\\anthropic\\.claude-code-")) { continue }
+  $age = Get-Age $p
+  if ($age -lt $minAgeMinutes) { continue }
+  if (Has-CodeAncestor $p) { continue }
+  $claudeTargets += $p
+}
+$targetIds = @{}
+foreach ($p in $claudeTargets) { $targetIds[[int]$p.ProcessId] = $true }
+$descendants = @()
+$allowed = @("conhost.exe", "bash.exe", "wsl.exe", "wslhost.exe")
+if ($targetIds.Count -gt 0) {
+  foreach ($p in $processes) {
+    if ($targetIds.ContainsKey([int]$p.ProcessId)) { continue }
+    if ($allowed -notcontains $p.Name) { continue }
+    if (Has-TargetAncestor $p $targetIds) { $descendants += $p }
+  }
+}
+$killed = 0
+foreach ($p in @($descendants + $claudeTargets)) {
+  try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; $killed += 1 } catch {}
+}
+if ($trimResumeEnabled -and $maxResumeSessions -gt 0) {
+  $resume = @()
+  foreach ($p in $processes) {
+    if ($p.Name -ine "claude.exe") { continue }
+    $exe = [string]$p.ExecutablePath
+    $cmd = [string]$p.CommandLine
+    if (-not ($exe -like "*\\.vscode\\extensions\\anthropic.claude-code-*" -or $cmd -like "*\\.vscode\\extensions\\anthropic.claude-code-*")) { continue }
+    if ($cmd -notlike "*--resume*") { continue }
+    if (-not (Has-CodeAncestor $p)) { continue }
+    $resumeId = "unknown"
+    $parts = $cmd -split "\\s+"
+    for ($i = 0; $i -lt $parts.Count - 1; $i++) {
+      if ($parts[$i] -eq "--resume") { $resumeId = $parts[$i + 1]; break }
+    }
+    $resume += [pscustomobject]@{
+      process = $p
+      pid = [int]$p.ProcessId
+      resumeId = $resumeId
+      ageMinutes = Get-Age $p
+      createdTicks = Get-CreatedTicks $p
+    }
+  }
+  if ($resume.Count -gt $maxResumeSessions) {
+    $before = @{}
+    foreach ($r in $resume) {
+      $gp = Get-Process -Id $r.pid -ErrorAction SilentlyContinue
+      if ($gp) {
+        $cpuValue = 0
+        if ($null -ne $gp.CPU) { $cpuValue = [double]$gp.CPU }
+        $before[$r.pid] = $cpuValue
+      }
+    }
+    Start-Sleep -Seconds $sampleSeconds
+    $cpuByPid = @{}
+    foreach ($r in $resume) {
+      $gp = Get-Process -Id $r.pid -ErrorAction SilentlyContinue
+      if (-not $gp -or -not $before.ContainsKey($r.pid)) { continue }
+      $cpuNow = 0
+      if ($null -ne $gp.CPU) { $cpuNow = [double]$gp.CPU }
+      $delta = [math]::Max(0, ($cpuNow - [double]$before[$r.pid]))
+      $cpuByPid[$r.pid] = [math]::Round(($delta / $sampleSeconds / [Environment]::ProcessorCount) * 100, 2)
+    }
+    $keepIds = @{}
+    $resume | Sort-Object createdTicks -Descending | Select-Object -First $maxResumeSessions | ForEach-Object { $keepIds[$_.pid] = $true }
+    $eligible = @(
+      $resume |
+        Where-Object { -not $keepIds.ContainsKey($_.pid) -and $_.ageMinutes -ge $resumeMinAgeMinutes -and $cpuByPid.ContainsKey($_.pid) -and $cpuByPid[$_.pid] -le $resumeMaxCpuPercent } |
+        Sort-Object createdTicks
+    )
+    $resumeTargetIds = @{}
+    foreach ($r in $eligible) { $resumeTargetIds[$r.pid] = $true }
+    if ($resumeTargetIds.Count -gt 0) {
+      $resumeDescendants = @()
+      foreach ($p in $processes) {
+        if ($resumeTargetIds.ContainsKey([int]$p.ProcessId)) { continue }
+        if (Has-TargetAncestor $p $resumeTargetIds) { $resumeDescendants += $p }
+      }
+      foreach ($p in @($resumeDescendants | Sort-Object ProcessId -Descending)) {
+        try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch {}
+      }
+      foreach ($r in $eligible) {
+        try { Stop-Process -Id $r.pid -Force -ErrorAction Stop; $killed += 1 } catch {}
+      }
+    }
+  }
+}
+if ($killed -gt 0) { Write-Output "ccOrbitZombieReaper killed $killed stale/idle process(es) for $reason" }
+`;
+  cp.execFile("powershell.exe",["-NoProfile","-ExecutionPolicy","Bypass","-Command",ps],{windowsHide:true,timeout:20000},(e,out)=>{
+    try{if(out&&out.trim())console.log("[Claude Code Orbit] "+out.trim())}catch(_){}
+  });
+}
+setTimeout(()=>run("claude host startup"),8000);
+setInterval(()=>run("claude host interval"),cfg().interval*60*1000);
+}catch(e){try{console.warn("[Claude Code Orbit] zombie reaper init failed",e)}catch(_){}}
+})();
+'''
+
 
 def feature_on(fid: str) -> bool:
     """Whether feature `fid` should be applied. Non-gateable ids are always on;
@@ -2623,8 +2803,14 @@ def patch_extension_dir(extension_dir: Path) -> bool:
 
 def patch_extension_host_js(path: Path) -> bool:
     text = read(path)
+    changed = False
+    if "ccOrbitZombieReaper" not in text:
+        text = CLAUDE_HOST_REAPER_JS + "\n" + text
+        changed = True
     if "read_claude_md_response" in text:
-        return False
+        if changed:
+            write(path, text)
+        return changed
     ids = re.search(
         rf"openConfigFile\({JS_ID}\)\{{[\s\S]{{0,700}}?(?P<path>{JS_ID})\.join\([\s\S]{{0,300}}?(?P<fs>{JS_ID})\.writeFileSync",
         text,
@@ -2756,6 +2942,7 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "settings dropdown css": ".ccPatchSettingsMenu" in css and ".ccPatchSettingsItem" in css,
         "account switch modal": "ccPatchSwitchAccountModal" in js and ".ccPatchConfirmOverlay" in css,
         "account switch rpc": "ccPatchSwitchAccount(" in js and 'case"switch_account"' in host,
+        "zombie reaper": "ccOrbitZombieReaper" in host,
         "instructions modal": "ccPatchInstructionsOverlay" in js and ".ccPatchInstructionsOverlay" in css,
         "instructions read": "ccPatchReadClaudeMd" in js and "read_claude_md_response" in host,
         "instructions write": "ccPatchWriteClaudeMd" in js and "write_claude_md_response" in host,
