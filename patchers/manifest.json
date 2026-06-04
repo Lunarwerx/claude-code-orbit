@@ -140,6 +140,13 @@
       "file": "patch_claude-1.2.69.py",
       "date": "2026-06-03",
       "notes": "queue flush is now per-session (Map<session,wasBusy>) and sends to each item's OWN session \u2014 fixes queued messages stranded forever when you switch chats or run multiple busy chats; the old single global busy-edge detector could only track one session at a time"
+    },
+    {
+      "version": "1.2.70",
+      "build": 117,
+      "claude": "2.1.161",
+      "file": "patch_claude-1.2.70.py",
+      "date": "2026-06-03"
     }
   ]
 }

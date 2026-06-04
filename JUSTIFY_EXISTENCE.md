@@ -662,3 +662,29 @@ Verified end-to-end against live Claude **2.1.162** (82 checks incl. the new
 `right-click rename` guard, JS syntax clean, generated call site
 `ccPatchShowMenu(...,Z,()=>z(Z))` correct). NOTE: certified pin left at 2.1.161 to
 match the 1.2.66–1.2.68 chain, though 1.2.69 is proven on 2.1.162.
+
+**Export `ccPatchErrorReason` to globalThis (hotfix, patcher v1.2.70):** the whole
+webview crashed with "ccPatchErrorReason is not defined" (React error boundary →
+"Something went wrong") the instant any session entered the rate-limit/error
+state. **Root cause:** the helper bundle is one strict-mode IIFE, so a bare name
+in *render* scope (the React component tree, outside the IIFE) resolves only if
+the helper is in the `Object.assign(globalThis,{…})` export. The row-title render
+calls `ccPatchErrorReason(Z)` bare in the `R1==="error"` branch, but the function
+was defined IIFE-local and never exported — unlike its siblings
+`ccPatchSessionIndicator`/`ccPatchActivityText`, which ARE exported and so work.
+Latent since 1.2.66 (the error-dot feature): it only fires on the error branch,
+which nothing exercised until an account hit usage limits today. **Job:** add
+`ccPatchErrorReason` to the export list — one token, identical to how every other
+render-referenced helper is surfaced. **Why this vs rejected:** export, not
+rewrite — the function is correct; only its *reachability* from render was wrong.
+Considered `globalThis.ccPatchErrorReason(...)` at the call site, but bare +
+exported is the established convention (consistency = one pattern, not two).
+**Primitive/debt:** reuses the existing globalThis-export primitive; zero new
+machinery. **Blade:** added verify check `error reason exported (render-scope
+safe)` asserting `ccPatchErrorReason,` (the comma form appears only in the export
+list) is present — the build now fails if it's referenced in render but unexported.
+WATCH: this guards only THIS helper; the general class ("any ccPatch* called bare
+in render must be exported") deserves a programmatic audit in verify (the standalone
+audit I ran found this was the only offender — the rest use `globalThis.X` with
+guards). **Verdict:** KEEP. Verified on live Claude 2.1.162 (83 checks; generated
+webview shows `ccPatchErrorReason` inside `Object.assign(globalThis,{…})`).
