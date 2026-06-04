@@ -9,7 +9,7 @@ Features:
   - Archive sessions: right-click or button replaces delete
     * Non-archived sessions show an archive button (orange box icon)
     * Archived sessions show a permanent delete button
-    * Right-click menu: Rename / Pin / Star / Archive (or Unarchive)
+    * Right-click menu: Pin / Star / Archive (or Unarchive)
   - Sort order: pinned first, then by time, archived sessions sink to bottom
   - Status dot moved to LEFT of session name (Cursor-style)
   - Improved time display: "2 days ago", "1 hr ago" etc.
@@ -52,31 +52,6 @@ MARKETPLACE_QUERY_URL = (
     "https://marketplace.visualstudio.com/_apis/public/gallery/" "extensionquery?api-version=7.2-preview.1"
 )
 LOG_PATH: Path | None = None
-
-# ── Patch-module gating ──────────────────────────────────────────────────────
-# None = apply everything (default; byte-identical to the historical monolith).
-# A set = the gateable feature ids that are ON; any gateable id NOT in the set is
-# skipped. The core scaffold and the welded sidebar cluster are never gateable —
-# they always apply. Set by main() from --disable/--enable; read by the gated
-# blocks via feature_on() and by verify_extension_dir().
-ENABLED_FEATURES: "set[str] | None" = None
-
-# Independent, purely-additive feature modules that --disable/--enable can toggle.
-# Mirrors the independent userFacing entries in patch_modules/catalog.json. Only
-# ids listed here are skippable; everything else is always applied.
-GATEABLE_FEATURES = {
-    "usage-meter",
-    "yolo-mode",
-    "fork-row",
-}
-
-
-def feature_on(fid: str) -> bool:
-    """Whether feature `fid` should be applied. Non-gateable ids are always on;
-    only ids in GATEABLE_FEATURES can be switched off via ENABLED_FEATURES."""
-    if ENABLED_FEATURES is None or fid not in GATEABLE_FEATURES:
-        return True
-    return fid in ENABLED_FEATURES
 
 
 def log(message: str) -> None:
@@ -211,7 +186,7 @@ function ccPatchErrorReason(e){try{let r=e.rateLimitWarning?.value;if(typeof r==
 function ccPatchSessionIndicator(e,t){if(ccPatchErrorReason(e))return`error`;if(!t&&ccPatchIsWaiting(e))return`waiting`;if(e.busy?.value)return`running`;if(ccPatchDoneSessions.has(ccPatchSessionId(e)))return`done`;return``}
 function ccPatchActivityText(e){let ccEr=ccPatchErrorReason(e);if(ccEr)return ccEr;if(e.permissionRequests?.value?.length)return`Waiting for input`;if(!e.busy?.value)return null;let m=e.messages?.value;if(m&&m.length>0){let l=m[m.length-1];if(l){let c=l.content;if(Array.isArray(c)){for(let j=c.length-1;j>=0;j--){let b=c[j];if(!b)continue;if(b.type===`tool_use`){let n=b.name||``,inp=b.input;if(inp&&inp.command)return`Running `+String(inp.command).replace(/\s+/g,` `).slice(0,50);if(inp&&inp.file_path)return(n===`Read`?`Reading `:`Editing `)+String(inp.file_path).split(/[/\\]/).pop();return`Running `+n.replace(/_/g,` `)+`...`}if(b.type===`thinking`)return`Thinking...`;if(b.type===`text`&&b.text)return String(b.text).replace(/\s+/g,` `).slice(0,50).trim()}}}}return`Thinking...`}
 function ccPatchCloseMenu(){document.querySelector(`.claudePatchContextMenu`)?.remove()}
-function ccPatchShowMenu(e,t,pLabel,n,sLabel,r,a,sess,rn){ccPatchCloseMenu();let i=document.createElement(`div`);i.className=`claudePatchContextMenu`,i.style.left=`${Math.min(e,window.innerWidth-160)}px`,i.style.top=`${Math.min(t,window.innerHeight-180)}px`;let s=(o,c)=>{let u=document.createElement(`button`),f=!1,d=(v)=>{v.preventDefault(),v.stopPropagation();if(f)return;f=!0,ccPatchCloseMenu(),c()};return u.textContent=o,u.onmousedown=d,u.onclick=d,i.appendChild(u),u};if(rn)s(`Rename`,rn);s(pLabel,n);s(sLabel,r);if(a)s(a.label,a.fn);if(sess){var cw=document.createElement(`div`);cw.className=`ccPatchCtxColors`;var cur=ccPatchGetColor(sess);ccPatchColorPalette().forEach(function(p){var b=document.createElement(`button`);b.type=`button`;b.className=`ccPatchColorSwatch`+(p[0]===cur?` ccPatchColorSwatchOn`:``)+(p[0]===``?` ccPatchColorSwatchNone`:``);b.title=p[1];if(p[2])b.style.background=p[2];b.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchSetColor(sess,p[0]);ccPatchCloseMenu()};cw.appendChild(b)});i.appendChild(cw)}document.body.appendChild(i);setTimeout(()=>document.addEventListener(`mousedown`,ccPatchCloseMenu,{once:!0}),0)}
+function ccPatchShowMenu(e,t,pLabel,n,sLabel,r,a,sess){ccPatchCloseMenu();let i=document.createElement(`div`);i.className=`claudePatchContextMenu`,i.style.left=`${Math.min(e,window.innerWidth-160)}px`,i.style.top=`${Math.min(t,window.innerHeight-180)}px`;let s=(o,c)=>{let u=document.createElement(`button`),f=!1,d=(v)=>{v.preventDefault(),v.stopPropagation();if(f)return;f=!0,ccPatchCloseMenu(),c()};return u.textContent=o,u.onmousedown=d,u.onclick=d,i.appendChild(u),u};s(pLabel,n);s(sLabel,r);if(a)s(a.label,a.fn);if(sess){var cw=document.createElement(`div`);cw.className=`ccPatchCtxColors`;var cur=ccPatchGetColor(sess);ccPatchColorPalette().forEach(function(p){var b=document.createElement(`button`);b.type=`button`;b.className=`ccPatchColorSwatch`+(p[0]===cur?` ccPatchColorSwatchOn`:``)+(p[0]===``?` ccPatchColorSwatchNone`:``);b.title=p[1];if(p[2])b.style.background=p[2];b.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchSetColor(sess,p[0]);ccPatchCloseMenu()};cw.appendChild(b)});i.appendChild(cw)}document.body.appendChild(i);setTimeout(()=>document.addEventListener(`mousedown`,ccPatchCloseMenu,{once:!0}),0)}
 function ccPatchCloseColorMenu(){document.querySelector(`.ccPatchColorMenu`)?.remove()}
 function ccPatchShowColorMenu(x,y,sess){ccPatchCloseColorMenu();ccPatchCloseMenu();var cur=ccPatchGetColor(sess);var m=document.createElement(`div`);m.className=`ccPatchColorMenu`;ccPatchColorPalette().forEach(function(p){var b=document.createElement(`button`);b.type=`button`;b.className=`ccPatchColorSwatch`+(p[0]===cur?` ccPatchColorSwatchOn`:``)+(p[0]===``?` ccPatchColorSwatchNone`:``);b.title=p[1];if(p[2])b.style.background=p[2];b.onmousedown=function(v){v.preventDefault();v.stopPropagation();ccPatchSetColor(sess,p[0]);ccPatchCloseColorMenu()};m.appendChild(b)});document.body.appendChild(m);var mw=m.offsetWidth||0,mh=m.offsetHeight||0,L=Math.min(x,window.innerWidth-mw-8),T=Math.min(y,window.innerHeight-mh-8);m.style.left=`${Math.max(8,L)}px`;m.style.top=`${Math.max(8,T)}px`;setTimeout(function(){document.addEventListener(`mousedown`,ccPatchCloseColorMenu,{once:!0})},0)}
 var ccPatchPaneVis=(function(){try{return localStorage.getItem(`ccPatchPaneVis`)!==`false`}catch(e){return true}})();
@@ -269,29 +244,20 @@ function ccPatchActiveSession(){return globalThis.ccPatchChatSession||globalThis
 function ccPatchSessionKey(s){if(!s)return null;try{return(s.sessionId&&s.sessionId.value)||null}catch(e){return null}}
 function ccPatchQueueOwns(it,s){if(!s)return!1;if(it.sess)return it.sess===s;var k=s.sessionId&&s.sessionId.value;if(k&&it.skey===k){it.sess=s;return!0}return!1}
 function ccPatchIsBusy(){var s=ccPatchActiveSession();try{return!!(s&&s.busy&&s.busy.value)}catch(e){return!1}}
-function ccPatchSendQueued(it){var s=it&&it.sess;if(!s||typeof s.send!==`function`)return!1;if(!it.text&&!(it.files&&it.files.length))return!1;try{s.send(it.text||``,it.files||[],!!it.sel);return!0}catch(e){console.error(`Orbit queue send failed:`,e);return!1}}
+function ccPatchSendText(t,files,sel){var s=ccPatchActiveSession();if(!s||typeof s.send!==`function`)return!1;if(!t&&!(files&&files.length))return!1;try{s.send(t||``,files||[],!!sel);return!0}catch(e){console.error(`Orbit queue send failed:`,e);return!1}}
 function ccPatchQueueAddFull(t,files,sel,sess){t=(t||``).trim();if(!t&&!(files&&files.length))return;var s=sess||ccPatchActiveSession();globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).concat([{id:`q`+Date.now()+`_`+Math.round(Math.random()*1e6),text:t,files:files||[],sel:!!sel,sess:s,skey:ccPatchSessionKey(s)}]);ccPatchQueueNotify()}
 function ccPatchComposerInput(form){try{return(form||document).querySelector(`[contenteditable="plaintext-only"][aria-label="Message input"]`)}catch(e){return null}}
 function ccPatchComposerClear(inp){if(!inp)return;try{inp.textContent=``;inp.dispatchEvent(new Event(`input`,{bubbles:!0}))}catch(e){}}
 function ccPatchQueueNotify(){try{localStorage.setItem(`ccPatchQueue:`+(globalThis.ccPatchWsKey||``),JSON.stringify((globalThis.ccPatchQueue||[]).map(function(it){var k=(it.sess&&it.sess.sessionId&&it.sess.sessionId.value)||it.skey||null;it.skey=k;return{id:it.id,text:it.text,sel:it.sel,skey:k}}).filter(function(r){return r.skey})))}catch(e){}globalThis.ccPatchQueueListeners.forEach(function(f){try{f()}catch(err){}})}
 function ccPatchSetSendMode(m){globalThis.ccPatchSendMode=m;try{localStorage.setItem(`ccPatchSendMode`,m)}catch(e){}}
-// Flush PER SESSION, not per "active session". Each queued item holds a live
-// reference to its own session, so we watch THAT session's busy signal directly
-// and send on its OWN busy->idle edge. The old design used one global edge
-// detector on ccPatchActiveSession()+ccPatchQueueWasBusy, which could only ever
-// track a SINGLE session: queueing into chat A then viewing or streaming chat B
-// hijacked the global, A's idle edge was never observed, and — because an idle
-// chat has no future edge to re-trigger it — A's item was stranded forever.
-// Map<session,wasBusy> tracks every queued session at once and is immune to
-// which chat is on screen; each item sends to its OWN session, never "active".
-function ccPatchQueueTick(){var q=globalThis.ccPatchQueue||[];var map=globalThis.ccPatchQueueBusyMap;if(!map||typeof map.get!==`function`){map=globalThis.ccPatchQueueBusyMap=new Map}if(!q.length){if(map.size)map.clear();return}var sess=[];for(var i=0;i<q.length;i++){var s0=q[i]&&q[i].sess;if(s0&&sess.indexOf(s0)<0)sess.push(s0)}map.forEach(function(v,k){if(sess.indexOf(k)<0)map.delete(k)});var flush=[];for(var j=0;j<sess.length;j++){var s=sess[j],busy=!1;try{busy=!!(s&&s.busy&&s.busy.value)}catch(e){}if(busy){map.set(s,!0);continue}if(!map.get(s))continue;map.set(s,!1);flush.push(s)}if(!flush.length)return;for(var f=0;f<flush.length;f++){var sx=flush[f],cur=globalThis.ccPatchQueue||[],idx=-1;for(var k2=0;k2<cur.length;k2++){if(cur[k2].sess===sx){idx=k2;break}}if(idx<0)continue;var item=cur[idx];globalThis.ccPatchQueue=cur.slice(0,idx).concat(cur.slice(idx+1));ccPatchSendQueued(item)}ccPatchQueueNotify()}
+function ccPatchQueueTick(){var s=ccPatchActiveSession();if(s!==globalThis.ccPatchQueueSessRef){globalThis.ccPatchQueueSessRef=s;globalThis.ccPatchQueueWasBusy=!1}var busy=!1;try{busy=!!(s&&s.busy&&s.busy.value)}catch(e){}if(busy){globalThis.ccPatchQueueWasBusy=!0;return}if(!globalThis.ccPatchQueueWasBusy)return;globalThis.ccPatchQueueWasBusy=!1;if(!s)return;var q=globalThis.ccPatchQueue||[],idx=-1;for(var i=0;i<q.length;i++){if(ccPatchQueueOwns(q[i],s)){idx=i;break}}if(idx<0)return;var item=q[idx];globalThis.ccPatchQueue=q.slice(0,idx).concat(q.slice(idx+1));ccPatchQueueNotify();ccPatchSendText(item.text,item.files,item.sel)}
 if(!globalThis.ccPatchQueueTimer)globalThis.ccPatchQueueTimer=setInterval(ccPatchQueueTick,250);
 function ccPatchQueueAdd(t){t=(t||``).trim();if(!t)return;var s=ccPatchActiveSession();globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).concat([{id:`q`+Date.now()+`_`+Math.round(Math.random()*1e6),text:t,sess:s,skey:ccPatchSessionKey(s)}]);ccPatchQueueNotify()}
 function ccPatchQueueRemove(id){globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){return x.id!==id});if(globalThis.ccPatchQueueEditId===id)globalThis.ccPatchQueueEditId=null;ccPatchQueueNotify()}
 function ccPatchQueueEdit(id){var q=globalThis.ccPatchQueue||[],item=null;for(var i=0;i<q.length;i++){if(q[i].id===id){item=q[i];break}}if(!item)return;var inp=ccPatchComposerInput();if(inp){try{inp.textContent=item.text||``;inp.dispatchEvent(new Event(`input`,{bubbles:!0}));inp.focus();var s=window.getSelection&&window.getSelection();if(s){var rng=document.createRange();rng.selectNodeContents(inp);rng.collapse(!1);s.removeAllRanges();s.addRange(rng)}}catch(e){}}ccPatchQueueRemove(id)}
 function ccPatchQueueCancelEdit(){globalThis.ccPatchQueueEditId=null;ccPatchQueueNotify()}
 function ccPatchQueueCommitEdit(id,t){t=(t||``).trim();globalThis.ccPatchQueueEditId=null;if(!t){ccPatchQueueRemove(id);return}globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).map(function(x){return x.id===id?Object.assign({},x,{text:t}):x});ccPatchQueueNotify()}
-function ccPatchQueueSendNow(id){var item=null;globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){if(x.id===id){item=x;return!1}return!0});ccPatchQueueNotify();if(!item)return;var s=item.sess;try{if(globalThis.ccPatchQueueBusyMap&&typeof globalThis.ccPatchQueueBusyMap.set===`function`&&s)globalThis.ccPatchQueueBusyMap.set(s,!1)}catch(e){}try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchSendQueued(item)},90)}
+function ccPatchQueueSendNow(id){var item=null;globalThis.ccPatchQueue=(globalThis.ccPatchQueue||[]).filter(function(x){if(x.id===id){item=x;return!1}return!0});ccPatchQueueNotify();if(!item)return;globalThis.ccPatchQueueWasBusy=!1;var s=ccPatchActiveSession();try{if(s&&s.interrupt)s.interrupt()}catch(e){}setTimeout(function(){ccPatchSendText(item.text,item.files,item.sel)},90)}
 function ccPatchComposerAction(mode,form){form=form||ccPatchComposerForm(document.activeElement);var inp=ccPatchComposerInput(form);var text=inp?(inp.textContent||``).trim():``;if(!text)return;if(mode===`stopsend`){globalThis.ccPatchQueueIntent=!1;ccPatchStopAndSendForm(form);return}globalThis.ccPatchQueueIntent=(mode===`queue`);ccPatchTriggerSend(form);globalThis.ccPatchQueueIntent=!1}
 function ccPatchRenderQueue(R,G2,sess){try{if(sess)globalThis.ccPatchChatSession=sess;var q=(globalThis.ccPatchQueue||[]).filter(function(it){return ccPatchQueueOwns(it,sess)});if(!q.length)return null;var ce=R.default.createElement,editId=globalThis.ccPatchQueueEditId;function ic(inner){return ce(`svg`,{width:13,height:13,viewBox:`0 0 13 13`,fill:`none`,stroke:`currentColor`,strokeWidth:1.4,strokeLinecap:`round`,strokeLinejoin:`round`,"aria-hidden":!0},inner)}var rows=q.map(function(it){var ctrls=ce(`div`,{className:`ccPatchQueueControls`},ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Edit`,onClick:function(){ccPatchQueueEdit(it.id)}},ic(ce(`path`,{d:`M8.4 2l2.6 2.6L4.6 11H2V8.4z`}))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Send now`,onClick:function(){ccPatchQueueSendNow(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:6.5,y1:10.5,x2:6.5,y2:2.5}),ce(`polyline`,{points:`3,6 6.5,2.5 10,6`})))),ce(`button`,{type:`button`,className:`ccPatchQueueCtl`,title:`Remove`,onClick:function(){ccPatchQueueRemove(it.id)}},ic(ce(`g`,null,ce(`line`,{x1:3,y1:3,x2:10,y2:10}),ce(`line`,{x1:10,y1:3,x2:3,y2:10})))));var att=(Array.isArray(it.files)&&it.files.length)?ce(`div`,{className:`ccPatchQueueAtt`},it.files.map(function(f,fi){var nm=(f&&(f.name||(f.file&&f.file.name)||f.fileName||f.filename))||`attachment`;var src=f&&(f.url||f.dataUrl||f.dataURL||f.src||f.data);var kids=[ce(`span`,{className:`ccPatchQueueAttName`,key:`n`},nm)];if(src&&typeof src===`string`&&src.indexOf(`data:`)===0)kids.unshift(ce(`img`,{className:`ccPatchQueueAttImg`,src:src,key:`i`}));return ce(`div`,{className:`ccPatchQueueAttPill`,key:`a`+fi},kids)})):null;var body=ce(`div`,{className:G2.userMessage},ce(`div`,{className:`expandableContainer_ccpatch`},it.text));return ce(`div`,{className:G2.message+` ccPatchQueuedMsg`,key:`ccq-`+it.id},ce(`div`,{className:G2.userMessageContainer},ctrls,body,att))});return ce(`div`,{className:`ccPatchQueueWrap`,key:`ccPatchQueueWrap`},[ce(`div`,{className:`ccPatchQueueHeader`,key:`ccqh`},`QUEUED`)].concat(rows))}catch(ccRE){console.error(`Orbit queue render error:`,ccRE);return null}}
 function ccPatchCloseSendMenu(){let m=document.querySelector(`.ccPatchSendMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSendChevron.ccPatchSendChevronOpen`)?.classList.remove(`ccPatchSendChevronOpen`)}
@@ -329,18 +295,9 @@ function ccPatchUsageBtnIcon(){var u=null;try{u=ccPatchUsageData()}catch(e){}var
 function ccPatchUsageWindows(u){var out=[];if(!u)return out;if(u.fiveHour)out.push({key:`fiveHour`,label:`Session`,sub:`5 hour`,d:u.fiveHour});if(u.sevenDay)out.push({key:`sevenDay`,label:`Weekly`,sub:`7 day`,d:u.sevenDay});if(u.sevenDaySonnet)out.push({key:`sevenDaySonnet`,label:`Weekly`,sub:`Sonnet`,d:u.sevenDaySonnet});return out}
 function ccPatchUsageRenderBody(menu){if(!menu)return;var body=menu.querySelector(`.ccPatchUsageBody`);if(!body)return;var u=ccPatchUsageData();if(u&&u.unavailableReason){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+ccPatchUsageEsc(u.unavailableReason)+`</div>`;return}var wins=ccPatchUsageWindows(u);if(!wins.length){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+((menu._ccPatchTries||0)>4?`Usage data unavailable for this account.`:`Loading usage…`)+`</div>`;return}var sig=wins.map(function(w){return w.key}).join(`,`);if(menu._ccPatchSig!==sig){menu._ccPatchSig=sig;var html=`<div class="ccPatchUsageRings">`;wins.forEach(function(w){html+=`<div class="ccPatchUsageCell" data-key="`+w.key+`"><div class="ccPatchUsageRingWrap">`+ccPatchUsageRing(w.d.utilization,66)+`</div><div class="ccPatchUsageLabel">`+ccPatchUsageEsc(w.label)+`</div><div class="ccPatchUsageSub">`+ccPatchUsageEsc(w.sub)+`</div><div class="ccPatchUsageReset">`+ccPatchUsageEsc(ccPatchUsageResetText(w.d.resetsAt))+`</div></div>`});html+=`</div>`;body.innerHTML=html;requestAnimationFrame(function(){var arcs=body.querySelectorAll(`.ccPatchUsageArc`);Array.prototype.forEach.call(arcs,function(a){a.style.strokeDashoffset=a.getAttribute(`data-off`)})})}else{wins.forEach(function(w){var cell=body.querySelector(`.ccPatchUsageCell[data-key="`+w.key+`"]`);if(!cell)return;var has=typeof w.d.utilization===`number`;var p=has?Math.max(0,Math.min(100,w.d.utilization)):0;var col=ccPatchUsageColor(has?w.d.utilization:null);var arc=cell.querySelector(`.ccPatchUsageArc`);if(arc){var C=parseFloat(arc.getAttribute(`stroke-dasharray`))||0;arc.style.strokeDashoffset=(C*(1-p/100)).toFixed(2);arc.setAttribute(`stroke`,col)}var num=cell.querySelector(`.ccPatchUsageNum`);if(num){num.textContent=has?Math.round(p)+`%`:`—`;num.setAttribute(`fill`,col)}var rs=cell.querySelector(`.ccPatchUsageReset`);if(rs)rs.textContent=ccPatchUsageResetText(w.d.resetsAt)})}}
 function ccPatchCloseUsageMenu(){var m=document.querySelector(`.ccPatchUsageMenu`);if(m){if(m._ccPatchPoll){clearInterval(m._ccPatchPoll);m._ccPatchPoll=0}if(m._ccPatchOutsideHandler)document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler);if(m._ccPatchKey)document.removeEventListener(`keydown`,m._ccPatchKey);m.remove()}var b=document.querySelector(`.ccPatchUsageBtn.ccPatchUsageBtnOpen`);if(b)b.classList.remove(`ccPatchUsageBtnOpen`)}
-// Background poll: keep the usage signal warm so the button ring is always live
-// and the popover opens already-filled (no "Loading…" flash, no reposition). We
-// pull a few times right after load (the composer/session may not exist at t=0),
-// then a cheap 5s loop that refreshes the instant a turn ends (busy->idle, when
-// usage actually changes) plus a ~60s fallback. Requests only fire on turn-end
-// or the fallback tick, so it's light. The reactive signal updates the rest.
-var ccPatchUsagePollStarted=false,ccPatchUsageWasBusy=false,ccPatchUsageTickN=0;
-function ccPatchUsageStartPolling(){if(ccPatchUsagePollStarted)return;ccPatchUsagePollStarted=true;var refresh=function(){try{if(globalThis.ccPatchComposerSession)ccPatchUsageRefresh()}catch(e){}};setTimeout(refresh,1200);setTimeout(refresh,4000);setTimeout(refresh,9000);setInterval(function(){ccPatchUsageTickN++;var busy=false;try{var s=globalThis.ccPatchComposerSession;busy=!!(s&&s.busy&&s.busy.value)}catch(e){}var ended=ccPatchUsageWasBusy&&!busy;ccPatchUsageWasBusy=busy;if(ended||ccPatchUsageTickN%12===0)refresh()},5000)}
 function ccPatchShowUsageMenu(ev){if(document.querySelector(`.ccPatchUsageMenu`)){ccPatchCloseUsageMenu();return}var btn=ev&&ev.currentTarget;if(!btn)return;try{ccPatchCloseSendMenu()}catch(e){}try{ccPatchCloseSettingsMenu()}catch(e){}btn.classList.add(`ccPatchUsageBtnOpen`);ccPatchUsageRefresh();var menu=document.createElement(`div`);menu.className=`ccPatchUsageMenu`;menu._ccPatchTries=0;menu.innerHTML=`<div class="ccPatchUsageHead"><span class="ccPatchUsageTitle">Usage</span><button type="button" class="ccPatchUsageReload" title="Refresh" aria-label="Refresh"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.6-3.7"/><polyline points="12,1.4 12,4 9.4,4"/></svg></button></div><div class="ccPatchUsageBody"></div>`;menu.style.left=`-9999px`;menu.style.top=`0px`;document.body.appendChild(menu);ccPatchUsageRenderBody(menu);var r=btn.getBoundingClientRect(),mw=menu.offsetWidth||240,mh=menu.offsetHeight||170;var left=Math.round(r.left+r.width/2-mw/2);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;var top=Math.round(r.top-mh-8);if(top<8)top=Math.round(r.bottom+8);menu.style.left=left+`px`;menu.style.top=top+`px`;var rl=menu.querySelector(`.ccPatchUsageReload`);if(rl)rl.onclick=function(e){e.preventDefault();e.stopPropagation();ccPatchUsageRefresh();rl.classList.add(`ccPatchUsageSpin`);setTimeout(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;ccPatchUsageRenderBody(menu);rl.classList.remove(`ccPatchUsageSpin`)},360)};menu._ccPatchPoll=setInterval(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;if(menu._ccPatchTries===3)ccPatchUsageRefresh();ccPatchUsageRenderBody(menu)},1400);setTimeout(function(){var h=function(g){if(!menu.contains(g.target)&&!btn.contains(g.target))ccPatchCloseUsageMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseUsageMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu,ccPatchUsageStartPolling});
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
-try{ccPatchUsageStartPolling()}catch(e){}
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
 
@@ -1100,7 +1057,7 @@ def patch_webview_js(webview_js: Path) -> bool:
         f"ccPatchShowMenu(M.clientX,M.clientY,"
         f"ccPatchIsPinned({Z})?`Unpin`:`Pin`,()=>ccPatchTogglePin({Z}),"
         f"ccPatchIsStarred({Z})?`Unstar`:`Star`,()=>ccPatchToggleStar({Z}),"
-        f"ccPatchIsArchived({Z})?{{label:`Unarchive`,fn:()=>ccPatchToggleArchive({Z})}}:{{label:`Archive`,fn:()=>ccPatchToggleArchive({Z})}},{Z},()=>{z}({Z}))}}}},"
+        f"ccPatchIsArchived({Z})?{{label:`Unarchive`,fn:()=>ccPatchToggleArchive({Z})}}:{{label:`Archive`,fn:()=>ccPatchToggleArchive({Z})}},{Z})}}}},"
     )
     text = text[: m_btn.start()] + new_btn + text[m_btn.end() :]
 
@@ -1593,21 +1550,18 @@ def patch_webview_js(webview_js: Path) -> bool:
     #     Captures the signal constructor used for session class fields
     #     (e.g. `O0`, `M1`, etc.) via its `("default")` call pattern.
     # ──────────────────────────────────────────────────────────────────────
-    if not feature_on("yolo-mode"):
-        log("Skipping YOLO perm patch (feature disabled)")
+    m_perm = re.search(
+        rf"permissionMode=(?P<O0>{JS_ID})\(\"default\"\)",
+        text,
+    )
+    if m_perm is None:
+        log("Note: permissionMode init anchor not found; skipping YOLO perm patch")
     else:
-        m_perm = re.search(
-            rf"permissionMode=(?P<O0>{JS_ID})\(\"default\"\)",
-            text,
-        )
-        if m_perm is None:
-            log("Note: permissionMode init anchor not found; skipping YOLO perm patch")
-        else:
-            O0_perm = m_perm.group("O0")
-            perm_anchor = f'permissionMode={O0_perm}("default")'
-            perm_replace = f'permissionMode={O0_perm}(ccPatchYoloDefault())'
-            if perm_anchor in text and perm_replace not in text:
-                text = text.replace(perm_anchor, perm_replace, 1)
+        O0_perm = m_perm.group("O0")
+        perm_anchor = f'permissionMode={O0_perm}("default")'
+        perm_replace = f'permissionMode={O0_perm}(ccPatchYoloDefault())'
+        if perm_anchor in text and perm_replace not in text:
+            text = text.replace(perm_anchor, perm_replace, 1)
 
     # ──────────────────────────────────────────────────────────────────────
     # 17. Hoist sessions panel: add wrapper classes so CSS can position it.
@@ -1678,10 +1632,8 @@ def patch_webview_js(webview_js: Path) -> bool:
         rf'(?P=RE)\.default\.createElement\("span",\{{className:(?P=CZ)\.optionText\}},"Fork conversation and rewind code"\)\)\)\)\)',
         re.S,
     )
-    m_fork = fork_re.search(text) if feature_on("fork-row") else None
-    if not feature_on("fork-row"):
-        log("Skipping fork action row (feature disabled)")
-    elif m_fork is None:
+    m_fork = fork_re.search(text)
+    if m_fork is None:
         log("Note: fork/rewind action-row anchor not found; skipping")
     else:
         RE = m_fork.group("RE")
@@ -1883,26 +1835,23 @@ def patch_webview_js(webview_js: Path) -> bool:
     #      Anchored on the stable native title string so it survives minifier
     #      churn; we capture the React alias and insert a sibling after it.
     # ──────────────────────────────────────────────────────────────────────
-    if not feature_on("usage-meter"):
-        log("Skipping usage-meter button (feature disabled)")
-    else:
-        menubtn_re = re.compile(
-            rf'(?P<react>{JS_ID})\.default\.createElement\("button",\{{type:"button",'
-            rf'className:(?P<mod>{JS_ID})\.menuButton,title:"Show command menu \(/\)",'
-            rf'onClick:(?P<oc>{JS_ID})\}},'
-            rf'(?P=react)\.default\.createElement\((?P<icon>{JS_ID}),null\)\)'
-        )
-        m_mb = menubtn_re.search(text)
-        if m_mb is None:
-            raise RuntimeError("Lost composer command-menu button anchor (usage button)")
-        MRE = m_mb.group("react")
-        usage_btn = (
-            f',{MRE}.default.createElement("button",{{type:"button",'
-            f'className:"ccPatchUsageBtn",title:"Usage",'
-            f'onClick:function(ccE){{try{{ccPatchShowUsageMenu(ccE)}}catch(ccErr){{}}}},'
-            f'dangerouslySetInnerHTML:{{__html:ccPatchUsageBtnIcon()}}}})'
-        )
-        text = text[: m_mb.end()] + usage_btn + text[m_mb.end() :]
+    menubtn_re = re.compile(
+        rf'(?P<react>{JS_ID})\.default\.createElement\("button",\{{type:"button",'
+        rf'className:(?P<mod>{JS_ID})\.menuButton,title:"Show command menu \(/\)",'
+        rf'onClick:(?P<oc>{JS_ID})\}},'
+        rf'(?P=react)\.default\.createElement\((?P<icon>{JS_ID}),null\)\)'
+    )
+    m_mb = menubtn_re.search(text)
+    if m_mb is None:
+        raise RuntimeError("Lost composer command-menu button anchor (usage button)")
+    MRE = m_mb.group("react")
+    usage_btn = (
+        f',{MRE}.default.createElement("button",{{type:"button",'
+        f'className:"ccPatchUsageBtn",title:"Usage",'
+        f'onClick:function(ccE){{try{{ccPatchShowUsageMenu(ccE)}}catch(ccErr){{}}}},'
+        f'dangerouslySetInnerHTML:{{__html:ccPatchUsageBtnIcon()}}}})'
+    )
+    text = text[: m_mb.end()] + usage_btn + text[m_mb.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
     # 20. Inline queued-message bubbles in the transcript (Codex-style).
@@ -2767,7 +2716,6 @@ def verify_extension_dir(extension_dir: Path) -> None:
                         and 'className:"ccPatchUsageBtn"' in js
                         and "dangerouslySetInnerHTML:{__html:ccPatchUsageBtnIcon()}" in js
                         and "requestUsageUpdate" in js
-                        and "ccPatchUsageStartPolling()" in js
                         and ".ccPatchUsageMenu" in css and ".ccPatchUsageArc" in css),
         "queue display": ("ccPatchRenderQueue(" in js and "ccPatchQueueListeners" in js
                           and "ccPatchComposerAction(" in js
@@ -2782,10 +2730,9 @@ def verify_extension_dir(extension_dir: Path) -> None:
                            and "ccPatchColorBtn" in js
                            and "[data-cc-color=red]" in css and ".ccPatchColorMenu" in css
                            and ".ccPatchColorSwatch" in css),
-        "right-click color": ("function ccPatchShowMenu(e,t,pLabel,n,sLabel,r,a,sess,rn)" in js
+        "right-click color": ("function ccPatchShowMenu(e,t,pLabel,n,sLabel,r,a,sess)" in js
                               and "ccPatchCtxColors" in js
                               and ".ccPatchCtxColors" in css),
-        "right-click rename": "if(rn)s(`Rename`,rn)" in js,
         "sticky preview toggle": ("ccPatchStickyToggle" in js and "ccPatchStickyOn" in js
                                   and "Chat preview header" in js
                                   and "html:not(.ccPatchStickyPreview) [class*=\"stickyHeader\"]" in css),
@@ -2798,16 +2745,6 @@ def verify_extension_dir(extension_dir: Path) -> None:
         # Fork is intentionally left stock — the context wrapper always returns ""
         # even on success, so any return-value guard clobbers a working fork.
     }
-    # Gated features: if --disable/--enable left a feature out, don't require its
-    # verification tokens (it was intentionally not applied).
-    for _fid, _names in {
-        "usage-meter": ["usage meter"],
-        "yolo-mode": ["yolo helpers", "yolo perm init"],
-        "fork-row": ["fork action row", "fork row dividers"],
-    }.items():
-        if not feature_on(_fid):
-            for _nm in _names:
-                checks.pop(_nm, None)
     missing = [name for name, ok in checks.items() if not ok]
     if missing:
         raise RuntimeError("Verification failed: " + ", ".join(missing))
@@ -2918,43 +2855,9 @@ def main() -> int:
              "Orbit passes its package.json version so the marker doubles as the "
              "Marketplace version.",
     )
-    parser.add_argument(
-        "--disable",
-        default="",
-        help="Comma-separated feature ids to SKIP (e.g. usage-meter,yolo-mode). "
-             "Core scaffold and the sidebar cluster always apply.",
-    )
-    parser.add_argument(
-        "--enable",
-        default="",
-        help="Comma-separated gateable feature ids to apply (narrows from all). "
-             "Mutually exclusive with --disable.",
-    )
     args = parser.parse_args()
     global PATCHER_VERSION
     PATCHER_VERSION = args.patcher_version
-
-    global ENABLED_FEATURES
-    _disable = {s.strip() for s in args.disable.split(",") if s.strip()}
-    _enable = {s.strip() for s in args.enable.split(",") if s.strip()}
-    if _disable and _enable:
-        raise SystemExit("Use only one of --disable / --enable, not both.")
-    _unknown = (_disable | _enable) - GATEABLE_FEATURES
-    if _unknown:
-        # Lenient on purpose: the wrapper and the patcher can be different
-        # versions, so an unknown id just means "this patcher can't gate that" —
-        # ignore it and apply the rest rather than failing the whole patch.
-        print(f"[patcher] ignoring unknown/non-gateable feature id(s): "
-              f"{', '.join(sorted(_unknown))} (gateable: {', '.join(sorted(GATEABLE_FEATURES))})",
-              flush=True)
-        _disable &= GATEABLE_FEATURES
-        _enable &= GATEABLE_FEATURES
-    if _disable:
-        ENABLED_FEATURES = GATEABLE_FEATURES - _disable
-    elif _enable:
-        ENABLED_FEATURES = set(_enable)
-    else:
-        ENABLED_FEATURES = None
 
     LOG_PATH = Path(args.log).expanduser().resolve()
     LOG_PATH.write_text("", encoding="utf-8")

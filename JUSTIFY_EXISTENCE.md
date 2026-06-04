@@ -8,6 +8,348 @@ entry whenever you touch a surface that lacks one.
 
 ---
 
+## Queue flush rebuilt per-session (1.2.69) — kills "queued forever" stranding
+
+**Files:** `Claude Code/patch_claude_vsix_v147.py` — rewrote `ccPatchQueueTick`,
+replaced `ccPatchSendText(t,files,sel)` with `ccPatchSendQueued(it)`, fixed
+`ccPatchQueueSendNow`. Removed globals `ccPatchQueueWasBusy` and
+`ccPatchQueueSessRef`; added `ccPatchQueueBusyMap` (`Map<session,wasBusy>`).
+
+**Job:** flush each queued message the instant *its own* chat goes idle —
+regardless of which chat is on screen or how many chats are streaming.
+
+**Why THIS way / what was broken:** the old flush was a SINGLE global busy→idle
+edge detector keyed to `ccPatchActiveSession()` (one `wasBusy` flag, one
+`sessRef`). `ccPatchActiveSession()` is just "the last session that rendered" —
+any background chat that re-renders while Thinking hijacks it (the same unreliable
+global flagged in the queue-mechanism memory #6, which fixed the *decision* path
+but left the *flush* path on it). Consequence: queue into chat A, then switch to /
+stream chat B → A's idle edge is observed against B, never A; and since an idle
+chat has no future edge, A's item sits in QUEUED forever. Second latent bug: even
+when caught, `ccPatchSendText` sent to the *active* session, so it could fire into
+the wrong chat. Fix is a SUBTRACTION of the fragile coupling: each item already
+carries a live ref to its own session (`it.sess`), so we watch `it.sess.busy.value`
+directly per session and `it.sess.send(...)` to its own session. Rejected
+alternative — iterate the global sessions list (`$.sessions.value`): the tick is a
+standalone `setInterval` with no component scope, and the items already pin exactly
+the sessions that matter, so the list is redundant.
+
+**Verified:** `node --check` on the three functions; `py_compile` on the patcher;
+a 6-scenario `node` simulation (single-chat finish; **queue-A-then-switch-to-B
+background finish — the reported bug**; two concurrent busy chats; one-message-
+per-turn sequencing with no double-send) — all pass. Built #115, archived as
+`patchers/patch_claude-1.2.69.py`. NOT yet pushed OTA.
+
+**Verdict:** KEEP. Watch: items reloaded from localStorage (text-only; no `sess`
+object until their chat next renders and `ccPatchQueueOwns` rebinds) are tracked
+only after they've been viewed once — same as before, acceptable.
+
+---
+
+## Removed the visible Orbit toggle; gated fork-row (3rd patch)
+
+**Files:** `Claude Code Orbit/extension.js` — deleted the on-screen `orbitToggle`
+pill + its CSS/JS + the `data-orbit` machinery + `orbit:true` flags; the self-hide
+is now PURELY backend (dynamic `context.extension.id` filter). Added `fork-row` to
+`TOGGLEABLE_PATCHES`. `Claude Code/patch_claude_vsix_v147.py` — gated the fork
+action-row block (`feature_on("fork-row")`, native dropdown stays when off),
+added `fork-row` to `GATEABLE_FEATURES` and to the conditional-verify map.
+
+**Job:** Jacob: "when I said changeable I meant the BACK END so no one sees it" —
+the self-hide should be automatic from the extension's name, not a user-facing
+button. So the pill is gone; whichever product is running hides its own rec entry
+and shows the sibling, invisibly. Also grew the real patch toggles 2 → 3.
+
+**Why THIS way / honest finding:** the visible toggle was a misread of "exposable"
+— removed wholesale (justify-or-die: it had no reason to exist once the behavior is
+automatic). Gating fork-row used the early-guard pattern (`m_fork = ... if
+feature_on else None`) so the big replace block keeps its existing `else:` body —
+minimal blast radius, no re-indent. KEY architectural finding for scope: the
+patcher's ~28 patches are NOT all individually separable. Three classes —
+(a) distinct-injection (usage-meter, yolo-mode, fork-row, the settings button,
+switch-model) → individually gateable; (b) helper-woven (image preview, sticky
+preview, color themes live in the always-injected CLAUDE_HELPER_JS + global
+listeners) → only separable by refactoring the helper; (c) grouped (the settings
+menu + its account/instructions items; the 12-piece welded sidebar) → gateable
+only as one unit. So the realistic toggle set = a few individual + a couple of
+GROUP toggles ("Settings menu", "Right sidebar"), not 28 independent switches.
+
+**Verified:** patched real stock 2.1.159 in 3 configs (none / fork-row off /
+all-three off) — each patched, verified, and contained exactly the right patches;
+node+py_compile clean; build-113 inspected.
+
+**Verdict:** KEEP. Next: the two high-value GROUP toggles Jacob named (sidebar,
+settings menu) as single on/off switches.
+
+---
+
+## Patch picker UI + dynamic self-hide (the pick-and-choose, made visible)
+
+**Files:** `Claude Code Orbit/extension.js` — `TOGGLEABLE_PATCHES` list +
+`GS_DISABLED_PATCHES` key; a collapsible **Patches** checkbox panel in the idle
+pane (+ CSS); webview JS that persists the disabled set via a `setDisabledPatches`
+message; the `onMessage` handler that saves it; `--disable <ids>` appended to the
+patcher args in BOTH `enable()` and `enablePrevious()`; and dynamic self-hide
+(recs filter on the live `context.extension.id`, not the hardcoded `SELF_EXT_ID`).
+`Claude Code/patch_claude_vsix_v147.py` — `--disable` now IGNORES unknown ids
+(warn, not fail) so wrapper/patcher version skew can't break a patch.
+
+**Job:** Make the pick-and-choose ACTUALLY VISIBLE and usable. The engine existed
+([[modular-patch-registry]], the gating entry below) but had no UI, so to Jacob it
+looked uncoded. Now: open Patches → uncheck a patch → Install/Update re-patches
+without it. Selection persists in globalState. Self-hide is dynamic per Jacob's
+"if the extension's name is X, hide X" — zero per-product edits for the kit.
+
+**Why THIS way vs rejected:** The wrapper holds its own small `TOGGLEABLE_PATCHES`
+mirror (not reading the bundled catalog.json) because only the patcher's
+`GATEABLE_FEATURES` can truly be honored — the UI list must match what the patcher
+can gate, so it's the contract, kept deliberately tiny and in lockstep. Patcher
+leniency (ignore unknown --disable) over strict-error: the OTA patcher and the
+installed wrapper drift in version, and a stale id must NOT fail the whole
+re-patch. Dynamic self-id over hardcode: the kit copies with no edit.
+
+**Verified (not asserted):** patched real stock 2.1.159 with
+`--disable usage-meter,bogus-id` → bogus-id ignored, usage button absent, YOLO
+still applied, verification passed (80 checks); `node --check` + `py_compile`
+clean; built build-112 and inspected the VSIX — patch picker, checkboxes,
+TOGGLEABLE list, setDisabledPatches, `--disable` wiring, dynamic self-hide, and
+the globalState key all present.
+
+**Wiring status / debt:** `TOGGLEABLE_PATCHES` = the 2 proven-safe gateable
+features (usage-meter, yolo-mode). It grows as more independent blocks are gated
+(each: wrap the block + make its verify conditional + add to both lists). The
+welded sidebar cluster is NOT yet a toggle — splitting/grouping it safely is the
+next milestone. The UI list and the patcher's GATEABLE set are hand-kept in sync;
+a future check could assert they match.
+
+**Verdict:** KEEP. WATCH (the two-list sync; the gateable set is small until more
+blocks are untangled).
+
+---
+
+## Orbit cross-promo + show/hide toggle + logo refresh (recs)
+
+**Files:** `Claude Code Orbit/extension.js` — added a Claude Code Orbit self-entry
+beside Codex Orbit in `recs[]` (both flagged `orbit:true`), a `data-orbit` attr in
+`renderRec`, a `.recHeaderRow` + `#orbitToggle` control, its CSS, and the webview
+JS that shows/hides `[data-orbit]` items persisted in `localStorage`.
+`Claude Code Orbit/media/claude-code-orbit.png` ← new logo from Downloads;
+`Claude Code Orbit/media/rec-codex-orbit.png` ← new Codex reference logo from
+Downloads. `build.py` — added `media/rec-codex-orbit.png` to `INCLUDED_PATHS`.
+
+**Job:** Jacob wanted both LunarWerx Orbit tools surfaced in the recommendations
+(Codex Orbit + Claude Code Orbit) with a "super simple on/off" to hide/reveal them
+— so on Claude Code you can collapse the Codex promo and vice-versa — plus the two
+refreshed logos. See [[modular-patch-registry]] for the broader cross-link intent.
+
+**Why THIS way (one client-side toggle over [data-orbit]) vs rejected:** the toggle
+hides via a `data-orbit` flag + `localStorage`, no server round-trip or re-render —
+the recs are static HTML so a CSS/JS hide is the lightest mechanism. One toggle for
+the whole Orbit family (not per-entry) matches "super simple on off"; flipping it
+off hides the sibling product, which is the stated use case. Rejected: a buried VS
+Code setting (not "exposable"); a postMessage→globalState round-trip (overkill for a
+view-pref). Self-entry is auto-hidden via `SELF_EXT_ID` (Jacob's follow-up: don't advertise
+our own add-on to itself — looks like list-padding and annoys users). Both entries
+stay in `recs[]` for kit symmetry, but each product filters out its OWN id, so
+Claude Code Orbit shows only Codex Orbit and vice-versa. The new Codex reference
+logo was also corrected to `codex orbit.png` (white-knot transparent mark, 85%
+alpha — shows on the dark cards); the black-tile version I first grabbed was the
+file Jacob deleted.
+
+**Caught during build:** `INCLUDED_PATHS` never listed `rec-codex-orbit.png`, so the
+Codex icon would have shipped as a broken image. Added it; verified the built VSIX
+bundles all six media files.
+
+**Verified (not asserted):** `node --check` on extension.js passed; `python build.py`
+produced build-110 (pkg 1.1.10 UNCHANGED); inspected the VSIX — new logos + Codex
+icon bundled, and the codex-orbit / claude-code-orbit / orbitToggle / data-orbit /
+Connections tokens all present.
+
+**Wiring status / debt:** `SELF_EXT_ID` is hardcoded to this product's id; once
+extension.js reads [[modular-patch-registry]]'s orbit.config.json it derives from
+`lunarwerx.<slug>`. The new Codex logo updated only OUR reference copy
+(rec-codex-orbit.png); the Codex Orbit sibling project's own media is untouched.
+
+**Verdict:** KEEP.
+
+---
+
+## Patcher feature gating — `--disable`/`--enable` (the actual pick-and-choose)
+
+**Files:** `Claude Code/patch_claude_vsix_v147.py` — added `ENABLED_FEATURES`
+global + `GATEABLE_FEATURES` set + `feature_on()`; `--disable`/`--enable` CLI args
+in `main()`; guards around block 16 (YOLO) and block 19c (usage-meter); conditional
+verification in `verify_extension_dir()` (pop a disabled feature's checks).
+
+**Job:** Turn the catalog/registry from a planning artifact into a working
+mechanism: the patcher can now SKIP individual feature modules. First real,
+user-driveable slice of the pick-and-choose feature Jacob asked to actually SEE.
+See [[modular-patch-registry]].
+
+**Why THIS way (module-global gate + per-block guard) vs rejected alternatives:**
+Reused the existing global-set-in-main pattern (`PATCHER_VERSION`) instead of
+threading an `enabled` param through the 1000-line `patch_webview_js` — minimal
+blast radius, no signature churn. Only purely-additive/replace-to-native blocks
+are gateable (the shared helpers/CSS stay present-but-unused when a feature is
+off — harmless, nothing renders them). The welded sidebar cluster and core
+scaffold are deliberately NOT gateable yet (their blocks share captures + apply
+order; splitting them safely is a later pass). Rejected: stripping the unused
+helper/CSS too — cosmetic, higher risk, no user-visible benefit for v1.
+
+**Verified (not asserted):** patched the real stock `anthropic.claude-code-2.1.159`
+VSIX twice — control (all on) → usage button + YOLO present and verification
+passed; `--disable usage-meter,yolo-mode` → both absent and verification STILL
+passed (conditional checks worked). Default (no flag) = `ENABLED_FEATURES=None` =
+byte-identical to before, so existing users are unaffected.
+
+**Wiring status / debt:** the patcher SUPPORTS gating; nothing drives it yet from
+the UI. Next: (1) a Patches checkbox panel in the Orbit sidebar (extension.js)
+persisted to globalState; (2) extension.js passes `--disable <ids>` to the patcher
+on Enable; (3) build a numbered wrapper VSIX so Jacob can install + click. Then
+expand `GATEABLE_FEATURES` to the rest of the independent set (fork-row,
+color-theme, per-chat-color, sticky-preview, show-more, image-preview,
+composer-send/queue) — each gated + verified the same way.
+
+**Verdict:** KEEP. WATCH (GATEABLE is 2 features as a proven beachhead; expand
+with the UI so the catalog's userFacing set and the patcher's GATEABLE set stay
+in lockstep — drift between them is the thing to guard).
+
+---
+
+## Unified wrapper kit — `orbit.config.json` + `tools/orbit_config.py` + `ORBIT_KIT.md`
+
+**Files:** `orbit.config.json` (new — the ~12 canonical product-identity fields),
+`tools/orbit_config.py` (new — single derivation function + `show`/`check` drift
+detector), `ORBIT_KIT.md` (new — the fork playbook + the full field→location
+mapping table). Also: deleted junk (root + `Claude Code/` logs, `__pycache__`,
+`Claude Code/_t.vsix` — all gitignored).
+
+**Job:** Make the Orbit *wrapper* product-agnostic so Codex Orbit (and any future
+"patch a VS Code extension" product) is a copy-the-folder, edit-one-config fork
+instead of a hand-maintained divergent twin. Jacob's pain: every Claude Code Orbit
+wrapper change had to be re-applied to Codex Orbit by hand. The swap surface —
+proven to live in exactly 3 files (extension.js, package.json, build.py) — now
+derives from one config. See [[modular-patch-registry]].
+
+**Why THIS way (one config + derivation fn) vs rejected alternatives:** One source
+of truth for identity (CLAUDE.md prime directive) — the dozen scattered literals
+(`STOCK_ID`, `OTA_*`, the `{ns}` namespace across views/commands/globalState,
+`EXT_NAME`, the patcher glob) all reduce to `{target, repo, slug, ns, ...}`.
+Rejected: (a) templating the whole wrapper with a generator now — bigger blast
+radius on release-critical files before the model is proven; (b) a docs-only
+mapping with no machine check — `orbit_config.py check` makes the config
+*falsifiable* against the live code (18 grounded assertions), which is what lets
+the next step (routing build.py/extension.js to READ the config) be verified as
+byte-identical output.
+
+**Self-caught:** the drift detector first reported 3 false drifts — OTA urls and
+the icon path are built by concatenation/`joinPath`, not literal strings. Sharpened
+the assertions to match how the code expresses them (suffix/part match) rather than
+weakening them. Blade taught, not blunted.
+
+**Cleanup discipline (Dark Knight, three-axis guilt):** deleted ONLY items proven
+guilty on all axes (hold no needed data / no code uses / nothing references):
+logs, pycache, temp vsix. Spared the rollback registry (`patchers/` — sole
+recovery), `latest/`, the version pins, and `Potentials/`. FLAGGED but did not
+delete: 3 stale stock test VSIXes (`anthropic.claude-code-2.1.154/158/159`, 225 MB,
+none matches certified 2.1.161) — large + network-to-restore, so they get a nod
+before removal.
+
+**Wiring status / debt:** the wrapper code does NOT yet read `orbit.config.json` —
+v1 is the config + the verified mapping. Next: a `build.py` stamping step that
+writes package.json identity + injects the config into extension.js from
+`orbit.config.json`, byte-parity verified, plus a true dry-run so it's testable
+without release side effects (build.py currently always writes `latest/` + archives
+the patcher). Physical "single kit folder" consolidation follows the wiring (the
+wrapper folder name is itself `wrapperDir`, config-driven).
+
+**Verdict:** KEEP (config + tool + playbook). WATCH (until build.py/extension.js
+read the config, identity is single-sourced in intent but still dual-maintained in
+fact; `orbit_config.py check` is the guard that keeps them honest meanwhile).
+
+---
+
+## Patch-module registry — `patch_modules/catalog.json` + `tools/patches.py`
+
+**Files:** `patch_modules/catalog.json` (new — single source of truth enumerating
+all 31 patch modules: tier, required/userFacing, dependsOn, owned verification
+tokens), `tools/patches.py` (new — registry CLI: `list` / `resolve` / `check`).
+
+**Job:** Make the patcher pick-&-choose per Jacob's directive ([[modular-patch-registry]]):
+a user/contributor enables or disables individual patches; the resolver
+force-includes the core scaffold, expands `dependsOn`, and cascade-drops anything
+that depended on a disabled module. Step 1 of turning the 2957-line monolith
+(`Claude Code/patch_claude_vsix_v147.py`) into the beloved Vencord/Tampermonkey
+modular model, with Claude as sole maintainer of community patch PRs.
+
+**Why THIS way (declarative catalog as data) vs rejected alternatives:** The
+honest reality of the patcher is a *capture-based* transform — it parses Claude
+Code's minified webview once to grab obfuscated identifiers, then ~30 blocks
+share those captures and a fixed apply order. So "every patch is an isolated
+anchor+replacement JSON" would be a LIE: many patches genuinely depend on the
+core scaffold and on the sidebar cluster root. The catalog tells that truth —
+3 always-on core modules, a 12-module sidebar cluster with an internal root, and
+~16 independent feature toggles — and the resolver works *around* the couplings
+(declared `dependsOn`) instead of pretending they don't exist. Data, not code,
+is also the safety gate: a community patch PR against the catalog + a declared
+verify-token set is reviewable line-by-line and CI-checkable, which is what makes
+Claude-as-maintainer safe. Rejected: (a) wrapping each block in `if enabled`
+inside the monolith first — higher risk, mutates the live patcher before the
+model is proven; (b) a markdown-only catalog — not machine-resolvable.
+
+**Self-caught during build:** the validator rejected explicit `dependsOn` edges
+between always-applied core modules (redundant — `dependsOn` must mean exactly
+one thing, pull-in dependency for *optional* modules; apply ORDER is encoded by
+catalog array order). Edges dropped; contract kept single-purpose.
+
+**Wiring status / debt:** the registry is NOT yet consumed by the apply path —
+this is the registry layer only. Next increment routes
+`patch_webview_js`/`patch_webview_css` through it module-by-module, each step
+verified to produce byte-identical output to today's monolith so live users see
+no regression. `blocks[]` fields are the traceability map for that extraction.
+
+**Verdict:** KEEP. WATCH (until the apply path is routed through it, the catalog
+is truth-by-assertion — the byte-parity extraction is what makes it load-bearing).
+
+---
+
+## Codex Orbit cross-link + "Connexions" → "Connections" fix (recs list)
+
+**Files:** `Claude Code Orbit/extension.js` — `renderHTML()` `recs[]`: inserted a
+Codex Orbit entry after SayDeploy and corrected the company label from
+"Connexions" to "Connections". `Claude Code Orbit/media/rec-codex-orbit.png` —
+new asset (copied from Codex Orbit's published store icon
+`codex-orbit-store.png`).
+
+**Job:** (1) Reciprocate the cross-promotion Codex Orbit already ships — its
+`recs[]` lists `lunarwerx.claude-code-orbit` as "The companion Orbit patcher for
+Claude Code," so Claude Code Orbit now lists `lunarwerx.codex-orbit` as "The
+companion Orbit patcher for OpenAI Codex." The two sibling patchers point at each
+other. (2) Kill a typo: the company is **Connections** (`connections.icu`, folder
+`Project/Connections`), never "Connexions" — the stray X was wrong everywhere it
+appeared.
+
+**Why THIS way vs rejected alternatives:** Reused the existing `recs[]` registry
+and the `id`-based (vs `url`/`company`) entry shape — Codex Orbit is a real
+Marketplace extension, so it opens in the Extensions view like the other three,
+no new render path. Reused Codex Orbit's own *store* icon rather than its
+white-on-transparent mark so it reads as a crisp 44×44 app-tile matching
+SayDeploy's tile (the `.recIcon` `border-radius:9px` slot is built for tiles).
+Rejected renaming `rec-connexions.png` → `rec-connections.png`: the filename is
+internal, the same asset is referenced by Codex Orbit too, and renaming would
+fork a shared asset name for zero user-visible gain — fixed only the visible
+label.
+
+**Known remaining debt (not in scope here):** the identical "Connexions" label
+and the `recs[]` block are DUPLICATED in `Project/Codex Orbit/.../extension.js`
+(same typo, same hardcoded array). One source of truth would be a shared recs
+manifest both wrappers read; today each repo hand-maintains its own copy.
+
+**Verdict:** KEEP (cross-link + asset). WATCH (the duplicated recs array across
+the two Orbit repos — candidate for a shared manifest if a third surface appears).
+
+---
+
 ## Account usage meter — 5hr/weekly rings in the composer footer
 
 **Files:** `Claude Code/patch_claude_vsix_v147.py` — added the `ccPatchUsage*`
@@ -280,8 +622,8 @@ has dropped that build (edge case).
 a floating text link (`altAction`), the low-opacity patched/outdated hint is
 removed, and the recommended block grows (`flex:1 1 auto`, centered) with larger
 cards to fill the otherwise-dead patched screen. (2) Recs split into two labelled
-sections — "Recommended Extensions" (the 3 ext) vs "Recommended Companies"
-(Connexions) — via `recExtHtml`/`recCompanyHtml` (dropped the per-item eyebrow).
+sections — "Recommended Extensions" (the ext) vs "Recommended Companies"
+(Connections) — via `recExtHtml`/`recCompanyHtml` (dropped the per-item eyebrow).
 (3) Picker Install now routes through a `confirm` pane ("Install patcher vX?")
 before the working/cancel flow, so a deliberate downgrade never fires on a stray
 click. (4) BACK-BUTTON FIX: the grown ad block was competing with `.card{flex:1}`

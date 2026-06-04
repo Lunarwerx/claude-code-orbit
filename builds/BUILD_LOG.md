@@ -34,3 +34,10 @@ Every `python build.py` appends one line here. Highest build number = newest bui
 - **Build #106** — `claude-code-orbit-build-106.vsix` — pkg 1.1.9, stable Claude 2.1.159, patcher 1.2.64 — 2026-05-31 16:43:53
 - **Build #107** — `claude-code-orbit-build-107.vsix` — pkg 1.1.9, certified Claude 2.1.161, patcher 1.2.66 — 2026-06-03 12:25:54
 - **Build #108** — `claude-code-orbit-build-108.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.66 — 2026-06-03 12:43:17
+- **Build #109** — `claude-code-orbit-build-109.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.67 — 2026-06-03 13:57:08
+- **Build #110** — `claude-code-orbit-build-110.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.68 — 2026-06-03 16:48:28
+- **Build #111** — `claude-code-orbit-build-111.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.68 — 2026-06-03 17:03:43
+- **Build #112** — `claude-code-orbit-build-112.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.68 — 2026-06-03 17:18:46
+- **Build #113** — `claude-code-orbit-build-113.vsix` — pkg 1.1.10, certified Claude 2.1.161, patcher 1.2.68 — 2026-06-03 17:30:59
+- **Build #114** — `claude-code-orbit-build-114.vsix` — pkg 1.2.0, certified Claude 2.1.161, patcher 1.2.68 — 2026-06-03 18:32:41
+- **Build #115** — `claude-code-orbit-build-115.vsix` — pkg 1.2.0, certified Claude 2.1.161, patcher 1.2.69 — 2026-06-03 19:31:00
