@@ -13,6 +13,21 @@ const https = require("https");
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 const STOCK_ID = "anthropic.claude-code";
+// Fallback for this product's own Marketplace id. The recs hide their OWN entry
+// (no self-advertising); at render time we prefer the LIVE id from
+// context.extension.id, so the kit needs zero per-product edits — whatever the
+// extension is named, it hides itself and shows only its sibling.
+const SELF_EXT_ID = "lunarwerx.claude-code-orbit";
+
+// Patches the user can turn on/off in the sidebar. Each id MUST match the
+// patcher's GATEABLE_FEATURES (Claude Code/patch_claude_vsix_v147.py). Unchecking
+// one persists to GS_DISABLED_PATCHES and passes --disable <id> to the patcher on
+// the next Install/Update. The list grows as more patches become safely gateable.
+const TOGGLEABLE_PATCHES = [
+  { id: "usage-meter", label: "Account usage rings", desc: "5-hour & weekly usage meter in the composer footer." },
+  { id: "yolo-mode",   label: "YOLO mode",           desc: "New sessions default to bypass-permissions." },
+  { id: "fork-row",    label: "Fork action row",     desc: "Inline Fork / Rewind buttons above each message (off = native dropdown)." },
+];
 
 // OTA: Enable always fetches the latest working patcher from this public repo
 // and patches the newest Claude Code. The offline fallback is the newest patcher
@@ -61,6 +76,7 @@ const GS_LAST_NOTIFIED_CLAUDE = "claudeCodeOrbit.lastNotifiedClaudeVersion";
 // Cached rollback registry (patchers/manifest.json), refreshed by the poller so
 // the synchronous detectState() can offer "Use previous version" with no network.
 const GS_PATCHER_MANIFEST = "claudeCodeOrbit.patcherManifest";
+const GS_DISABLED_PATCHES = "claudeCodeOrbit.disabledPatches";
 
 function activate(context) {
   const provider = new SidebarProvider(context);
@@ -535,6 +551,12 @@ class SidebarProvider {
       try { await vscode.env.openExternal(vscode.Uri.parse(msg.url)); } catch (_) {}
       return;
     }
+    if (msg.type === "setDisabledPatches") {
+      const ids = Array.isArray(msg.ids) ? msg.ids.filter((x) => typeof x === "string") : [];
+      await this.context.globalState.update(GS_DISABLED_PATCHES, ids);
+      this.log("Patch selection saved (left out: " + (ids.join(", ") || "none") + ")");
+      return;
+    }
     if (msg.type === "cancel") {
       // Honor cancel only while we're still in a safe (pre-uninstall) step and
       // haven't already requested it. Once we've committed to swapping the
@@ -750,6 +772,11 @@ class SidebarProvider {
     // recovery is "Previous versions", which pins each archived patcher to the
     // Claude version it was certified against.
     const args = [STOCK_ID, "--out", out, "--download-dir", work, "--patcher-version", patcherVersion];
+    const disabledPatches = this.context.globalState.get(GS_DISABLED_PATCHES, []) || [];
+    if (disabledPatches.length) {
+      args.push("--disable", disabledPatches.join(","));
+      this.log("Leaving out patches: " + disabledPatches.join(", "));
+    }
     this.log("Downloading + patching latest " + STOCK_ID + " (patcher v" + patcherVersion + ", " + patcherSource + ")");
     this.checkCancelled();
     await runPython(python, patcher, args, (line) => this.log(line), (proc) => { this.activeProc = proc; });
@@ -799,6 +826,8 @@ class SidebarProvider {
     const out = path.join(work, "patched.vsix");
     const args = [STOCK_ID, "--out", out, "--download-dir", work,
                   "--patcher-version", entry.version, "--version", entry.claude];
+    const disabledPatchesPrev = this.context.globalState.get(GS_DISABLED_PATCHES, []) || [];
+    if (disabledPatchesPrev.length) args.push("--disable", disabledPatchesPrev.join(","));
     this.log("Downloading + patching Claude Code v" + entry.claude + " with patcher v" + entry.version + " (rollback)");
     this.checkCancelled();
     await runPython(python, patcherPath, args, (line) => this.log(line), (proc) => { this.activeProc = proc; });
@@ -884,9 +913,11 @@ class SidebarProvider {
     );
     const recs = [
       { id: "lunarwerx.saydeploy",     name: "SayDeploy",                 tag: "Ship from VS Code by telling Copilot what to do.",       icon: recIcon("rec-saydeploy.png") },
+      { id: "lunarwerx.codex-orbit",   name: "Codex Orbit",               tag: "The companion Orbit patcher for OpenAI Codex.",         icon: recIcon("rec-codex-orbit.png") },
+      { id: "lunarwerx.claude-code-orbit", name: "Claude Code Orbit",     tag: "The Orbit patcher for Claude Code.",                     icon: recIcon("claude-code-orbit.png") },
       { id: "lunarwerx.copilot-suite", name: "Copilot AI Productivity Suite", tag: "Turn your snippets into Copilot superpowers.",        icon: recIcon("rec-copilot-suite.png") },
       { id: "lunarwerx.paramount-docs", name: "Paramount Chat",           tag: "Customer, payment, and analytics context in Copilot.",   icon: recIcon("rec-paramount.png") },
-      { url: "https://connections.icu/", name: "Connexions",              tag: "Relationship intelligence workspace.",                  icon: recIcon("rec-connexions.png"), company: true },
+      { url: "https://connections.icu/", name: "Connections",             tag: "Relationship intelligence workspace.",                  icon: recIcon("rec-connexions.png"), company: true },
     ];
     const renderRec = (r) => {
       const attr = r.company ? `data-url="${r.url}"` : `data-ext-id="${r.id}"`;
@@ -902,7 +933,17 @@ class SidebarProvider {
       </button>`;
     };
     // Split into two labelled sections: VS Code extensions vs companies.
-    const recExtHtml = recs.filter(r => !r.company).map(renderRec).join("");
+    // Hide our OWN entry dynamically from the running extension's live id, so the
+    // kit needs no per-product edit: Claude Code Orbit hides Claude Code Orbit,
+    // Codex Orbit hides Codex Orbit, etc. Falls back to SELF_EXT_ID if unavailable.
+    const selfId = String((this.context.extension && this.context.extension.id) || SELF_EXT_ID).toLowerCase();
+    const recExtHtml = recs.filter(r => !r.company && (r.id || "").toLowerCase() !== selfId).map(renderRec).join("");
+    const disabledPatches = this.context.globalState.get(GS_DISABLED_PATCHES, []) || [];
+    const patchTogglesHtml = TOGGLEABLE_PATCHES.map(p => `
+        <label class="patchRow">
+          <input type="checkbox" class="patchChk" data-patch-id="${p.id}"${disabledPatches.includes(p.id) ? "" : " checked"}/>
+          <span class="patchInfo"><span class="patchName">${p.label}</span><span class="patchDesc">${p.desc}</span></span>
+        </label>`).join("");
     const recCompanyHtml = recs.filter(r => r.company).map(renderRec).join("");
     let version = "";
     try {
@@ -1095,6 +1136,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   font:inherit;transition:background .12s ease,border-color .12s ease,transform .08s ease}
 .recItem:hover{background:rgba(127,127,127,.12);border-color:rgba(127,127,127,.28)}
 .recItem:active{transform:translateY(1px)}
+.patchPicker{margin-top:14px;border-top:1px solid rgba(127,127,127,.18);padding-top:10px;text-align:left}
+.patchPickerHeader{appearance:none;border:0;background:none;color:var(--vscode-foreground);
+  display:flex;align-items:center;gap:6px;width:100%;cursor:pointer;
+  font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.7;padding:2px 0}
+.patchPickerHeader:hover{opacity:1}
+.patchChevron{transition:transform .15s ease;display:inline-block}
+.patchPickerHeader.open .patchChevron{transform:rotate(90deg)}
+.patchPickerNote{font-size:10.5px;opacity:.5;margin:6px 0 8px}
+.patchRow{display:flex;align-items:flex-start;gap:9px;padding:6px 4px;border-radius:7px;cursor:pointer}
+.patchRow:hover{background:rgba(127,127,127,.10)}
+.patchChk{margin-top:2px;flex-shrink:0;accent-color:var(--vscode-button-background,#3794ff);cursor:pointer}
+.patchInfo{display:flex;flex-direction:column;gap:1px}
+.patchName{font-size:12.5px;font-weight:600;line-height:1.2}
+.patchDesc{font-size:10.5px;opacity:.55;line-height:1.3}
 .recIcon{width:44px;height:44px;flex-shrink:0;border-radius:9px;object-fit:contain}
 .recBody{flex:1;min-width:0}
 .recName{font-size:14px;font-weight:600;line-height:1.25;
@@ -1160,6 +1215,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
         Previous versions
       </button>
       <div class="hint" id="idleHint"></div>
+      <div class="patchPicker" id="patchPicker">
+        <button class="patchPickerHeader" id="patchPickerHeader" type="button"
+                title="Choose which Orbit patches get applied">
+          <span>Patches</span><span class="patchChevron">›</span>
+        </button>
+        <div class="patchPickerBody" id="patchPickerBody" hidden>
+          <p class="patchPickerNote">Uncheck to leave a patch out — applies the next time you Install / Update.</p>
+          ${patchTogglesHtml}
+        </div>
+      </div>
     </div>
 
     <!-- WORKING -->
@@ -1542,6 +1607,27 @@ document.querySelectorAll(".recItem").forEach(el => {
   });
 });
 
+// Patch picker — collapse/expand + persist which patches stay enabled. Unchecking
+// a box sends the full disabled set to the extension host; applied on next
+// Install / Update.
+const patchPickerHeader = document.getElementById("patchPickerHeader");
+const patchPickerBody = document.getElementById("patchPickerBody");
+if (patchPickerHeader && patchPickerBody) {
+  patchPickerHeader.addEventListener("click", () => {
+    const willOpen = patchPickerBody.hidden;
+    patchPickerBody.hidden = !willOpen;
+    patchPickerHeader.classList.toggle("open", willOpen);
+  });
+}
+document.querySelectorAll(".patchChk").forEach(chk => {
+  chk.addEventListener("change", () => {
+    const ids = Array.from(document.querySelectorAll(".patchChk"))
+      .filter(c => !c.checked)
+      .map(c => c.dataset.patchId);
+    vscode.postMessage({ type: "setDisabledPatches", ids });
+  });
+});
+
 detailsToggle.addEventListener("click", () => {
   const showing = logEl.classList.toggle("visible");
   detailsToggle.textContent = showing ? "Hide details" : "Show details";
@@ -1648,6 +1734,13 @@ window.addEventListener("message", (ev) => {
     });
     lastHistory = Array.isArray(m.patcherHistory) ? m.patcherHistory : [];
     lastInstalledVersion = m.installedVersion || null;
+    // Reveal the idle screen. Panes default to display:none and only show with
+    // the "active" class; the state handler set the idle CONTENT but never
+    // showed the pane, so a fresh panel rendered blank. Don't yank the user out
+    // of an in-progress flow (working/done/confirm/versions/error) when a
+    // background state refresh (visibility / extension-change) arrives.
+    const activePane = Object.keys(panes).find(k => panes[k] && panes[k].classList.contains("active"));
+    if (!activePane || activePane === "idle") setPane("idle");
     return;
   }
   if (m.type === "log") {

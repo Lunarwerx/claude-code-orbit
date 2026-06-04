@@ -1,0 +1,121 @@
+{
+  "_doc": {
+    "what": "Single source of truth for Orbit's patch MODULES. Each module is one cohesive feature of the patcher, declared as data: what it does, which tier it lives in, whether a user can toggle it, what it depends on, and the verification tokens that prove it applied. This catalog is what contributors edit to add/fix a patch and what the patch engine reads to apply a chosen SUBSET.",
+    "why": "The patcher (Claude Code/patch_claude_vsix_v147.py) is a capture-based transform: it parses Claude Code's minified webview once to grab obfuscated identifiers, then many blocks share those captures and a fixed apply order. So patches are NOT all independent. This catalog makes the real dependency graph explicit so a user/contributor can pick a subset and the engine can resolve what that subset actually requires.",
+    "not_to_confuse_with": "patchers/  (the ROLLBACK archive of whole historical patcher versions). This folder (patch_modules/) is the FORWARD module registry.",
+    "tiers": {
+      "core":     "Always applied. Non-toggleable scaffold every feature depends on. Removing one breaks the patch.",
+      "sidebar":  "The right-hand session panel cluster. Interwoven; the panel itself is the cluster root, the rest depend on it. Toggles as a group today; pieces split out as couplings are untangled.",
+      "composer": "Composer-footer features. Mostly independent.",
+      "chat":     "Transcript / chat-pane features. Independent.",
+      "theming":  "Colors and visual themes. Independent.",
+      "system":   "Features that also patch the extension host (extension.js) or RPC. Independent but cross-file."
+    },
+    "fields": {
+      "required":   "true = always applied, cannot be disabled (the resolver force-includes these).",
+      "userFacing": "true = surfaced as a user-visible on/off toggle in the UI.",
+      "dependsOn":  "non-required module ids this module also needs (core/required deps are implicit).",
+      "blocks":     "the patcher's internal block numbers this module owns (traceability into patch_webview_js).",
+      "verify":     "verification-check names in verify_extension_dir() that prove this module applied. These are the contract: a module is 'broken' when its verify tokens go missing against a new Claude Code release.",
+      "status":     "ok | watch | broken — maintained as Claude Code releases move anchors."
+    }
+  },
+
+  "target": "anthropic.claude-code",
+  "schemaVersion": 1,
+
+  "modules": [
+    { "id": "core-captures",         "title": "Component captures",     "tier": "core", "required": true,  "userFacing": false, "dependsOn": [], "blocks": ["capture:rs","capture:or0","capture:nr0","capture:fe1"], "verify": [], "status": "ok",
+      "summary": "Parses the minified webview once to capture obfuscated identifiers (Rs/OR0/NR0/fe1 components, _R0/wR0/S0/w2/h6). Every sidebar block reuses these. No tokens of its own; proven transitively." },
+
+    { "id": "core-helper-bootstrap", "title": "Helper bootstrap",       "tier": "core", "required": true,  "userFacing": false, "dependsOn": [], "blocks": ["1"], "verify": ["global helper exports","build version marker"], "status": "ok",
+      "summary": "Injects CLAUDE_HELPER_JS (all ccPatch* helpers) plus the build-version marker at the captured anchor. The dependency root of the entire patch." },
+
+    { "id": "core-css-base",         "title": "CSS scaffold",           "tier": "core", "required": true,  "userFacing": false, "dependsOn": [], "blocks": ["css-root"], "verify": ["root wrapper class","header wrapper class","native header hidden","modal trap removed","modal overlay zboost"], "status": "ok",
+      "summary": "Root/header wrapper classes and structural CSS every visual feature positions against." },
+
+    { "id": "sidebar-panel",         "title": "Right session sidebar",  "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["12","17"], "verify": ["inline sessions","main content overlay","resize handle","collapsed pane z-index","sticky header neutralized"], "status": "ok",
+      "summary": "Splices a collapsible right sidebar mirroring the current workspace's chats, reusing the native Re1 recent-sessions props. CLUSTER ROOT: the other sidebar-* modules depend on this." },
+
+    { "id": "sidebar-sort",          "title": "Pin / star / archive sort", "tier": "sidebar", "required": false, "userFacing": true, "dependsOn": ["sidebar-panel"], "blocks": ["2"], "verify": ["pin sort","archive sort"], "status": "ok",
+      "summary": "Re-sorts the session list so pinned/starred float and archived sink." },
+
+    { "id": "sidebar-sections",      "title": "List sections",          "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel","sidebar-sort"], "blocks": ["14"], "verify": ["sessions section","pin section","star section","archive section"], "status": "ok",
+      "summary": "Groups the list into Pinned / Starred / Sessions / Archived section headers." },
+
+    { "id": "sidebar-row",           "title": "Session row redesign",   "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["6","7"], "verify": ["stacked row","row actions","pin button","archive button","star hover button","unarchive button","edit mode wrap fix","row height"], "status": "ok",
+      "summary": "Stacked name/time row with status dot and hover actions (pin, star, archive)." },
+
+    { "id": "sidebar-status",        "title": "Status indicators",      "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-row"], "blocks": ["3","5"], "verify": ["status running","error dot","waiting indicator","activity text"], "status": "ok",
+      "summary": "Running / waiting / error status dots driven off the session state hook." },
+
+    { "id": "sidebar-context-menu",  "title": "Right-click menu",       "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-row"], "blocks": ["4","5"], "verify": ["context menu","right-click color","double-click rename","no rename button"], "status": "ok",
+      "summary": "Row right-click menu (rename, pin, star, archive, color) + double-click-to-rename." },
+
+    { "id": "sidebar-time-format",   "title": "Relative time",          "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["8"], "verify": ["time format","now time"], "status": "ok",
+      "summary": "Rewrites the timestamp formatter (now / days ago)." },
+
+    { "id": "sidebar-pane-toggle",   "title": "Collapse button",        "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["10"], "verify": ["pane toggle","pane collapse btn"], "status": "ok",
+      "summary": "Collapse/expand button for the sidebar pane." },
+
+    { "id": "sidebar-filter",        "title": "Filter menu",            "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel","sidebar-sections"], "blocks": ["13"], "verify": ["filter system","filter button","filter menu css","filter checkmarks","filter svg icons"], "status": "ok",
+      "summary": "Filter dropdown (all / pinned / starred / archived) with checkmarks." },
+
+    { "id": "sidebar-search",        "title": "Search box",             "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["search"], "verify": ["search toggle","built-in search hide"], "status": "ok",
+      "summary": "In-sidebar search toggle; hides Claude's built-in search row." },
+
+    { "id": "sidebar-new-session",   "title": "New-session button",     "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["18"], "verify": ["new session btn"], "status": "ok",
+      "summary": "Replaces the native top-toolbar new-session button with the sidebar header one." },
+
+    { "id": "sidebar-hide-untitled", "title": "Hide empty untitled",    "tier": "sidebar", "required": false, "userFacing": true,  "dependsOn": ["sidebar-panel"], "blocks": ["untitled"], "verify": ["hide untitled"], "status": "ok",
+      "summary": "Hides empty Untitled sessions from the list." },
+
+    { "id": "composer-send-control", "title": "Send / steer / queue",   "tier": "composer", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["19","21"], "verify": ["send menu","send mode persist"], "status": "ok",
+      "summary": "Splits the composer send button into a steer/queue/stop control routed through Claude's own submit callback." },
+
+    { "id": "composer-queue",        "title": "Queued-message bubbles", "tier": "composer", "required": false, "userFacing": true,  "dependsOn": ["composer-send-control"], "blocks": ["20"], "verify": ["queue display"], "status": "ok",
+      "summary": "Inline Codex-style queued-message bubbles in the transcript." },
+
+    { "id": "usage-meter",           "title": "Account usage rings",    "tier": "composer", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["19c"], "verify": ["usage meter"], "status": "ok",
+      "summary": "5hr/weekly usage rings in the composer footer, read off the native utilization signal." },
+
+    { "id": "yolo-mode",             "title": "YOLO mode",              "tier": "composer", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["16"], "verify": ["yolo helpers","yolo perm init"], "status": "ok",
+      "summary": "New sessions default to bypassPermissions when toggled on." },
+
+    { "id": "fork-row",              "title": "Fork action row",        "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["fork"], "verify": ["fork action row","fork row dividers"], "status": "ok",
+      "summary": "Inline fork row in the message hover actions (fork is left on Claude's native handler)." },
+
+    { "id": "rewind-gate",           "title": "Rewind gate fix",        "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["22"], "verify": ["rewind gate removed"], "status": "ok",
+      "summary": "Removes the file-changes precondition that disabled the native Rewind button." },
+
+    { "id": "show-more-always",      "title": "Show-more always on",    "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["18b"], "verify": ["show-more no-gradient"], "status": "ok",
+      "summary": "Keeps long-message expand controls visible without the truncation gradient." },
+
+    { "id": "chat-restyle",          "title": "Chat restyle",           "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["css-chat"], "verify": ["chat restyle"], "status": "ok",
+      "summary": "Re-orders user attachments/pills and timeline message styling." },
+
+    { "id": "image-preview",         "title": "Image hover preview",    "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["img"], "verify": ["image hover preview"], "status": "ok",
+      "summary": "Hover an image attachment to see a larger preview." },
+
+    { "id": "color-theme",           "title": "Color themes",           "tier": "theming", "required": false, "userFacing": true, "dependsOn": [], "blocks": ["theme"], "verify": ["color theme"], "status": "ok",
+      "summary": "Theme picker modal with named color themes." },
+
+    { "id": "per-chat-color",        "title": "Per-chat color",         "tier": "theming", "required": false, "userFacing": true, "dependsOn": [], "blocks": ["color"], "verify": ["per-chat color"], "status": "ok",
+      "summary": "Assign an accent color to an individual chat." },
+
+    { "id": "sticky-preview",        "title": "Sticky preview header",  "tier": "theming", "required": false, "userFacing": true, "dependsOn": [], "blocks": ["sticky"], "verify": ["sticky preview toggle","sticky floating bar"], "status": "ok",
+      "summary": "Toggle a sticky/floating chat-preview header." },
+
+    { "id": "switch-model",          "title": "Switch-model item",      "tier": "system", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["model"], "verify": ["switch model item"], "status": "ok",
+      "summary": "Adds a switch-model item that runs the native `model` command." },
+
+    { "id": "settings-menu",         "title": "Settings dropdown",      "tier": "system", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["settings"], "verify": ["settings menu","settings dropdown css"], "status": "ok",
+      "summary": "Orbit settings dropdown that hosts account-switch and instructions." },
+
+    { "id": "account-switch",        "title": "Account switcher",       "tier": "system", "required": false, "userFacing": true,  "dependsOn": ["settings-menu"], "blocks": ["acct"], "verify": ["account switch modal","account switch rpc"], "status": "ok",
+      "summary": "Switch Claude accounts via a confirm modal + an extension-host RPC (patches extension.js too)." },
+
+    { "id": "instructions-modal",    "title": "CLAUDE.md editor",       "tier": "system", "required": false, "userFacing": true,  "dependsOn": ["settings-menu"], "blocks": ["instr"], "verify": ["instructions modal","instructions read","instructions write","instructions request"], "status": "ok",
+      "summary": "Read/write CLAUDE.md from a modal via extension-host RPC (patches extension.js too)." }
+  ]
+}

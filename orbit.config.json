@@ -1,0 +1,43 @@
+{
+  "_doc": {
+    "what": "THE swap surface. Every product-specific value in the Orbit wrapper derives from the canonical fields below. This is the file you edit to turn this wrapper into a different product (Claude Code Orbit -> Codex Orbit -> anything).",
+    "how_to_fork": "Copy the kit (see ORBIT_KIT.md), change the canonical fields here to your product's values, drop in your patcher + patch_modules/catalog.json + media logos, run `python build.py`. Nothing else is product-specific.",
+    "wiring_status": "v1: this file is the SOURCE OF TRUTH and the spec. The mapping table in ORBIT_KIT.md ties each canonical field to the exact lines it controls in extension.js / package.json / build.py. The next increment routes build.py + extension.js to READ this file so the swap becomes 'edit orbit.config.json only', byte-parity verified against today's output. Run `python tools/orbit_config.py check` to confirm the live files still match these values.",
+    "derived": {
+      "otaBase":            "https://raw.githubusercontent.com/{repo}/main",
+      "otaPatcherUrl":      "{otaBase}/{urlencode(patcher.dir)}/{patcher.entry}",
+      "otaWrapperVsixUrl":  "{otaBase}/latest/{slug}.vsix",
+      "globalStateKeys":    "{ns}.remotePatcherVersion, {ns}.lastNotifiedVersion, {ns}.latestClaudeVersion, {ns}.lastNotifiedClaudeVersion, {ns}.patcherManifest",
+      "viewContainerId":    "{ns}",
+      "viewId":             "{ns}.sidebar",
+      "focusCommand":       "{ns}.focusSidebar",
+      "configSection":      "{ns}",
+      "devModeSetting":     "{ns}.devMode",
+      "userAgent":          "{slug}-vscode",
+      "iconPath":           "media/{logo}",
+      "latestVsixName":     "{slug}.vsix",
+      "extName":            "{slug}",
+      "patcherArchiveGlob": "patchers/{patcher.archivePrefix}*.py"
+    }
+  },
+
+  "schemaVersion": 1,
+
+  "target":      "anthropic.claude-code",
+  "repo":        "Lunarwerx/claude-code-orbit",
+  "slug":        "claude-code-orbit",
+  "ns":          "claudeCodeOrbit",
+  "displayName": "Claude Code Orbit",
+  "publisher":   "LunarWerx",
+  "productNoun": "Claude Code",
+  "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
+  "keywords":    ["claude", "claude-code", "anthropic", "sessions", "yolo", "patch", "ai"],
+  "wrapperDir":  "Claude Code Orbit",
+  "logo":        "claude-code-orbit.png",
+
+  "patcher": {
+    "dir":           "Claude Code",
+    "entry":         "patch_claude_vsix_v147.py",
+    "archivePrefix": "patch_claude-"
+  }
+}

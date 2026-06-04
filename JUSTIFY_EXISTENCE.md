@@ -643,3 +643,22 @@ revisit if experimental routinely runs ahead of stable. (3) The manual release
 step (`tools/archive_patcher.py` before each push) is easy to forget — if skipped,
 that version simply won't be a rollback target. Candidate to fold into the
 release flow / Dark-Knight check later.
+
+**Right-click "Rename" in the session context menu (patcher v1.2.69):** the
+custom context menu surfaced Pin / Star / Archive + color swatches but had no
+Rename, so renaming was double-click-only (undiscoverable). **Job:** add a
+"Rename" item at the TOP of the right-click menu — the placement every beloved
+file/tab/session manager uses (VSCode explorer, browsers, Finder), where the
+hand goes first. **Why this way vs rejected:** reuse Claude's OWN inline rename
+(`onStartRename`, captured as `z`) — the same handler the native pencil button
+and double-click already call — rather than building a modal/prompt. That keeps
+ONE source of truth for "rename a session" (in-place contentEditable, the beloved
+pattern) and inherits its focus/selection behavior for free; a bespoke modal
+would be a second, divergent rename path to maintain. **Primitive/debt:** zero new
+machinery — `ccPatchShowMenu` gained one optional trailing param `rn`; the single
+call site passes `()=>z(Z)`; the menu only appears when `z` exists, so `rn` is
+always valid. No new CSS (consistent plain top button). **Verdict:** KEEP.
+Verified end-to-end against live Claude **2.1.162** (82 checks incl. the new
+`right-click rename` guard, JS syntax clean, generated call site
+`ccPatchShowMenu(...,Z,()=>z(Z))` correct). NOTE: certified pin left at 2.1.161 to
+match the 1.2.66–1.2.68 chain, though 1.2.69 is proven on 2.1.162.
