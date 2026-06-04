@@ -150,7 +150,7 @@ function getReaperConfig() {
   const enabled = cfg.get("reaper.enabled", true);
   const minAgeMinutes = Math.max(1, Number(cfg.get("reaper.minAgeMinutes", REAPER_DEFAULT_MIN_AGE_MINUTES)) || REAPER_DEFAULT_MIN_AGE_MINUTES);
   const intervalMinutes = Math.max(1, Number(cfg.get("reaper.intervalMinutes", REAPER_DEFAULT_INTERVAL_MINUTES)) || REAPER_DEFAULT_INTERVAL_MINUTES);
-  const trimResumeEnabled = cfg.get("reaper.trimResumeSessions.enabled", true);
+  const trimResumeEnabled = cfg.get("reaper.trimResumeSessions.enabled", false);
   const maxResumeSessions = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.maxSessions", REAPER_DEFAULT_MAX_RESUME_SESSIONS)) || REAPER_DEFAULT_MAX_RESUME_SESSIONS);
   const resumeMinAgeMinutes = Math.max(1, Number(cfg.get("reaper.trimResumeSessions.minAgeMinutes", REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES)) || REAPER_DEFAULT_RESUME_MIN_AGE_MINUTES);
   const resumeMaxCpuPercent = Math.max(0, Number(cfg.get("reaper.trimResumeSessions.maxCpuPercent", REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT)) || REAPER_DEFAULT_RESUME_MAX_CPU_PERCENT);

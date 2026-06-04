@@ -2,7 +2,7 @@
   "name": "claude-code-orbit",
   "displayName": "Claude Code Orbit",
   "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "LunarWerx",
   "license": "MIT",
   "icon": "media/claude-code-orbit.png",
@@ -48,8 +48,8 @@
         },
         "claudeCodeOrbit.reaper.trimResumeSessions.enabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Automatically trims idle resumed Claude Code native sessions when too many are still running."
+          "default": false,
+          "description": "Opt-in: trims old, low-CPU resumed Claude Code native sessions when too many are still running. Keep disabled when long-running chats may be waiting on tools or network."
         },
         "claudeCodeOrbit.reaper.trimResumeSessions.maxSessions": {
           "type": "number",

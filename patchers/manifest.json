@@ -154,6 +154,13 @@
       "claude": "2.1.162",
       "file": "patch_claude-1.2.71.py",
       "date": "2026-06-03"
+    },
+    {
+      "version": "1.2.72",
+      "build": 126,
+      "claude": "2.1.162",
+      "file": "patch_claude-1.2.72.py",
+      "date": "2026-06-03"
     }
   ]
 }
