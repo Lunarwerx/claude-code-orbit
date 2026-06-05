@@ -8,6 +8,54 @@ entry whenever you touch a surface that lacks one.
 
 ---
 
+## Fork auto-opens when idle (1.2.78-pending) — kills the extra "Open" click + corrects the 1.2.77 cause
+
+**Files:** `Claude Code/patch_claude_vsix_v147.py` — block 17b. Added `ccForkOpen`
+(navigation helper) and `ccForkOffer` (toast+[Open] helper) inside the rewritten
+native `ee()`; gated them on a per-session busy read `ccForkBusy`. Upgraded the
+"fork mid-stream fix" verify token to also require `ccForkOpen`/`ccForkBusy`.
+Rewrote the 17b header comment + the verify-block comment to record the TRUE cause.
+
+**Job:** clicking Fork should land you in the new branch with zero extra clicks
+when the chat is idle (the ChatGPT "branch in new chat" feel), while never yanking
+you off a live turn when the chat is busy (keep 1.2.77's branch-now/visit-later
+toast+[Open] mid-stream).
+
+**Why THIS way / what was broken:** 1.2.77 made Fork reliable by *always* deferring
+navigation behind an [Open] button — correct, but heavier than needed: idle is
+exactly when the stock auto-navigation already works, so the click is pure tax
+there. Adversarial byte-level verification (2 agents over the patched 2.1.165
+bundle) also REFUTED 1.2.77's stated cause: the silent mid-stream no-op is NOT a
+stale `listSessions().find` miss (host `listSessions` is a live uncached readdir;
+`forkSession` writes + registers the branch before returning its id), it is the
+service's **un-awaited `viewSession` + `return""`** swallowing the result while the
+busy session's own state churn overwrites the freshly-activated session — corrected
+in the comments so the blade doesn't re-learn the wrong lesson. Fix splits on
+`session.busy.value`: idle → open immediately (and if that open reports `false`/
+throws, fall back to the toast, so it is never a silent no-op); busy → toast+[Open].
+**Primitive reused, not invented:** `session.busy.value` is the same per-session
+busy signal the queue flush already watches via `it.sess.busy.value` (see the
+1.2.69 entry) — one source of truth for "is this chat streaming," not a second
+busy detector. Rejected alternative — always auto-navigate (fewest clicks): that
+is the exact mid-stream race 1.2.77 removed, and it would reintroduce the yank off
+a live turn. Safe default: if the `busy` signal is ever renamed by a future
+minifier, `ccForkBusy` defaults to TRUE → toast+[Open] (1.2.77 behavior preserved).
+
+**Verified:** full patcher run against stock 2.1.163 VSIX — Fork rewired, **JS
+syntax check passed, 87/87 verification checks passed** (incl. the new
+`ccForkOpen`/`ccForkBusy` tokens), exec bits 0o755 preserved. Emitted `ee()`
+extracted from the output VSIX and brace-balance/logic eyeballed. NOT bumped, NOT
+archived, NOT pushed OTA (awaiting explicit "ship it" per the VERSION PROTECTION
+banner).
+
+**Verdict:** KEEP. Watch: the narrow case where the resume point `T` belongs to the
+in-flight, not-yet-flushed turn still cannot fork (host `forkSession` reads disk;
+batched mirror flushes at turn-end / 500 entries / 1 MB) — it now surfaces the
+honest "this point isn't saved yet" toast. A future host-side flush-before-throw in
+`forkSession` would close that last gap; deferred as out of scope for the UX fix.
+
+---
+
 ## Queue flush rebuilt per-session (1.2.69) — kills "queued forever" stranding
 
 **Files:** `Claude Code/patch_claude_vsix_v147.py` — rewrote `ccPatchQueueTick`,
