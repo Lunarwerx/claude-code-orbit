@@ -213,6 +213,13 @@
       "claude": "2.1.170",
       "file": "patch_claude-1.2.79.py",
       "date": "2026-06-10"
+    },
+    {
+      "version": "1.2.80",
+      "build": 130,
+      "claude": "2.1.170",
+      "file": "patch_claude-1.2.80.py",
+      "date": "2026-06-13"
     }
   ]
 }
