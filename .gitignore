@@ -41,3 +41,5 @@ Thumbs.db
 *.log
 logs/
 monitoring/system-health/
+# Internal operating playbook — kept locally, NEVER published (this repo is public).
+docs/guides/
