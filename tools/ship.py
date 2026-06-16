@@ -41,6 +41,28 @@ CERTIFIED = ROOT / "certified_claude.txt"
 CHANNEL = ROOT / "release_channel.txt"
 
 
+def stamp_channel(channel: str) -> None:
+    """Write the channel INTO the patcher's own ORBIT_CHANNEL constant.
+
+    The tag ships inside the patcher file itself (single source of truth): the
+    patcher embeds it into the patched webview as ccPatchChannel, and
+    archive_patcher mirrors it into the manifest. So every archived patcher .py
+    on GitHub physically carries its own channel — nothing is inferred.
+    """
+    src = PATCHER.read_text(encoding="utf-8")
+    new, n = re.subn(
+        r'^ORBIT_CHANNEL:\s*str\s*=\s*"[^"]*"',
+        f'ORBIT_CHANNEL: str = "{channel}"',
+        src, count=1, flags=re.M,
+    )
+    if n != 1:
+        print("[ship] ABORT: could not find ORBIT_CHANNEL in the patcher to stamp "
+              "the channel. Nothing changed.", file=sys.stderr)
+        raise SystemExit(1)
+    PATCHER.write_text(new, encoding="utf-8")
+    print(f"[ship] patcher ORBIT_CHANNEL = {channel} (tag now ships inside the patcher)")
+
+
 def ensure_node_on_path() -> str | None:
     """The patcher only runs its node --check when `node` resolves on PATH."""
     found = shutil.which("node")
@@ -57,6 +79,12 @@ def ensure_node_on_path() -> str | None:
 def main() -> int:
     stable = "--stable" in sys.argv[1:]
     channel = "stable" if stable else "experimental"
+
+    # Stamp the channel INTO the patcher first, so the verification run, the
+    # archived copy, and the manifest mirror all carry the same shipped-with-the-
+    # patcher tag. (release_channel.txt is still written below for back-compat
+    # with already-installed wrappers, but the patcher is now the source of truth.)
+    stamp_channel(channel)
 
     node = ensure_node_on_path()
     if not node:

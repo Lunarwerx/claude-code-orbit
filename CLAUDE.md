@@ -6,18 +6,26 @@ Every release you push from this repo is **experimental by default**. Unless
 Jacob says the word **"stable"** for that specific release, you push it as
 experimental — no exceptions, and you don't need to ask which channel.
 
-Mechanically, the channel is the one-word file **`release_channel.txt`** at the
-repo root (served over OTA). It drives the red/green tag the updater shows on any
-available update — **red EXPERIMENTAL** = "maybe I won't update"; **green
-STABLE** = "cool, I'll update."
+Mechanically, the tag now **ships inside the patcher itself** (as of patcher
+1.2.86 / wrapper 1.2.7) — it is no longer a separate file the UI infers from. The
+single source of truth is the **`ORBIT_CHANNEL`** constant in
+`Claude Code/patch_claude_vsix_v147.py`. `ship.py` stamps it per release; the
+patcher embeds it into the patched webview as `ccPatchChannel`; `archive_patcher`
+mirrors it into each manifest entry. So the wrapper reads the **installed** tag
+straight from the patched webview, and the **list/banner** tags from the
+patcher-sourced manifest — nothing is defaulted. (`release_channel.txt` is still
+written for back-compat with already-installed wrappers, but it is no longer the
+source of truth.) Red EXPERIMENTAL = "maybe I won't update"; green STABLE = "cool,
+I'll update."
 
-On **every** push:
-- **Default:** write `release_channel.txt` = `experimental` and include it in the
-  release commit. The updater then tags the available update red.
-- **Only when Jacob explicitly says "stable"** for that release: write
-  `release_channel.txt` = `stable` (green tag).
-- The tag reflects the **latest** push. If you ship experimental builds and then
-  a stable one, flip the file to `stable` in that stable push.
+On **every** push (all handled by `ship.py`):
+- **Default:** `ship.py` stamps `ORBIT_CHANNEL = "experimental"` into the patcher
+  (and writes `release_channel.txt` = `experimental` for back-compat). The
+  updater tags the available update red.
+- **Only when Jacob explicitly says "stable"** for that release: `ship.py --stable`
+  stamps `ORBIT_CHANNEL = "stable"` (green tag).
+- The tag reflects the **latest** push. Because each archived patcher carries its
+  own embedded tag, older versions keep their real tag forever — no backfills.
 
 This lets Jacob push potentially-broken experimental builds freely without
 worrying about other users — they see the red tag and can hold off.

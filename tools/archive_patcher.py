@@ -29,6 +29,7 @@ file + entry in place (no duplicate).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -67,6 +68,35 @@ def current_build_number() -> int | None:
     return n
 
 
+def read_patcher_channel() -> "str | None":
+    """The channel embedded in the patcher's own ORBIT_CHANNEL constant — the
+    single source of truth for the tag. Returns 'experimental'/'stable' or None
+    when the marker is somehow absent."""
+    try:
+        src = EXPERIMENTAL_PATCHER.read_text(encoding="utf-8")
+        m = re.search(r'^ORBIT_CHANNEL:\s*str\s*=\s*"([^"]+)"', src, flags=re.M)
+        if m:
+            c = m.group(1).strip().lower()
+            if c in ("experimental", "stable"):
+                return c
+    except Exception:
+        pass
+    return None
+
+
+def read_release_channel_file() -> "str | None":
+    """Back-compat fallback: the old side-file tag. Only used if the patcher has
+    no embedded ORBIT_CHANNEL (it always should, going forward)."""
+    try:
+        if RELEASE_CHANNEL_SRC.exists():
+            c = RELEASE_CHANNEL_SRC.read_text(encoding="utf-8").strip().lower()
+            if c in ("stable", "experimental"):
+                return c
+    except Exception:
+        pass
+    return None
+
+
 def load_manifest() -> dict:
     if MANIFEST.exists():
         data = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -97,17 +127,13 @@ def archive_current(verbose: bool = True, build_number: "int | None" = None) -> 
         raise SystemExit(f"Experimental patcher not found: {EXPERIMENTAL_PATCHER}")
     version = read_version(PATCHER_VERSION_SRC, "patcher_version.txt")
     claude = read_version(CERTIFIED_CLAUDE_SRC, "certified_claude.txt")
-    # Record the channel THIS version was cut on (experimental/stable). Old
-    # entries archived before channels existed have no field — the UI tags those
-    # "beta". Default experimental (Jacob's standing rule) when the file is absent.
-    channel = "experimental"
-    try:
-        if RELEASE_CHANNEL_SRC.exists():
-            c = RELEASE_CHANNEL_SRC.read_text(encoding="utf-8").strip().lower()
-            if c in ("stable", "experimental"):
-                channel = c
-    except Exception:
-        pass
+    # The channel THIS version ships as is read from the patcher ITSELF — its
+    # ORBIT_CHANNEL constant is the single source of truth (the tag travels inside
+    # the patcher, and is also embedded into the patched webview as ccPatchChannel).
+    # The manifest entry below is just a fast-listing MIRROR of that value, never an
+    # independent field that can drift. Fall back to the old release_channel.txt,
+    # then the standing default (experimental), only if the marker is absent.
+    channel = read_patcher_channel() or read_release_channel_file() or "experimental"
 
     PATCHERS_DIR.mkdir(exist_ok=True)
     dest_name = f"patch_claude-{version}.py"

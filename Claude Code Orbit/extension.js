@@ -609,6 +609,29 @@ function readInstalledPatcherVersion() {
   }
 }
 
+/**
+ * Read the installed patcher's CHANNEL straight from the patched Claude Code
+ * webview — the `ccPatchChannel` marker the patcher embeds from its own
+ * ORBIT_CHANNEL constant. This is the authoritative "what am I running" tag: it
+ * ships INSIDE the patcher, so the sidebar reads it back here instead of
+ * inferring it from the manifest or a default. Returns "experimental" |
+ * "stable" | null (null only for a pre-channel patched build, pre-1.2.86).
+ */
+function readInstalledPatcherChannel() {
+  try {
+    const ext = vscode.extensions.getExtension(STOCK_ID);
+    if (!ext) return null;
+    const jsPath = path.join(ext.extensionUri.fsPath, "webview", "index.js");
+    if (!fs.existsSync(jsPath)) return null;
+    const text = fs.readFileSync(jsPath, "utf8");
+    const m = text.match(/ccPatchChannel="([^"]+)"/);
+    const c = m ? m[1].trim().toLowerCase() : null;
+    return (c === "experimental" || c === "stable") ? c : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function readBundledWrapperVersion(context) {
   try {
     const p = path.join(context.extensionUri.fsPath, "package.json");
@@ -977,7 +1000,18 @@ class SidebarProvider {
             this.log("Checking GitHub Orbit wrapper version");
             const remoteWrapperVersion = await fetchRemoteWrapperVersion((l) => this.log(l));
             const remoteWrapperBuild = await fetchRemoteWrapperBuild((l) => this.log(l));
+            // The incoming update's tag is sourced from the patcher's own channel,
+            // mirrored into the manifest at ship time — prefer the manifest entry
+            // for the remote version; fall back to the old release_channel.txt.
             releaseChannel = await fetchReleaseChannel((l) => this.log(l));
+            try {
+              const remoteManifest = getEffectiveManifest(this.context) || await fetchPatcherManifest((l) => this.log(l));
+              const remoteEntry = remoteManifest && Array.isArray(remoteManifest.patchers)
+                ? remoteManifest.patchers.find(function (p) { return p && p.version === remoteVersion; }) : null;
+              if (remoteEntry && (remoteEntry.channel === "experimental" || remoteEntry.channel === "stable")) {
+                releaseChannel = remoteEntry.channel;
+              }
+            } catch (_) {}
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
             // Use the cached newest-Claude (kept fresh by the background poller) instead
             // of a slow Marketplace round-trip, so "Check for updates" is GitHub-fast.
@@ -1031,7 +1065,13 @@ class SidebarProvider {
               })();
 
               resultMsg = "You're patched and current.";
-              installedChannel = (patcherHistoryFromManifest(getEffectiveManifest(this.context)).find(function (v) { return v && v.version === installedVersion; }) || {}).channel || "beta";
+              // Read the installed tag from the PATCHER ITSELF (ccPatchChannel in
+              // the patched webview) — shipped with the patcher, not inferred. Fall
+              // back to the manifest mirror, then the standing default. No "beta":
+              // every shipped patcher carries a real tag now.
+              installedChannel = readInstalledPatcherChannel()
+                || (patcherHistoryFromManifest(getEffectiveManifest(this.context)).find(function (v) { return v && v.version === installedVersion; }) || {}).channel
+                || "experimental";
 
               const claudeNote = claudeIsNewest ? "✓ newest" : "✓";
               const row = (label, val, note, cls) =>
@@ -1645,7 +1685,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 
     <!-- VERSIONS (picker) -->
     <div class="statePane" data-pane="versions">
-      <button class="verBackTop" data-action="back">‹ Back</button>
+      <button class="verBackTop" data-action="back">Back</button>
       <p class="doneMsg">Choose a version</p>
       <p class="doneSub">Install an earlier version if the newest one misbehaves.</p>
       <div class="verList" id="verList"></div>
@@ -1746,6 +1786,7 @@ function applyIdleState(state, info) {
   const claudeUpdateAvailable = info && info.claudeUpdateAvailable;
   const patcherHistory = (info && info.patcherHistory) || [];
   const channel = info && info.channel;
+  const installedChannel = info && info.installedChannel;   // read from the patcher itself (ccPatchChannel)
 
   // "Install newest" is the always-present primary verb (was "Use experimental").
   enableBtnIcon.innerHTML = ICON_CHECK;
@@ -1792,7 +1833,10 @@ function applyIdleState(state, info) {
     } else {
       patchedTitle.textContent = "Orbit is enabled";
       {
-        var ccInstCh = (patcherHistory.find(function (v) { return v && v.version === installedVersion; }) || {}).channel;
+        // Installed tag read from the patcher itself (ccPatchChannel), with the
+        // manifest mirror as fallback — shipped with the patcher, not inferred.
+        var ccInstCh = installedChannel
+          || (patcherHistory.find(function (v) { return v && v.version === installedVersion; }) || {}).channel;
         patchedTitle.appendChild(document.createTextNode(" "));
         patchedTitle.appendChild(ccChannelTag(ccInstCh));
       }
@@ -1879,13 +1923,15 @@ function applyIdleState(state, info) {
 // Build the "Previous versions" picker rows from the latest history snapshot.
 // Each row shows version · Claude target · build #, with an Install action
 // (disabled for the version that's already installed).
-// Channel pill used in the version list + patched hero: experimental (red),
-// stable (green), or BETA (neutral) for any version with no recorded channel.
+// Channel pill used in the version list + patched hero. Every shipped patcher
+// now carries its own tag (ccPatchChannel, mirrored into the manifest), so a
+// missing channel no longer means "legacy/beta" — it falls back to the standing
+// default (experimental, the cautious red tag), never a misleading BETA.
 function ccChannelTag(channel) {
-  var c = (channel === "stable") ? "stable" : (channel === "experimental") ? "experimental" : "beta";
+  var c = (channel === "stable") ? "stable" : "experimental";
   var t = document.createElement("span");
   t.className = "channelTag " + c;
-  t.textContent = c === "stable" ? "STABLE" : c === "experimental" ? "EXPERIMENTAL" : "BETA";
+  t.textContent = c === "stable" ? "STABLE" : "EXPERIMENTAL";
   return t;
 }
 
@@ -2138,6 +2184,7 @@ window.addEventListener("message", (ev) => {
     statusEl.innerHTML = '<span class="dot ' + cls + '"></span><span class="label">' + text + '</span>';
     applyIdleState(m.state, {
       installedVersion: m.installedVersion,
+      installedChannel: m.installedChannel,
       targetVersion: m.targetVersion,
       channel: m.channel,
       claudeCodeVersion: m.claudeCodeVersion,
@@ -2344,7 +2391,6 @@ function cmpVer(a, b) {
 function detectState(context) {
   const remoteVersion = readRemotePatcherVersion(context);
   const targetVersion = remoteVersion;
-  const channel = readReleaseChannel(context);
   // Read the remote patcher version cached by the background poller into
   // globalState. This is the PRIMARY source of truth for "is my patcher
   // outdated?"
@@ -2352,6 +2398,15 @@ function detectState(context) {
   // offer "Install specific version" when the remote manifest has been fetched.
   const manifest = getEffectiveManifest(context);
   const patcherHistoryCached = patcherHistoryFromManifest(manifest);
+  // The incoming update's tag is sourced from the patcher's own embedded channel
+  // (mirrored into the manifest at ship time), never a separate side file. Falls
+  // back to the cached release_channel.txt only when the manifest lacks an entry.
+  const channel = (function () {
+    const match = patcherHistoryCached.find(function (p) { return p && p.version === remoteVersion; });
+    if (match && match.channel) return match.channel;
+    if (patcherHistoryCached[0] && patcherHistoryCached[0].channel) return patcherHistoryCached[0].channel;
+    return readReleaseChannel(context);
+  })();
   const ext = vscode.extensions.getExtension(STOCK_ID);
   if (!ext) return { state: "none", installedVersion: null, targetVersion, remoteVersion, claudeCodeVersion: null, latestClaudeVersion: null, onLatestClaude: false, claudeUpdateAvailable: false, previousPatcher: null, patcherHistory: patcherHistoryCached };
 
@@ -2374,6 +2429,12 @@ function detectState(context) {
       if (isPatched) {
         const m = text.match(/ccPatchBuildVersion="([^"]+)"/);
         const installedVersion = m ? m[1] : null;
+        // The installed tag, read from the patcher itself (ccPatchChannel) — ships
+        // with the patcher, so no inference. null on a pre-1.2.86 patched build.
+        const chMatch = text.match(/ccPatchChannel="([^"]+)"/);
+        const installedChannelRaw = chMatch ? chMatch[1].trim().toLowerCase() : null;
+        const installedChannel = (installedChannelRaw === "experimental" || installedChannelRaw === "stable")
+          ? installedChannelRaw : null;
         // Determine "outdated" status:
         //   1. Primary: compare installed vs remote (fetched from GitHub by the
         //      background poller and cached in globalState).
@@ -2392,6 +2453,7 @@ function detectState(context) {
         return {
           state: isOutdated ? "outdated" : "patched",
           installedVersion,
+          installedChannel,
           targetVersion,
           channel,
           remoteVersion,
