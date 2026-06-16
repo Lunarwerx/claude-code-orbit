@@ -25,6 +25,14 @@
       "claude": "2.1.178",
       "file": "patch_claude-1.2.86.py",
       "date": "2026-06-15"
+    },
+    {
+      "version": "1.2.87",
+      "channel": "experimental",
+      "build": 144,
+      "claude": "2.1.178",
+      "file": "patch_claude-1.2.87.py",
+      "date": "2026-06-16"
     }
   ]
 }
