@@ -30,6 +30,28 @@ it when you verify the patcher against a newer Claude Code release.
 There is **no "stable" channel.** The newest patcher is what everyone runs; if it
 breaks, **Previous versions** rolls back to an earlier registry entry.
 
+## Release channel: EXPERIMENTAL by default (red tag), STABLE only on Jacob's word
+
+Every release carries a channel tag the updater shows on any available update:
+`release_channel.txt` at the repo root (one word — `experimental` or `stable`),
+served over OTA. The updater renders it as a badge — **red EXPERIMENTAL** (the
+default) or **green STABLE**.
+
+**Default to experimental on EVERY push.** Unless Jacob explicitly says "stable"
+for that release, write `release_channel.txt` = `experimental` and commit it with
+the release. Only when he says stable do you write `stable`. The tag reflects the
+latest push, so a later stable release flips the file to `stable`.
+
+Why: it lets Jacob push potentially-broken experimental builds freely — other
+users see the red tag and can hold off. Mirrored in the workspace `CLAUDE.md`.
+
+**One-command release:** `python tools/ship.py [--stable]` does the whole prep —
+pulls the NEWEST Claude Code from the Marketplace, verifies + node-checks the
+patcher against it, sets `certified_claude.txt` to that version, writes
+`release_channel.txt` (experimental unless `--stable`), and runs `build.py`. Then
+commit + push the printed file list. Never hand-feed the Claude version; never
+ship untagged.
+
 ## Building — there is exactly ONE way
 
 To build, run:

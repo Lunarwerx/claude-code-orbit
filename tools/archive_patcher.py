@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTAL_PATCHER = ROOT / "Claude Code" / "patch_claude_vsix_v147.py"
 PATCHER_VERSION_SRC = ROOT / "patcher_version.txt"
 CERTIFIED_CLAUDE_SRC = ROOT / "certified_claude.txt"
+RELEASE_CHANNEL_SRC = ROOT / "release_channel.txt"
 PATCHERS_DIR = ROOT / "patchers"
 MANIFEST = PATCHERS_DIR / "manifest.json"
 BUILDS_DIR = ROOT / "builds"
@@ -96,6 +97,17 @@ def archive_current(verbose: bool = True, build_number: "int | None" = None) -> 
         raise SystemExit(f"Experimental patcher not found: {EXPERIMENTAL_PATCHER}")
     version = read_version(PATCHER_VERSION_SRC, "patcher_version.txt")
     claude = read_version(CERTIFIED_CLAUDE_SRC, "certified_claude.txt")
+    # Record the channel THIS version was cut on (experimental/stable). Old
+    # entries archived before channels existed have no field — the UI tags those
+    # "beta". Default experimental (Jacob's standing rule) when the file is absent.
+    channel = "experimental"
+    try:
+        if RELEASE_CHANNEL_SRC.exists():
+            c = RELEASE_CHANNEL_SRC.read_text(encoding="utf-8").strip().lower()
+            if c in ("stable", "experimental"):
+                channel = c
+    except Exception:
+        pass
 
     PATCHERS_DIR.mkdir(exist_ok=True)
     dest_name = f"patch_claude-{version}.py"
@@ -105,6 +117,7 @@ def archive_current(verbose: bool = True, build_number: "int | None" = None) -> 
     manifest = load_manifest()
     entry = {
         "version": version,
+        "channel": channel,
         "build": build_number if build_number is not None else current_build_number(),
         "claude": claude,
         "file": dest_name,

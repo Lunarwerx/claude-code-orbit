@@ -51,6 +51,7 @@ const MARKETPLACE_QUERY_URL =
 // this in the background so users get notified the moment a new patcher lands on
 // GitHub — no VSIX reinstall needed.
 const OTA_PATCHER_VERSION_URL = OTA_BASE + "/patcher_version.txt";
+const OTA_RELEASE_CHANNEL_URL = OTA_BASE + "/release_channel.txt";
 
 // OTA rollback registry — patchers/manifest.json lists every archived patcher
 // version + the Claude Code version each was certified against. Backs the
@@ -68,6 +69,7 @@ const STARTUP_DELAY_MS = 30 * 1000;           // wait 30s before first check
 // globalState keys for cross-session persistence of the remote version and
 // notification deduplication.
 const GS_REMOTE_PATCHER_VERSION = "claudeCodeOrbit.remotePatcherVersion";
+const GS_RELEASE_CHANNEL = "claudeCodeOrbit.releaseChannel";
 const GS_LAST_NOTIFIED_VERSION = "claudeCodeOrbit.lastNotifiedVersion";
 // Newest Claude Code version available on the Marketplace (cached by the poller
 // so the synchronous detectState() can compare without a network call), plus
@@ -511,6 +513,22 @@ async function fetchRemotePatcherVersion(log) {
   }
 }
 
+// Release channel tag ("experimental" | "stable") for the latest push. Defaults
+// to EXPERIMENTAL on anything unexpected/unreachable, so an untagged or unknown
+// build always shows the cautious red tag rather than a falsely reassuring one.
+async function fetchReleaseChannel(log) {
+  try {
+    const body = await httpsGet(OTA_RELEASE_CHANNEL_URL + "?t=" + Date.now(), OTA_TIMEOUT_MS);
+    const c = body.trim().toLowerCase();
+    if (c === "stable" || c === "experimental") { if (log) log("Release channel: " + c); return c; }
+    if (log) log("Release channel unrecognized (" + JSON.stringify(c) + ") — defaulting to experimental");
+    return "experimental";
+  } catch (err) {
+    if (log) log("Release channel check failed (" + (err && err.message ? err.message : err) + ") — defaulting to experimental");
+    return "experimental";
+  }
+}
+
 /**
  * Fetch the rollback registry (patchers/manifest.json) from the OTA repo.
  * Returns the parsed object {schema, patchers:[...]} on success, or null on any
@@ -569,7 +587,7 @@ function patcherHistoryFromManifest(manifest) {
     .filter((p) => p && p.version && p.file && p.claude)
     .slice()
     .sort((a, b) => cmpVer(b.version, a.version))   // newest first
-    .map((p) => ({ version: p.version, claude: p.claude, build: (p.build != null ? p.build : null) }));
+    .map((p) => ({ version: p.version, claude: p.claude, build: (p.build != null ? p.build : null), channel: (p.channel || null) }));
 }
 
 /**
@@ -749,6 +767,10 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
     // making its own network call (detectState is synchronous).
     await context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
 
+    // Cache the release channel (experimental/stable) the same way, so the
+    // sidebar hero can tag the available update synchronously.
+    try { await context.globalState.update(GS_RELEASE_CHANNEL, await fetchReleaseChannel()); } catch (_) {}
+
     // Cache the rollback registry too, so detectState() can offer "Use previous
     // version" with no network call. Silent on failure — rollback is optional.
     try {
@@ -821,6 +843,11 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
       statusBarItem.backgroundColor = undefined;
       statusBarItem.show();
     }
+
+    // Auto-refresh the sidebar so the hero (and its experimental/stable tag)
+    // reflects what this background check just found — without waiting for the
+    // user to open the panel or click "Check for updates".
+    if (provider && !provider.busy) provider.pushState();
   } catch (_) {
     // Offline / unexpected error — silently skip this cycle.
     statusBarItem.hide();
@@ -939,6 +966,8 @@ class SidebarProvider {
           let resultSubHtml = "";   // optional rich breakdown for the "up to date" case
           let updateAvailable = false;
           let updateAction = "enable";
+          let releaseChannel = "experimental";   // declared outside try so the result payload (below) can read it
+          let installedChannel = null;            // the INSTALLED version's channel (for the "patched & current" tag)
           try {
             this.log("Checking GitHub experimental patcher version");
             const remoteVersion = await fetchRemotePatcherVersion((l) => this.log(l));
@@ -948,10 +977,11 @@ class SidebarProvider {
             this.log("Checking GitHub Orbit wrapper version");
             const remoteWrapperVersion = await fetchRemoteWrapperVersion((l) => this.log(l));
             const remoteWrapperBuild = await fetchRemoteWrapperBuild((l) => this.log(l));
+            releaseChannel = await fetchReleaseChannel((l) => this.log(l));
             await this.context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
-            this.log("Checking newest Claude Code on the Marketplace");
-            const latestClaude = await fetchLatestClaudeVersion((l) => this.log(l));
-            if (latestClaude) await this.context.globalState.update(GS_LATEST_CLAUDE_VERSION, latestClaude);
+            // Use the cached newest-Claude (kept fresh by the background poller) instead
+            // of a slow Marketplace round-trip, so "Check for updates" is GitHub-fast.
+            const latestClaude = this.context.globalState.get(GS_LATEST_CLAUDE_VERSION) || null;
             const installedVersion = readInstalledPatcherVersion();
             const wrapperVersion = readBundledWrapperVersion(this.context);
             const wrapperBuild = readBundledWrapperBuild(this.context);
@@ -1001,6 +1031,7 @@ class SidebarProvider {
               })();
 
               resultMsg = "You're patched and current.";
+              installedChannel = (patcherHistoryFromManifest(getEffectiveManifest(this.context)).find(function (v) { return v && v.version === installedVersion; }) || {}).channel || "beta";
 
               const claudeNote = claudeIsNewest ? "✓ newest" : "✓";
               const row = (label, val, note, cls) =>
@@ -1008,13 +1039,12 @@ class SidebarProvider {
                 "<span class=\"verVal\">" + val + "</span>" +
                 "<span class=\"verNote " + cls + "\">" + note + "</span>";
 
-              const foot = "#" + patchNum + " is the patch tool's own build number, not a Claude version" + (certified ? "; it was built and tested against Claude Code v" + certified + "." : ".");
+              const foot = "Patch build #" + patchNum + (certified ? ", built for Claude Code v" + certified + "." : ".");
 
               resultSubHtml =
                 "<div class=\"verTable\">" +
                 row("Claude Code", "v" + (claudeCodeVersion || "?"), claudeNote, "ok") +
                 row("Patch tool", "#" + patchNum, certified ? "✓ built for v" + certified : "✓", "ok") +
-                row("Orbit app", "v" + wrapperVersion, "✓", "ok") +
                 "</div>" +
                 "<span class=\"subNote\">" + foot + "</span>";
 
@@ -1038,6 +1068,7 @@ class SidebarProvider {
             subHtml: resultSubHtml,
             updateAvailable,
             updateAction,
+            channel: updateAvailable ? releaseChannel : installedChannel,
           });
           this.busy = false;
           this.pushState();
@@ -1378,6 +1409,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .patchedHero.updateAvailable{
   background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(59,130,246,.02));
   border:1px solid rgba(59,130,246,.28)}
+/* Experimental update -> red hero border + tint (matches the red EXPERIMENTAL
+   tag); stable -> green. Overrides the blue updateAvailable accent above. */
+.patchedHero.updateAvailable.experimental{
+  background:linear-gradient(180deg,rgba(229,72,77,.10),rgba(229,72,77,.02));
+  border-color:rgba(229,72,77,.5)}
+.patchedHero.updateAvailable.stable{
+  background:linear-gradient(180deg,rgba(63,185,80,.10),rgba(63,185,80,.02));
+  border-color:rgba(63,185,80,.45)}
 .patchedTitle{font-size:14px;font-weight:600;margin:0 0 4px;letter-spacing:.01em}
 .patchedSub{font-size:11.5px;opacity:.62;margin:0;line-height:1.5}
 /* Quiet secondary line for the Orbit patch build number — deliberately dimmer
@@ -1387,6 +1426,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .patchedMeta[hidden]{display:none}
 /* Green "✓ Latest" badge — confirms you're on the newest Claude Code. */
 .latestBadge{color:#3fb950;font-weight:600;opacity:.95}
+/* Release-channel tag shown on an available update: red = experimental (the
+   default — "maybe I won't update"), green = stable ("cool, I'll update"). */
+.channelTag{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;
+  border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.05em}
+.channelTag.experimental{background:rgba(229,72,77,.16);color:#ff6b6b;border:1px solid rgba(229,72,77,.55)}
+.channelTag.stable{background:rgba(63,185,80,.14);color:#5ed27a;border:1px solid rgba(63,185,80,.5)}
+.channelTag.beta{background:rgba(140,140,140,.16);color:#bdbdbd;border:1px solid rgba(140,140,140,.42)}
 
 /* Stock hero — same shape as patched hero, blue accent for the stock state */
 .stockHero{display:flex;flex-direction:column;align-items:center;text-align:center;
@@ -1440,8 +1486,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .verNote.warn{color:#d29922;opacity:.95}
 /* Version picker list (the "Previous versions" pane) — scrollable rows, each
    showing version + Claude target + build number, with an Install action. */
-.verList{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;
-  margin:4px 0 16px;padding-right:2px}
+.verList{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow:auto;
+  margin:4px 0 10px;padding-right:2px}
 .verItem{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;
   border:1px solid rgba(127,127,127,.16);background:rgba(127,127,127,.05)}
 .verItem.current{border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.07)}
@@ -1459,6 +1505,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   color:var(--vscode-button-foreground,#fff)}
 .verItemInstall[disabled]{opacity:.4;cursor:default;border-color:transparent}
 .verEmpty{font-size:12px;opacity:.55;text-align:center;padding:18px 4px}
+.statePane[data-pane="versions"]{position:relative}
+.verBackTop{position:fixed;top:8px;left:8px;z-index:50;
+  background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.28);
+  color:var(--vscode-foreground);opacity:1;font-size:12px;font-weight:500;cursor:pointer;
+  font-family:inherit;padding:5px 11px;border-radius:6px;transition:background .12s}
+.verBackTop:hover{background:rgba(127,127,127,.32)}
 .errorSub{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;opacity:.85;
   background:rgba(239,68,68,.06);padding:9px 11px;border-radius:5px;text-align:left;
   max-height:140px;overflow:auto;border-left:2px solid rgba(239,68,68,.4)}
@@ -1593,10 +1645,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 
     <!-- VERSIONS (picker) -->
     <div class="statePane" data-pane="versions">
+      <button class="verBackTop" data-action="back">‹ Back</button>
       <p class="doneMsg">Choose a version</p>
-      <p class="doneSub">Each row shows the patcher version, the Claude Code it’s built for, and its build number. If the newest misbehaves, install an earlier one.</p>
+      <p class="doneSub">Install an earlier version if the newest one misbehaves.</p>
       <div class="verList" id="verList"></div>
-      <button class="btn" data-action="back">Back</button>
     </div>
 
     <!-- CONFIRM (install a chosen version) -->
@@ -1693,6 +1745,7 @@ function applyIdleState(state, info) {
   const onLatestClaude = info && info.onLatestClaude;
   const claudeUpdateAvailable = info && info.claudeUpdateAvailable;
   const patcherHistory = (info && info.patcherHistory) || [];
+  const channel = info && info.channel;
 
   // "Install newest" is the always-present primary verb (was "Use experimental").
   enableBtnIcon.innerHTML = ICON_CHECK;
@@ -1713,7 +1766,7 @@ function applyIdleState(state, info) {
   disableBtn.hidden = false;
   checkUpdatesBtn.hidden = true;
   statusEl.hidden = false;
-  patchedHero.classList.remove("updateAvailable");
+  patchedHero.classList.remove("updateAvailable", "experimental", "stable");
   patchedMeta.hidden = true;   // quiet patch-# line; only the normal patched view shows it
 
   if (state === "patched") {
@@ -1738,6 +1791,11 @@ function applyIdleState(state, info) {
       idleHint.innerHTML = '';
     } else {
       patchedTitle.textContent = "Orbit is enabled";
+      {
+        var ccInstCh = (patcherHistory.find(function (v) { return v && v.version === installedVersion; }) || {}).channel;
+        patchedTitle.appendChild(document.createTextNode(" "));
+        patchedTitle.appendChild(ccChannelTag(ccInstCh));
+      }
       // Claude version is the headline (+ a ✓ Latest badge when on the newest);
       // the Orbit patch # drops to a quiet meta line. Version strings are
       // server-validated semver, so innerHTML here is safe.
@@ -1760,9 +1818,17 @@ function applyIdleState(state, info) {
   } else if (state === "outdated") {
     patchedHero.hidden = false;
     patchedHero.classList.add("updateAvailable");
+    if (channel) patchedHero.classList.add(channel === "stable" ? "stable" : "experimental");
     stockHero.hidden = true;
     statusEl.hidden = true;
     patchedTitle.textContent = "Update available";
+    if (channel) {
+      var ccHeroTag = document.createElement("span");
+      ccHeroTag.className = "channelTag " + (channel === "stable" ? "stable" : "experimental");
+      ccHeroTag.textContent = channel === "stable" ? "STABLE" : "EXPERIMENTAL";
+      patchedTitle.appendChild(document.createTextNode(" "));
+      patchedTitle.appendChild(ccHeroTag);
+    }
     {
       let line = (installedVersion
         ? "Patcher v" + installedVersion + " -> v" + (targetVersion || "?")
@@ -1813,6 +1879,16 @@ function applyIdleState(state, info) {
 // Build the "Previous versions" picker rows from the latest history snapshot.
 // Each row shows version · Claude target · build #, with an Install action
 // (disabled for the version that's already installed).
+// Channel pill used in the version list + patched hero: experimental (red),
+// stable (green), or BETA (neutral) for any version with no recorded channel.
+function ccChannelTag(channel) {
+  var c = (channel === "stable") ? "stable" : (channel === "experimental") ? "experimental" : "beta";
+  var t = document.createElement("span");
+  t.className = "channelTag " + c;
+  t.textContent = c === "stable" ? "STABLE" : c === "experimental" ? "EXPERIMENTAL" : "BETA";
+  return t;
+}
+
 function renderVersions() {
   verList.innerHTML = "";
   const list = (lastHistory || []).filter(v => v && v.version);
@@ -1832,15 +1908,10 @@ function renderVersions() {
     const ver = document.createElement("div");
     ver.className = "verItemVer";
     ver.textContent = "v" + v.version;
-    if (isCurrent) {
-      const badge = document.createElement("span");
-      badge.className = "verItemBadge";
-      badge.textContent = "Installed";
-      ver.appendChild(badge);
-    }
+    ver.appendChild(ccChannelTag(v.channel));
     const meta = document.createElement("div");
     meta.className = "verItemMeta";
-    meta.textContent = "Claude " + (v.claude || "?") + (v.build != null ? " · build " + v.build : "");
+    meta.textContent = "Claude " + (v.claude || "?");
     info.appendChild(ver);
     info.appendChild(meta);
     const btn = document.createElement("button");
@@ -2068,6 +2139,7 @@ window.addEventListener("message", (ev) => {
     applyIdleState(m.state, {
       installedVersion: m.installedVersion,
       targetVersion: m.targetVersion,
+      channel: m.channel,
       claudeCodeVersion: m.claudeCodeVersion,
       latestClaudeVersion: m.latestClaudeVersion,
       onLatestClaude: m.onLatestClaude,
@@ -2121,6 +2193,10 @@ window.addEventListener("message", (ev) => {
       resetCancelButton();
       progressFillEl.style.width = "100%";
       doneMsgEl.textContent = m.message || "All set.";
+      if (m.action === "checkUpdates" && m.channel) {
+        doneMsgEl.appendChild(document.createTextNode(" "));
+        doneMsgEl.appendChild(ccChannelTag(m.channel));
+      }
       const doneSub = document.getElementById("doneSub");
       if (m.subHtml) doneSub.innerHTML = m.subHtml;
       else doneSub.textContent = m.subMessage || "";
@@ -2233,6 +2309,14 @@ function readRemotePatcherVersion(context) {
   return context.globalState.get(GS_REMOTE_PATCHER_VERSION) || null;
 }
 
+// Release channel ("experimental" | "stable") cached by the background check, so
+// synchronous detectState() can tag the hero without a network call. Defaults to
+// experimental (the cautious red tag) when nothing has been cached yet.
+function readReleaseChannel(context) {
+  const c = context.globalState.get(GS_RELEASE_CHANNEL);
+  return (c === "stable" || c === "experimental") ? c : "experimental";
+}
+
 // The Claude Code version the installed/current remote patcher was certified against.
 function readCachedCertifiedClaude(context, patcherVersion) {
   const manifest = getEffectiveManifest(context);
@@ -2260,6 +2344,7 @@ function cmpVer(a, b) {
 function detectState(context) {
   const remoteVersion = readRemotePatcherVersion(context);
   const targetVersion = remoteVersion;
+  const channel = readReleaseChannel(context);
   // Read the remote patcher version cached by the background poller into
   // globalState. This is the PRIMARY source of truth for "is my patcher
   // outdated?"
@@ -2308,6 +2393,7 @@ function detectState(context) {
           state: isOutdated ? "outdated" : "patched",
           installedVersion,
           targetVersion,
+          channel,
           remoteVersion,
           claudeCodeVersion,
           latestClaudeVersion,

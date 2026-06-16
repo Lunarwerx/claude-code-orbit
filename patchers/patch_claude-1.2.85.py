@@ -423,10 +423,10 @@ function ccPatchCloseFilterMenu(){let m=document.querySelector(`.claudePatchFilt
 function ccPatchFilterIconSVG(name){let svg=document.createElementNS(`http://www.w3.org/2000/svg`,`svg`);svg.setAttribute(`width`,`12`);svg.setAttribute(`height`,`12`);svg.setAttribute(`viewBox`,`0 0 12 12`);svg.setAttribute(`fill`,`none`);svg.setAttribute(`stroke`,`currentColor`);svg.setAttribute(`stroke-width`,`1.3`);svg.setAttribute(`stroke-linecap`,`round`);svg.setAttribute(`stroke-linejoin`,`round`);svg.classList.add(`ccPatchFilterItemIcon`);let paths={pinned:`<circle cx="6" cy="4.5" r="2.5"/><line x1="6" y1="7" x2="6" y2="11"/>`,starred:`<polygon points="6,1.5 7.2,4.5 10.5,4.9 8.2,7.1 8.8,10.5 6,9 3.2,10.5 3.8,7.1 1.5,4.9 4.8,4.5"/>`,running:`<circle cx="6" cy="6" r="4"/><line x1="6" y1="3.5" x2="6" y2="6"/><line x1="6" y1="6" x2="8" y2="7.2"/>`,waiting:`<circle cx="6" cy="6" r="4"/><line x1="6" y1="6" x2="6" y2="3.5"/><line x1="6" y1="6" x2="8" y2="6"/>`,"1h":`<circle cx="6" cy="6" r="4.5"/><polyline points="6,3.5 6,6 7.6,7"/>`,"24h":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`,"7d":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`,"30d":`<rect x="1.5" y="2.5" width="9" height="8" rx="1"/><line x1="1.5" y1="5" x2="10.5" y2="5"/><line x1="4" y1="1.5" x2="4" y2="3.5"/><line x1="8" y1="1.5" x2="8" y2="3.5"/>`};svg.innerHTML=paths[name]||``;return svg}
 function ccPatchShowFilterMenu(e){if(document.querySelector(`.claudePatchFilterMenu`)){ccPatchCloseFilterMenu();return}let t=e.currentTarget;if(!t)return;t.classList.add(`ccPatchFilterButtonOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`claudePatchFilterMenu`,r.style.top=`${Math.round(n.bottom+4)}px`,r.style.left=`${Math.min(Math.round(n.left),window.innerWidth-260)}px`;let i=ccPatchReadFilters(),s=(g,b)=>{let m=document.createElement(`div`);m.className=`claudePatchFilterGroup`;let f=document.createElement(`div`);f.className=`claudePatchFilterGroupTitle`,f.textContent=g,m.appendChild(f);for(let[v,w]of b){let A=g===`Type`?`types`:`ages`;let y=document.createElement(`div`);y.className=`claudePatchFilterOption`;if(i[A].includes(v))y.classList.add(`ccPatchFilterOn`);let ck=document.createElement(`span`);ck.className=`ccPatchFilterCheck`;ck.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';y.appendChild(ck);let _=document.createElement(`span`);_.textContent=w;_.className=`ccPatchFilterItemLabel`;y.appendChild(_);y.onclick=()=>{let z=ccPatchReadFilters();let on=z[A].includes(v);if(on)z[A]=z[A].filter((q)=>q!==v);else z[A].push(v);ccPatchWriteFilters(z);i=z;y.classList.toggle(`ccPatchFilterOn`,!on)};m.appendChild(y)}r.appendChild(m)};s(`Type`,[[`pinned`,`Pinned`,`pinned`],[`starred`,`Starred`,`starred`],[`running`,`Running`,`running`],[`waiting`,`Waiting`,`waiting`]]);s(`Age`,[[`1h`,`Last 1 hour`,`1h`],[`24h`,`Last 24 hours`,`24h`],[`7d`,`Last 7 days`,`7d`],[`30d`,`Last 30 days`,`30d`]]);(function(){let hg=document.createElement(`div`);hg.className=`claudePatchFilterGroup`;let ht=document.createElement(`div`);ht.className=`claudePatchFilterGroupTitle`;ht.textContent=`Hide`;hg.appendChild(ht);let hl=document.createElement(`div`);hl.className=`claudePatchFilterOption`;if(i.hideUntitled)hl.classList.add(`ccPatchFilterOn`);let hck=document.createElement(`span`);hck.className=`ccPatchFilterCheck`;hck.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';hl.appendChild(hck);let hs=document.createElement(`span`);hs.textContent=`Untitled chats`;hs.className=`ccPatchFilterItemLabel`;hl.appendChild(hs);hl.onclick=function(){let z=ccPatchReadFilters();z.hideUntitled=!z.hideUntitled;ccPatchWriteFilters(z);i=z;hl.classList.toggle(`ccPatchFilterOn`,z.hideUntitled)};hg.appendChild(hl);r.appendChild(hg)})();let o=document.createElement(`div`);o.className=`claudePatchFilterFooter`;let c=document.createElement(`button`);c.textContent=`Clear all`,c.onclick=(g)=>{g.preventDefault(),g.stopPropagation(),ccPatchWriteFilters(ccPatchDefaultFilters()),ccPatchCloseFilterMenu()},o.appendChild(c),r.appendChild(o),document.body.appendChild(r);setTimeout(()=>{let h=(g)=>{if(!r.contains(g.target)&&!t.contains(g.target))ccPatchCloseFilterMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
 function ccPatchCloseSettingsMenu(){let m=document.querySelector(`.ccPatchSettingsMenu`);if(m&&m._ccPatchOutsideHandler){document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler)}m?.remove();document.querySelector(`.ccPatchSettingsBtn.ccPatchSettingsBtnOpen`)?.classList.remove(`ccPatchSettingsBtnOpen`)}
-function ccPatchShowSettingsMenu(e,ctx,s){if(document.querySelector(`.ccPatchSettingsMenu`)){ccPatchCloseSettingsMenu();return}let t=e.currentTarget;if(!t)return;t.classList.add(`ccPatchSettingsBtnOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSettingsMenu`,r.style.top=`${Math.round(n.bottom+4)}px`,r.style.left=`-9999px`;function a(l,i,o,c,k){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let s=document.createElement(`span`);s.className=`ccPatchSettingsItemIcon`;s.innerHTML=i;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=l;d.appendChild(p);if(o){let u=document.createElement(`span`);u.className=`ccPatchSettingsItemExtra`;u.textContent=o;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();if(!k)ccPatchCloseSettingsMenu();if(c)c()};r.appendChild(d)}(function(){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let ic=document.createElement(`span`);ic.className=`ccPatchSettingsItemIcon`;ic.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><polygon points="7.5,1 3.5,7.5 6.5,7.5 5,13 11,5.8 7.5,5.8"/></svg>`;d.appendChild(ic);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=`YOLO mode`;d.appendChild(p);let lb=document.createElement(`label`);lb.className=`ccPatchYoloToggle`;let cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchYoloOn();let sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchYoloToggle(s)};r.appendChild(d)})();(function(){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let ic=document.createElement(`span`);ic.className=`ccPatchSettingsItemIcon`;ic.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="10" height="9" rx="1.5"/><line x1="2" y1="5.5" x2="12" y2="5.5"/><line x1="4" y1="8" x2="8.5" y2="8"/></svg>`;d.appendChild(ic);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=`Chat preview header`;d.appendChild(p);let lb=document.createElement(`label`);lb.className=`ccPatchYoloToggle`;let cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchStickyOn();let sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchStickyToggle()};r.appendChild(d)})();a(`Account & usage`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"/><path d="M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"/><line x1="7" y1="3.4" x2="7" y2="4.4"/><line x1="7" y1="9.6" x2="7" y2="10.6"/></svg>`,null,function(){try{ctx.commandRegistry.executeCommand(`account-usage`)}catch(e){}});a(`Switch model`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><path d="M6 2v2M8 2v2M6 10v2M8 10v2M2 6h2M2 8h2M10 6h2M10 8h2"/></svg>`,null,function(){try{ctx.commandRegistry.executeCommand(`model`)}catch(e){}});a(`Switch account`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="5" r="2.4"/><path d="M2.5 12.2c.7-2.2 2.5-3.4 4.5-3.4 1.3 0 2.4.5 3.3 1.3"/><polyline points="10,9.5 12,11.5 10,13.5"/><line x1="8.4" y1="11.5" x2="12" y2="11.5"/></svg>`,null,function(){ccPatchSwitchAccountModal(ctx)});a(`Custom instructions`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><line x1="4.5" y1="4" x2="9.5" y2="4"/><line x1="4.5" y1="6.5" x2="9.5" y2="6.5"/><line x1="4.5" y1="9" x2="7.5" y2="9"/></svg>`,null,function(){ccPatchInstructionsModal(ctx)});a(`Color theme`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.3C3.8 1.3 1.3 3.7 1.3 6.9c0 2.8 2.1 4.8 4.7 4.8.8 0 1.3-.6 1.3-1.3 0-.4-.2-.6-.4-.9-.2-.2-.3-.5-.3-.8 0-.7.5-1.2 1.2-1.2h1.4c2 0 3.5-1.5 3.5-3.5C12.7 2.9 10.2 1.3 7 1.3z"/><circle cx="4" cy="6.4" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="3.9" r=".75" fill="currentColor" stroke="none"/><circle cx="9" cy="4.3" r=".75" fill="currentColor" stroke="none"/></svg>`,null,function(){ccPatchThemeModal()});document.body.appendChild(r);var ccMW=r.offsetWidth||210,ccML=Math.round(n.right)-ccMW;if(ccML+ccMW>window.innerWidth-8)ccML=window.innerWidth-8-ccMW;if(ccML<8)ccML=8;r.style.left=`${ccML}px`;setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSettingsMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
+function ccPatchShowSettingsMenu(e,ctx,s){if(document.querySelector(`.ccPatchSettingsMenu`)){ccPatchCloseSettingsMenu();return}let t=e.currentTarget;if(!t)return;t.classList.add(`ccPatchSettingsBtnOpen`);let n=t.getBoundingClientRect(),r=document.createElement(`div`);r.className=`ccPatchSettingsMenu`,r.style.top=`${Math.round(n.bottom+4)}px`,r.style.left=`-9999px`;function a(l,i,o,c,k){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let s=document.createElement(`span`);s.className=`ccPatchSettingsItemIcon`;s.innerHTML=i;d.appendChild(s);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=l;d.appendChild(p);if(o){let u=document.createElement(`span`);u.className=`ccPatchSettingsItemExtra`;u.textContent=o;d.appendChild(u)}d.onmousedown=function(v){v.preventDefault();v.stopPropagation();if(!k)ccPatchCloseSettingsMenu();if(c)c()};r.appendChild(d)}(function(){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let ic=document.createElement(`span`);ic.className=`ccPatchSettingsItemIcon`;ic.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><polygon points="7.5,1 3.5,7.5 6.5,7.5 5,13 11,5.8 7.5,5.8"/></svg>`;d.appendChild(ic);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=`YOLO mode`;d.appendChild(p);let lb=document.createElement(`span`);lb.className=`ccPatchYoloToggle`;let cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchYoloOn();let sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchYoloToggle(s)};r.appendChild(d)})();(function(){let d=document.createElement(`div`);d.className=`ccPatchSettingsItem`;let ic=document.createElement(`span`);ic.className=`ccPatchSettingsItemIcon`;ic.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="10" height="9" rx="1.5"/><line x1="2" y1="5.5" x2="12" y2="5.5"/><line x1="4" y1="8" x2="8.5" y2="8"/></svg>`;d.appendChild(ic);let p=document.createElement(`span`);p.className=`ccPatchSettingsItemLabel`;p.textContent=`Chat preview header`;d.appendChild(p);let lb=document.createElement(`span`);lb.className=`ccPatchYoloToggle`;let cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchStickyOn();let sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchStickyToggle()};r.appendChild(d)})();a(`Account & usage`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"/><path d="M8.7 5.2c-.4-.5-1.1-.8-1.8-.8-1 0-1.8.55-1.8 1.3 0 .8.8 1.1 1.8 1.3 1 .25 1.8.55 1.8 1.35 0 .75-.8 1.3-1.8 1.3-.75 0-1.4-.3-1.8-.8"/><line x1="7" y1="3.4" x2="7" y2="4.4"/><line x1="7" y1="9.6" x2="7" y2="10.6"/></svg>`,null,function(){try{ctx.commandRegistry.executeCommand(`account-usage`)}catch(e){}});a(`Switch model`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><path d="M6 2v2M8 2v2M6 10v2M8 10v2M2 6h2M2 8h2M10 6h2M10 8h2"/></svg>`,null,function(){try{ctx.commandRegistry.executeCommand(`model`)}catch(e){}});a(`Switch account`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="5" r="2.4"/><path d="M2.5 12.2c.7-2.2 2.5-3.4 4.5-3.4 1.3 0 2.4.5 3.3 1.3"/><polyline points="10,9.5 12,11.5 10,13.5"/><line x1="8.4" y1="11.5" x2="12" y2="11.5"/></svg>`,null,function(){ccPatchSwitchAccountModal(ctx)});a(`Custom instructions`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><line x1="4.5" y1="4" x2="9.5" y2="4"/><line x1="4.5" y1="6.5" x2="9.5" y2="6.5"/><line x1="4.5" y1="9" x2="7.5" y2="9"/></svg>`,null,function(){ccPatchInstructionsModal(ctx)});a(`Color theme`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.3C3.8 1.3 1.3 3.7 1.3 6.9c0 2.8 2.1 4.8 4.7 4.8.8 0 1.3-.6 1.3-1.3 0-.4-.2-.6-.4-.9-.2-.2-.3-.5-.3-.8 0-.7.5-1.2 1.2-1.2h1.4c2 0 3.5-1.5 3.5-3.5C12.7 2.9 10.2 1.3 7 1.3z"/><circle cx="4" cy="6.4" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="3.9" r=".75" fill="currentColor" stroke="none"/><circle cx="9" cy="4.3" r=".75" fill="currentColor" stroke="none"/></svg>`,null,function(){ccPatchThemeModal()});a(`Auto-continue`,`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.5-3.5"/><polyline points="12,1.4 12,4 9.4,4"/></svg>`,ccPatchContAnyOn()?`On`:null,function(){setTimeout(ccPatchShowContinuationMenu,0)});document.body.appendChild(r);var ccMW=r.offsetWidth||210,ccML=Math.round(n.right)-ccMW;if(ccML+ccMW>window.innerWidth-8)ccML=window.innerWidth-8-ccMW;if(ccML<8)ccML=8;r.style.left=`${ccML}px`;setTimeout(function(){let h=function(v){if(!r.contains(v.target)&&!t.contains(v.target))ccPatchCloseSettingsMenu()};r._ccPatchOutsideHandler=h;document.addEventListener(`mousedown`,h)},0)}
 function ccPatchYoloOn(){return document.documentElement.classList.contains(`ccPatchYoloMode`)}
 function ccPatchYoloDefault(){return ccPatchYoloOn()?`bypassPermissions`:`default`}
-function ccPatchYoloApplyArr(arr,on){if(!arr)return;arr.forEach(function(s){try{if(s&&s.permissionMode)s.permissionMode.value=on?`bypassPermissions`:`default`}catch(e){}})}
+function ccPatchYoloApplyArr(arr,on){if(!arr)return;var m=on?`bypassPermissions`:`default`;arr.forEach(function(s){try{if(s&&typeof s.setPermissionMode===`function`)s.setPermissionMode(m);else if(s&&s.permissionMode)s.permissionMode.value=m}catch(e){}})}
 // YOLO always starts OFF on every page load and reinstall. The previous version
 // persisted state via localStorage, but the init only re-added the visual class —
 // it didn't flip existing sessions' permissionMode signals, which caused a
@@ -508,28 +508,75 @@ try{ccPatchApplyTheme(ccPatchWsTheme())}catch(e){}
 // The footer button's icon reads the signal during render, so it stays live with
 // zero extra machinery (the whole webview is signals-based).
 function ccPatchUsageConn(){try{var s=globalThis.ccPatchComposerSession;var c=s&&s.connection&&s.connection.value;return c||null}catch(e){return null}}
-function ccPatchUsageData(){try{var c=ccPatchUsageConn();return c&&c.utilization?(c.utilization.value||null):null}catch(e){return null}}
-function ccPatchUsageRefresh(){try{var c=ccPatchUsageConn();if(c&&typeof c.requestUsageUpdate===`function`)c.requestUsageUpdate()}catch(e){}}
+// Last-good cache: the host WIPES utilization.value (sets undefined) when a
+// fetch errors (e.g. 429 from /api/oauth/usage). Stale rings beat broken rings,
+// so remember the last real payload and fall back to it.
+function ccPatchUsageData(){try{var c=ccPatchUsageConn();var u=c&&c.utilization?(c.utilization.value||null):null;if(u&&(u.fiveHour||u.sevenDay||u.sevenDaySonnet||u.unavailableReason))globalThis.ccPatchUsageLast=u;return u||globalThis.ccPatchUsageLast||null}catch(e){return globalThis.ccPatchUsageLast||null}}
+// Cooldown gate: every request_usage_update makes the CLI hit GET /api/oauth/usage
+// with refreshOAuth — hammer it and Anthropic 429s, the host pushes an error and
+// blanks the signal. Auto callers wait 30s between real sends; explicit user
+// actions (popup open, reload button) get a 5s floor. Stamp only on actual send.
+function ccPatchUsageRefresh(force){try{var n=Date.now();if(n-(globalThis.ccPatchUsageReqAt||0)<(force?5000:30000))return;var c=ccPatchUsageConn();if(c&&typeof c.requestUsageUpdate===`function`){globalThis.ccPatchUsageReqAt=n;c.requestUsageUpdate()}}catch(e){}}
 function ccPatchUsageColor(p){if(p==null)return`var(--app-secondary-foreground,#888)`;if(p>=90)return`#e5484d`;if(p>=70)return`#f5a524`;if(p>=45)return`#e2b714`;return`#3fb950`}
 function ccPatchUsageResetText(r){try{if(r==null)return``;var t=typeof r===`number`?(r<1e12?r*1000:r):new Date(r).getTime();if(!t||isNaN(t))return``;var d=t-Date.now();if(d<=0)return`resets now`;var m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);if(m<60)return`resets in `+m+`m`;if(h<24)return`resets in `+h+`h`;return`resets in `+dy+`d`}catch(e){return``}}
 function ccPatchUsageEsc(s){return String(s==null?``:s).replace(/[&<>"]/g,function(c){return({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`})[c]})}
 function ccPatchUsageRing(pct,size){var sz=size||66,sw=Math.max(4,Math.round(sz*0.11)),r=(sz-sw)/2,cx=sz/2,C=2*Math.PI*r;var has=typeof pct===`number`;var p=has?Math.max(0,Math.min(100,pct)):0;var off=C*(1-p/100);var col=ccPatchUsageColor(has?pct:null);var label=has?Math.round(p)+`%`:`—`;return `<svg class="ccPatchUsageSvg" width="`+sz+`" height="`+sz+`" viewBox="0 0 `+sz+` `+sz+`">`+`<circle class="ccPatchUsageTrack" cx="`+cx+`" cy="`+cx+`" r="`+r+`" fill="none" stroke-width="`+sw+`"/>`+`<circle class="ccPatchUsageArc" cx="`+cx+`" cy="`+cx+`" r="`+r+`" fill="none" stroke="`+col+`" stroke-width="`+sw+`" stroke-linecap="round" stroke-dasharray="`+C.toFixed(2)+`" stroke-dashoffset="`+C.toFixed(2)+`" data-off="`+off.toFixed(2)+`" transform="rotate(-90 `+cx+` `+cx+`)"/>`+`<text class="ccPatchUsageNum" x="`+cx+`" y="`+cx+`" text-anchor="middle" dominant-baseline="central" fill="`+col+`">`+label+`</text>`+`</svg>`}
 function ccPatchUsageBtnIcon(){var u=null;try{u=ccPatchUsageData()}catch(e){}var p=null;if(u){var arr=[u.fiveHour&&u.fiveHour.utilization,u.sevenDay&&u.sevenDay.utilization,u.sevenDaySonnet&&u.sevenDaySonnet.utilization].filter(function(x){return typeof x===`number`});if(arr.length)p=Math.max.apply(null,arr)}var sz=15,sw=2.4,r=(sz-sw)/2-0.3,cx=sz/2,C=2*Math.PI*r;var has=typeof p===`number`;var pc=has?Math.max(0,Math.min(100,p)):0;var off=C*(1-pc/100);var col=has?ccPatchUsageColor(p):`currentColor`;return `<svg width="`+sz+`" height="`+sz+`" viewBox="0 0 `+sz+` `+sz+`" fill="none" aria-hidden="true">`+`<circle cx="`+cx+`" cy="`+cx+`" r="`+r.toFixed(2)+`" stroke="currentColor" stroke-opacity="0.28" stroke-width="`+sw+`"/>`+(has?`<circle cx="`+cx+`" cy="`+cx+`" r="`+r.toFixed(2)+`" stroke="`+col+`" stroke-width="`+sw+`" stroke-linecap="round" stroke-dasharray="`+C.toFixed(2)+`" stroke-dashoffset="`+off.toFixed(2)+`" transform="rotate(-90 `+cx+` `+cx+`)"/>`:``)+`</svg>`}
 function ccPatchUsageWindows(u){var out=[];if(!u)return out;if(u.fiveHour)out.push({key:`fiveHour`,label:`Session`,sub:`5 hour`,d:u.fiveHour});if(u.sevenDay)out.push({key:`sevenDay`,label:`Weekly`,sub:`7 day`,d:u.sevenDay});if(u.sevenDaySonnet)out.push({key:`sevenDaySonnet`,label:`Weekly`,sub:`Sonnet`,d:u.sevenDaySonnet});return out}
-function ccPatchUsageRenderBody(menu){if(!menu)return;var body=menu.querySelector(`.ccPatchUsageBody`);if(!body)return;var u=ccPatchUsageData();if(u&&u.unavailableReason){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+ccPatchUsageEsc(u.unavailableReason)+`</div>`;return}var wins=ccPatchUsageWindows(u);if(!wins.length){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+((menu._ccPatchTries||0)>4?`Usage data unavailable for this account.`:`Loading usage…`)+`</div>`;return}var sig=wins.map(function(w){return w.key}).join(`,`);if(menu._ccPatchSig!==sig){menu._ccPatchSig=sig;var html=`<div class="ccPatchUsageRings">`;wins.forEach(function(w){html+=`<div class="ccPatchUsageCell" data-key="`+w.key+`"><div class="ccPatchUsageRingWrap">`+ccPatchUsageRing(w.d.utilization,66)+`</div><div class="ccPatchUsageLabel">`+ccPatchUsageEsc(w.label)+`</div><div class="ccPatchUsageSub">`+ccPatchUsageEsc(w.sub)+`</div><div class="ccPatchUsageReset">`+ccPatchUsageEsc(ccPatchUsageResetText(w.d.resetsAt))+`</div></div>`});html+=`</div>`;body.innerHTML=html;requestAnimationFrame(function(){var arcs=body.querySelectorAll(`.ccPatchUsageArc`);Array.prototype.forEach.call(arcs,function(a){a.style.strokeDashoffset=a.getAttribute(`data-off`)})})}else{wins.forEach(function(w){var cell=body.querySelector(`.ccPatchUsageCell[data-key="`+w.key+`"]`);if(!cell)return;var has=typeof w.d.utilization===`number`;var p=has?Math.max(0,Math.min(100,w.d.utilization)):0;var col=ccPatchUsageColor(has?w.d.utilization:null);var arc=cell.querySelector(`.ccPatchUsageArc`);if(arc){var C=parseFloat(arc.getAttribute(`stroke-dasharray`))||0;arc.style.strokeDashoffset=(C*(1-p/100)).toFixed(2);arc.setAttribute(`stroke`,col)}var num=cell.querySelector(`.ccPatchUsageNum`);if(num){num.textContent=has?Math.round(p)+`%`:`—`;num.setAttribute(`fill`,col)}var rs=cell.querySelector(`.ccPatchUsageReset`);if(rs)rs.textContent=ccPatchUsageResetText(w.d.resetsAt)})}}
+function ccPatchUsageRenderBody(menu){if(!menu)return;var body=menu.querySelector(`.ccPatchUsageBody`);if(!body)return;var u=ccPatchUsageData();if(u&&u.unavailableReason){menu._ccPatchSig=`_msg`;body.innerHTML=`<div class="ccPatchUsageMsg">`+ccPatchUsageEsc(u.unavailableReason)+`</div>`;return}var wins=ccPatchUsageWindows(u);if(!wins.length){menu._ccPatchSig=`_msg`;var hostErr=null;try{var hc=ccPatchUsageConn();hostErr=hc&&hc.utilizationError?hc.utilizationError.value:null}catch(e){}body.innerHTML=`<div class="ccPatchUsageMsg">`+((menu._ccPatchTries||0)>4?(hostErr?`Usage temporarily unavailable — retries on the next turn.`:`Usage data unavailable for this account.`):`Loading usage…`)+`</div>`;return}var sig=wins.map(function(w){return w.key}).join(`,`);if(menu._ccPatchSig!==sig){menu._ccPatchSig=sig;var html=`<div class="ccPatchUsageRings">`;wins.forEach(function(w){html+=`<div class="ccPatchUsageCell" data-key="`+w.key+`"><div class="ccPatchUsageRingWrap">`+ccPatchUsageRing(w.d.utilization,66)+`</div><div class="ccPatchUsageLabel">`+ccPatchUsageEsc(w.label)+`</div><div class="ccPatchUsageSub">`+ccPatchUsageEsc(w.sub)+`</div><div class="ccPatchUsageReset">`+ccPatchUsageEsc(ccPatchUsageResetText(w.d.resetsAt))+`</div></div>`});html+=`</div>`;body.innerHTML=html;requestAnimationFrame(function(){var arcs=body.querySelectorAll(`.ccPatchUsageArc`);Array.prototype.forEach.call(arcs,function(a){a.style.strokeDashoffset=a.getAttribute(`data-off`)})})}else{wins.forEach(function(w){var cell=body.querySelector(`.ccPatchUsageCell[data-key="`+w.key+`"]`);if(!cell)return;var has=typeof w.d.utilization===`number`;var p=has?Math.max(0,Math.min(100,w.d.utilization)):0;var col=ccPatchUsageColor(has?w.d.utilization:null);var arc=cell.querySelector(`.ccPatchUsageArc`);if(arc){var C=parseFloat(arc.getAttribute(`stroke-dasharray`))||0;arc.style.strokeDashoffset=(C*(1-p/100)).toFixed(2);arc.setAttribute(`stroke`,col)}var num=cell.querySelector(`.ccPatchUsageNum`);if(num){num.textContent=has?Math.round(p)+`%`:`—`;num.setAttribute(`fill`,col)}var rs=cell.querySelector(`.ccPatchUsageReset`);if(rs)rs.textContent=ccPatchUsageResetText(w.d.resetsAt)})}}
 function ccPatchCloseUsageMenu(){var m=document.querySelector(`.ccPatchUsageMenu`);if(m){if(m._ccPatchPoll){clearInterval(m._ccPatchPoll);m._ccPatchPoll=0}if(m._ccPatchOutsideHandler)document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler);if(m._ccPatchKey)document.removeEventListener(`keydown`,m._ccPatchKey);m.remove()}var b=document.querySelector(`.ccPatchUsageBtn.ccPatchUsageBtnOpen`);if(b)b.classList.remove(`ccPatchUsageBtnOpen`)}
 // Background poll: keep the usage signal warm so the button ring is always live
-// and the popover opens already-filled (no "Loading…" flash, no reposition). We
-// pull a few times right after load (the composer/session may not exist at t=0),
-// then a cheap 5s loop that refreshes the instant a turn ends (busy->idle, when
-// usage actually changes) plus a ~60s fallback. Requests only fire on turn-end
-// or the fallback tick, so it's light. The reactive signal updates the rest.
+// and the popover opens already-filled (no "Loading…" flash, no reposition).
+// Seed pulls right after load fire ONLY until data arrives (the composer/session
+// may not exist at t=0), then a cheap 5s loop refreshes the instant a turn ends
+// (busy->idle — the only moment OUR usage moves) plus a 5-minute fallback for
+// other-device usage. All sends route through the ccPatchUsageRefresh cooldown;
+// reset countdowns tick locally from Date.now() so no request is needed for them.
 var ccPatchUsagePollStarted=false,ccPatchUsageWasBusy=false,ccPatchUsageTickN=0;
-function ccPatchUsageStartPolling(){if(ccPatchUsagePollStarted)return;ccPatchUsagePollStarted=true;var refresh=function(){try{if(globalThis.ccPatchComposerSession)ccPatchUsageRefresh()}catch(e){}};setTimeout(refresh,1200);setTimeout(refresh,4000);setTimeout(refresh,9000);setInterval(function(){ccPatchUsageTickN++;var busy=false;try{var s=globalThis.ccPatchComposerSession;busy=!!(s&&s.busy&&s.busy.value)}catch(e){}var ended=ccPatchUsageWasBusy&&!busy;ccPatchUsageWasBusy=busy;if(ended||ccPatchUsageTickN%12===0)refresh()},5000)}
-function ccPatchShowUsageMenu(ev){if(document.querySelector(`.ccPatchUsageMenu`)){ccPatchCloseUsageMenu();return}var btn=ev&&ev.currentTarget;if(!btn)return;try{ccPatchCloseSendMenu()}catch(e){}try{ccPatchCloseSettingsMenu()}catch(e){}btn.classList.add(`ccPatchUsageBtnOpen`);ccPatchUsageRefresh();var menu=document.createElement(`div`);menu.className=`ccPatchUsageMenu`;menu._ccPatchTries=0;menu.innerHTML=`<div class="ccPatchUsageHead"><span class="ccPatchUsageTitle">Usage</span><button type="button" class="ccPatchUsageReload" title="Refresh" aria-label="Refresh"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.6-3.7"/><polyline points="12,1.4 12,4 9.4,4"/></svg></button></div><div class="ccPatchUsageBody"></div>`;menu.style.left=`-9999px`;menu.style.top=`0px`;document.body.appendChild(menu);ccPatchUsageRenderBody(menu);var r=btn.getBoundingClientRect(),mw=menu.offsetWidth||240,mh=menu.offsetHeight||170;var left=Math.round(r.left+r.width/2-mw/2);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;var top=Math.round(r.top-mh-8);if(top<8)top=Math.round(r.bottom+8);menu.style.left=left+`px`;menu.style.top=top+`px`;var rl=menu.querySelector(`.ccPatchUsageReload`);if(rl)rl.onclick=function(e){e.preventDefault();e.stopPropagation();ccPatchUsageRefresh();rl.classList.add(`ccPatchUsageSpin`);setTimeout(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;ccPatchUsageRenderBody(menu);rl.classList.remove(`ccPatchUsageSpin`)},360)};menu._ccPatchPoll=setInterval(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;if(menu._ccPatchTries===3)ccPatchUsageRefresh();ccPatchUsageRenderBody(menu)},1400);setTimeout(function(){var h=function(g){if(!menu.contains(g.target)&&!btn.contains(g.target))ccPatchCloseUsageMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseUsageMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchRecency,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchErrorReason,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu,ccPatchUsageStartPolling});
+function ccPatchUsageStartPolling(){if(ccPatchUsagePollStarted)return;ccPatchUsagePollStarted=true;var seed=function(){try{if(globalThis.ccPatchComposerSession&&!ccPatchUsageData())ccPatchUsageRefresh(true)}catch(e){}};setTimeout(seed,1200);setTimeout(seed,4000);setTimeout(seed,9000);setInterval(function(){ccPatchUsageTickN++;var busy=false;try{var s=globalThis.ccPatchComposerSession;busy=!!(s&&s.busy&&s.busy.value)}catch(e){}var ended=ccPatchUsageWasBusy&&!busy;ccPatchUsageWasBusy=busy;if(ended||ccPatchUsageTickN%60===0){try{if(globalThis.ccPatchComposerSession)ccPatchUsageRefresh()}catch(e){}}},5000)}
+function ccPatchShowUsageMenu(ev){if(document.querySelector(`.ccPatchUsageMenu`)){ccPatchCloseUsageMenu();return}var btn=ev&&ev.currentTarget;if(!btn)return;try{ccPatchCloseSendMenu()}catch(e){}try{ccPatchCloseSettingsMenu()}catch(e){}btn.classList.add(`ccPatchUsageBtnOpen`);ccPatchUsageRefresh(true);var menu=document.createElement(`div`);menu.className=`ccPatchUsageMenu`;menu._ccPatchTries=0;menu.innerHTML=`<div class="ccPatchUsageHead"><span class="ccPatchUsageTitle">Usage</span><button type="button" class="ccPatchUsageReload" title="Refresh" aria-label="Refresh"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.6-3.7"/><polyline points="12,1.4 12,4 9.4,4"/></svg></button></div><div class="ccPatchUsageBody"></div>`;menu.style.left=`-9999px`;menu.style.top=`0px`;document.body.appendChild(menu);ccPatchUsageRenderBody(menu);var r=btn.getBoundingClientRect(),mw=menu.offsetWidth||240,mh=menu.offsetHeight||170;var left=Math.round(r.left+r.width/2-mw/2);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;var top=Math.round(r.top-mh-8);if(top<8)top=Math.round(r.bottom+8);menu.style.left=left+`px`;menu.style.top=top+`px`;var rl=menu.querySelector(`.ccPatchUsageReload`);if(rl)rl.onclick=function(e){e.preventDefault();e.stopPropagation();ccPatchUsageRefresh(true);rl.classList.add(`ccPatchUsageSpin`);setTimeout(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;ccPatchUsageRenderBody(menu);rl.classList.remove(`ccPatchUsageSpin`)},360)};menu._ccPatchPoll=setInterval(function(){menu._ccPatchTries=(menu._ccPatchTries||0)+1;if(menu._ccPatchTries===3&&!ccPatchUsageData())ccPatchUsageRefresh(true);ccPatchUsageRenderBody(menu)},1400);setTimeout(function(){var h=function(g){if(!menu.contains(g.target)&&!btn.contains(g.target))ccPatchCloseUsageMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseUsageMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
+// ---- Auto-continue ("Continuation") ---------------------------------------
+// Optional, default OFF. When a chat STOPS, classify WHY using the same usage
+// signal the rings read, then -- if the matching toggle is on -- resume it with
+// "keep going", across ALL chats (not just the focused one). Safety rails: it
+// never fires while a turn is running, while a permission prompt is pending, or
+// while a hard usage limit is still active; usage stops wait for that window's
+// own resetsAt before resuming; per-session retry cap + min-gap + error backoff
+// so it can never spam. It NEVER interrupts an in-flight turn -- it only sends
+// into a chat that has stayed STOPPED (busy=false) for a dwell window, so a
+// momentary mid-turn idle can't trigger it. The error trigger is fail-safe:
+// it fires ONLY on a positively-detected error marker (mirror_error), never on
+// a normal idle.
+function ccPatchContOn(k){try{return localStorage.getItem(`ccPatchCont:`+k)===`1`}catch(e){return false}}
+function ccPatchContSet(k,v){try{localStorage.setItem(`ccPatchCont:`+k,v?`1`:`0`)}catch(e){}}
+function ccPatchContAnyOn(){return ccPatchContOn(`fiveHour`)||ccPatchContOn(`weekly`)||ccPatchContOn(`usage`)||ccPatchContOn(`error`)}
+var ccPatchContMsg=`keep going`;
+var ccPatchContState=new Map;
+var ccPatchContMax=6,ccPatchContWinMs=18e5,ccPatchContGapMs=8000,ccPatchContPad=5000,ccPatchContDwellMs=6000;
+function ccPatchContSessions(){var out=[];try{var R=globalThis.ccPatchSessionsRoot;if(R){var a=R.sessions&&R.sessions.value;if(a)for(var i=0;i<a.length;i++){if(a[i]&&out.indexOf(a[i])<0)out.push(a[i])}var b=R.remoteSessions&&R.remoteSessions.value;if(b)for(var j=0;j<b.length;j++){if(b[j]&&out.indexOf(b[j])<0)out.push(b[j])}}}catch(e){}try{var cs=globalThis.ccPatchComposerSession;if(cs&&out.indexOf(cs)<0)out.push(cs)}catch(e){}return out}
+function ccPatchContUsageWindow(){try{var u=ccPatchUsageData();if(!u)return null;function mx(w){return w&&typeof w.utilization===`number`&&w.utilization>=95}if(mx(u.fiveHour))return`fiveHour`;if(mx(u.sevenDay)||mx(u.sevenDaySonnet))return`weekly`;return null}catch(e){return null}}
+function ccPatchContResetMs(win){try{var u=ccPatchUsageData();if(!u)return null;var d=win===`fiveHour`?u.fiveHour:(win===`weekly`?(u.sevenDay||u.sevenDaySonnet):null);if(!d)return null;var r=d.resetsAt;if(r==null)return null;var t=typeof r===`number`?(r<1e12?r*1000:r):new Date(r).getTime();return isNaN(t)?null:t}catch(e){return null}}
+function ccPatchContErrorStop(s){try{var m=s.messages&&s.messages.value;if(!m||!m.length)return false;for(var i=m.length-1;i>=0&&i>=m.length-4;i--){var x=m[i];if(!x)continue;if(x.subtype===`mirror_error`)return true;if(x.type===`system`&&x.subtype&&/error/i.test(String(x.subtype)))return true;if(x.isError===true)return true;if(x.error&&typeof x.error!==`function`)return true}return false}catch(e){return false}}
+function ccPatchContEligible(w){if(w===`fiveHour`)return ccPatchContOn(`fiveHour`)||ccPatchContOn(`usage`);if(w===`weekly`)return ccPatchContOn(`weekly`)||ccPatchContOn(`usage`);return ccPatchContOn(`usage`)}
+function ccPatchContSend(s){try{if(!s||typeof s.send!==`function`)return false;if(s.busy&&s.busy.value)return false;if(ccPatchIsWaiting(s))return false;var q=globalThis.ccPatchQueue||[];for(var i=0;i<q.length;i++){if(q[i]&&q[i].sess===s)return false}s.send(ccPatchContMsg,[],false);return true}catch(e){console.error(`Orbit auto-continue send failed:`,e);return false}}
+function ccPatchContReady(s,p){var now=Date.now();if(p.kind===`error`)return now>=p.at;if(p.at!=null&&now<p.at)return false;var hard=null;try{hard=ccPatchErrorReason(s)}catch(e){}return!hard}
+function ccPatchContTick(){if(!ccPatchContAnyOn())return;var now=Date.now();var list=ccPatchContSessions();for(var i=0;i<list.length;i++){var s=list[i];if(!s)continue;var id;try{id=ccPatchSessionId(s)}catch(e){continue}var st=ccPatchContState.get(id);if(!st){st={pending:null,tries:0,winStart:now,lastSendAt:0,handled:false,idleSince:0};ccPatchContState.set(id,st)}var busy=false;try{busy=!!(s.busy&&s.busy.value)}catch(e){}if(busy){st.handled=false;st.pending=null;st.idleSince=0;continue}if(ccPatchIsWaiting(s))continue;if(!st.idleSince)st.idleSince=now;if(now-st.winStart>ccPatchContWinMs){st.winStart=now;st.tries=0}if(st.pending){if(now-st.idleSince>=ccPatchContDwellMs&&ccPatchContReady(s,st.pending)){if(st.tries<ccPatchContMax&&now-st.lastSendAt>=ccPatchContGapMs){if(ccPatchContSend(s)){st.tries++;st.lastSendAt=now}}st.pending=null;st.handled=true}continue}if(st.handled)continue;var hard=null;try{hard=ccPatchErrorReason(s)}catch(e){}if(hard){var win=ccPatchContUsageWindow();var w=win||`usage`;if(!ccPatchContEligible(w)){st.handled=true;continue}var rt=ccPatchContResetMs(win);st.pending={kind:`usage`,at:(rt!=null?rt+ccPatchContPad:null)}}else if(ccPatchContErrorStop(s)){if(!ccPatchContOn(`error`)){st.handled=true;continue}var bo=ccPatchContGapMs*Math.pow(2,Math.min(st.tries,4));st.pending={kind:`error`,at:now+bo}}else{st.handled=true}}}
+function ccPatchCloseContMenu(){var m=document.querySelector(`.ccPatchContMenu`);if(m){if(m._ccPatchOutsideHandler)document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler);if(m._ccPatchKey)document.removeEventListener(`keydown`,m._ccPatchKey);m.remove()}}
+function ccPatchShowContinuationMenu(){if(document.querySelector(`.ccPatchContMenu`)){ccPatchCloseContMenu();return}try{ccPatchCloseSettingsMenu()}catch(e){}var btn=document.querySelector(`.ccPatchSettingsBtn`);var menu=document.createElement(`div`);menu.className=`ccPatchSettingsMenu ccPatchContMenu`;menu.style.left=`-9999px`;menu.style.top=`0px`;var head=document.createElement(`div`);head.className=`ccPatchContHead`;head.textContent=`Auto-continue`;menu.appendChild(head);var sub=document.createElement(`div`);sub.className=`ccPatchContSub`;sub.textContent=`Send "keep going" automatically when a chat stops. Off by default.`;menu.appendChild(sub);var defs=[[`usage`,`On any usage limit`,`Resume the moment the limit lifts.`],[`fiveHour`,`When my 5-hour limit resets`,`Waits out the session window.`],[`weekly`,`When my weekly limit resets`,`Waits out the 7-day window.`],[`error`,`If the chat errors out`,`Non-limit hiccups. Best-effort.`]];defs.forEach(function(df){var d=document.createElement(`div`);d.className=`ccPatchSettingsItem ccPatchContItem`;var col=document.createElement(`div`);col.className=`ccPatchContText`;var l=document.createElement(`div`);l.className=`ccPatchContLabel`;l.textContent=df[1];var de=document.createElement(`div`);de.className=`ccPatchContDesc`;de.textContent=df[2];col.appendChild(l);col.appendChild(de);d.appendChild(col);var lb=document.createElement(`span`);lb.className=`ccPatchYoloToggle`;var cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchContOn(df[0]);var sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchContSet(df[0],cb.checked)};menu.appendChild(d)});document.body.appendChild(menu);var mw=menu.offsetWidth||252,mh=menu.offsetHeight||210;var left=8,top=80;if(btn){var r=btn.getBoundingClientRect();left=Math.round(r.right)-mw;top=Math.round(r.bottom+4);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;if(top+mh>window.innerHeight-8)top=Math.max(8,Math.round(r.top)-mh-4)}menu.style.left=left+`px`;menu.style.top=top+`px`;setTimeout(function(){var h=function(g){if(!menu.contains(g.target))ccPatchCloseContMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseContMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
+// ---- Copy-message buttons --------------------------------------------------
+// Hover any message (yours OR the assistant's) -> a copy button appears top-
+// right; click copies that whole message's text. Native Claude only offers
+// "Copy code" on code blocks, so this is the missing "copy the entire message".
+// DOM-based, idempotent, defensive: if a class ever drifts it simply stops
+// adding buttons -- it can never break the webview.
+function ccPatchMsgText(el){try{var c=el.cloneNode(true);var junk=c.querySelectorAll(`[class*="ccPatch"],button,[role="toolbar"]`);for(var i=0;i<junk.length;i++)junk[i].remove();return(c.innerText||c.textContent||``).replace(/ /g,` `).replace(/[ \t]+\n/g,`\n`).trim()}catch(e){try{return(el.innerText||``).trim()}catch(e2){return``}}}
+function ccPatchAddCopyBtn(el){try{if(!el||el.querySelector(`:scope > .ccPatchCopyBtn`))return;if(el.querySelector(`[class*="userMessageContainer_"],[class*="messageContainer_"]`))return;var cs=getComputedStyle(el);if(cs&&cs.position===`static`)el.style.position=`relative`;var b=document.createElement(`button`);b.type=`button`;b.className=`ccPatchCopyBtn`;b.title=`Copy message`;b.innerHTML=`<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5"/><path d="M9.5 4.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v5A1.5 1.5 0 0 0 3 9.5h1.5"/></svg>`;b.onmousedown=function(ev){ev.preventDefault();ev.stopPropagation()};b.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var t=ccPatchMsgText(el);try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t);else{var ta=document.createElement(`textarea`);ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand(`copy`)}catch(e){}ta.remove()}}catch(e){}b.classList.add(`ccPatchCopied`);b.title=`Copied`;setTimeout(function(){b.classList.remove(`ccPatchCopied`);b.title=`Copy message`},1200)};el.appendChild(b)}catch(e){}}
+function ccPatchCopySweep(){try{var nodes=document.querySelectorAll(`[class*="userMessageContainer_"],[class*="messageContainer_"]`);for(var i=0;i<nodes.length;i++)ccPatchAddCopyBtn(nodes[i])}catch(e){}}
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchRecency,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchErrorReason,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu,ccPatchUsageStartPolling,ccPatchContOn,ccPatchContSet,ccPatchContAnyOn,ccPatchContTick,ccPatchShowContinuationMenu,ccPatchCloseContMenu,ccPatchMsgText,ccPatchAddCopyBtn,ccPatchCopySweep});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 try{ccPatchUsageStartPolling()}catch(e){}
+try{if(!globalThis.ccPatchContTimer)globalThis.ccPatchContTimer=setInterval(ccPatchContTick,4000)}catch(e){}
+try{if(!globalThis.ccPatchCopyTimer)globalThis.ccPatchCopyTimer=setInterval(ccPatchCopySweep,1500)}catch(e){}
 }catch(e){console.error('Orbit patch init error:',e)}})();
 """
 
@@ -1302,7 +1349,7 @@ def patch_webview_js(webview_js: Path) -> bool:
         rf"\$\{{{re.escape(w2)}\.sessionNameEditing\}}`,"
         rf"contentEditable:!0,suppressContentEditableWarning:!0,"
         rf"onKeyDown:{re.escape(A)},onBlur:{re.escape(P)},"
-        rf"onClick:\(M\)=>M\.stopPropagation\(\)\}},{re.escape(Kk)}\({re.escape(Z)}\)\):"
+        rf"onClick:\((?P<msp>{JS_ID})\)=>(?P=msp)\.stopPropagation\(\)\}},{re.escape(Kk)}\({re.escape(Z)}\)\):"
         rf'{re.escape(S0)}\.default\.createElement\("span",\{{className:{re.escape(w2)}\.sessionName\}},'
         rf"{re.escape(Le1)}\({re.escape(Kk)}\({re.escape(Z)}\),{re.escape(Q)}\)\),"
         rf"{re.escape(B)}&&{re.escape(Z)}\.worktree\.value&&{re.escape(Z)}\.worktree\.value\.path!=={re.escape(W)}&&"
@@ -1386,14 +1433,14 @@ def patch_webview_js(webview_js: Path) -> bool:
         rf"{re.escape(z)}&&{re.escape(Z)}\.sessionId\.value"
         rf'&&{re.escape(S0)}\.default\.createElement\("span",\{{role:"button",tabIndex:0,'
         rf"className:{re.escape(w2)}\.actionButton,"
-        rf"onClick:\(M\)=>\{{M\.stopPropagation\(\),{re.escape(z)}\({re.escape(Z)}\)\}},"
-        rf'onKeyDown:\(M\)=>\{{if\(M\.key==="Enter"\|\|M\.key===" "\)M\.preventDefault\(\),M\.stopPropagation\(\),{re.escape(z)}\({re.escape(Z)}\)\}},'
+        rf"onClick:\((?P<mc1>{JS_ID})\)=>\{{(?P=mc1)\.stopPropagation\(\),{re.escape(z)}\({re.escape(Z)}\)\}},"
+        rf'onKeyDown:\((?P<mk1>{JS_ID})\)=>\{{if\((?P=mk1)\.key==="Enter"\|\|(?P=mk1)\.key===" "\)(?P=mk1)\.preventDefault\(\),(?P=mk1)\.stopPropagation\(\),{re.escape(z)}\({re.escape(Z)}\)\}},'
         rf'title:"Rename session"\}},'
         rf"{re.escape(S0)}\.default\.createElement\({re.escape(sa)},\{{className:{re.escape(w2)}\.actionIcon\}}\)\),"
         rf'{re.escape(H)}&&{re.escape(S0)}\.default\.createElement\("span",\{{role:"button",tabIndex:0,'
         rf"className:`\$\{{{re.escape(w2)}\.actionButton\}} \$\{{{re.escape(w2)}\.deleteButton\}}`,"
-        rf"onClick:\(M\)=>\{{M\.stopPropagation\(\),{re.escape(H)}\({re.escape(Z)}\)\}},"
-        rf'onKeyDown:\(M\)=>\{{if\(M\.key==="Enter"\|\|M\.key===" "\)M\.preventDefault\(\),M\.stopPropagation\(\),{re.escape(H)}\({re.escape(Z)}\)\}},'
+        rf"onClick:\((?P<mc2>{JS_ID})\)=>\{{(?P=mc2)\.stopPropagation\(\),{re.escape(H)}\({re.escape(Z)}\)\}},"
+        rf'onKeyDown:\((?P<mk2>{JS_ID})\)=>\{{if\((?P=mk2)\.key==="Enter"\|\|(?P=mk2)\.key===" "\)(?P=mk2)\.preventDefault\(\),(?P=mk2)\.stopPropagation\(\),{re.escape(H)}\({re.escape(Z)}\)\}},'
         rf'title:"Delete session"\}},'
         rf"{re.escape(S0)}\.default\.createElement\({re.escape(Ne1)},\{{className:{re.escape(w2)}\.actionIcon\}}\)"
         rf"\)\)\)\)\}}\);"
@@ -1545,10 +1592,28 @@ def patch_webview_js(webview_js: Path) -> bool:
     inline_refresh = f"()=>{{{fe1_S}.listSessions(),{fe1_S}.listRemoteSessions()}}"
     inline_reconnect = f"()=>{{{fe1_S}.listRemoteSessions()}}"
 
+    # Usage ring — relocated from the composer footer to the sessions-panel header,
+    # sitting just before the Search button (top-right). The helpers are global
+    # (ccPatchShowUsageMenu / ccPatchUsageBtnIcon), so it works from any mount
+    # point; polling is wired in the global init IIFE, not this button. Gated on
+    # the same usage-meter feature flag that used to guard the footer button.
+    usage_hdr_btn = ""
+    if feature_on("usage-meter"):
+        usage_hdr_btn = (
+            f'{p0}.default.createElement("button",{{className:"ccPatchUsageBtn",title:"Usage",'
+            f'onClick:function(ccE){{try{{ccPatchShowUsageMenu(ccE)}}catch(ccErr){{}}}},'
+            f'dangerouslySetInnerHTML:{{__html:ccPatchUsageBtnIcon()}}}}),'
+        )
+
     inline_body = (
         f'{p0}.default.createElement("div",{{className:{h6}.body}},'
         f'{p0}.default.createElement("div",{{className:"claudePatchInlineSessions"}},'
         f'{p0}.default.createElement("div",{{className:"ccPatchSidebarHeader"}},'
+        # Capture the sessions root (has .sessions.value + .remoteSessions.value)
+        # to a global on every header render, so the auto-continue watcher can
+        # enumerate ALL chats — not just the focused one — from load. The comma
+        # expression evaluates to null, so React renders nothing for this child.
+        f'(globalThis.ccPatchSessionsRoot={fe1_S},null),'
         f'{p0}.default.createElement("span",{{className:"ccPatchSidebarTitle"}},"Sessions"),'
         # Collapsed-only "+" — creates a new session when the pane is collapsed
         # (hidden while expanded; the full "New Session" button covers that state).
@@ -1558,6 +1623,8 @@ def patch_webview_js(webview_js: Path) -> bool:
         f'stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true}},'
         f'{p0}.default.createElement("line",{{x1:7,y1:2.5,x2:7,y2:11.5}}),'
         f'{p0}.default.createElement("line",{{x1:2.5,y1:7,x2:11.5,y2:7}}))),'
+        # Usage ring (relocated from composer footer) — sits just before Search.
+        f'{usage_hdr_btn}'
         # Search
         f'{p0}.default.createElement("button",{{className:"ccPatchHeaderBtn ccPatchSearchBtn",title:"Search",'
         f"onClick:ccPatchToggleSearch}},"
@@ -1908,6 +1975,93 @@ def patch_webview_js(webview_js: Path) -> bool:
         text = text[: m_fork.start()] + new_fork + text[m_fork.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
+    # 17b. Fork-from-here "branch now, visit later" — busy-aware auto-open.
+    #     The native fork handler (`ee()`) calls the CONTEXT service's
+    #     forkConversation, which (a) creates the branch off the transcript and
+    #     (b) immediately tries to NAVIGATE to it via `viewSession`. The bug is
+    #     in (b): the service does NOT await viewSession and `return""`s
+    #     unconditionally, and viewSession -> activateSessionFromServer bails
+    #     with a bare `return false` (no throw, no toast) when its activation
+    #     doesn't stick. Mid-stream that activation is routinely dropped — NOT
+    #     because the session list is stale (host listSessions is a LIVE,
+    #     uncached readdir and forkSession writes + registers the branch BEFORE
+    #     returning its id, so a fresh list DOES contain it), but because the
+    #     un-awaited navigation result is swallowed and the busy session's own
+    #     state churn overwrites the freshly-activated session. Net: click Fork
+    #     mid-stream -> branch created, but nothing visibly happens and no error
+    #     surfaces. Once the turn stops the churn settles and it works — exactly
+    #     the "fork only works after the chat fully stops" report. (Earlier 17b
+    #     comments + the 1.2.77 commit blamed a stale listSessions().find miss;
+    #     adversarial byte-level verification refuted that — corrected here.)
+    #
+    #     The community-loved model (ChatGPT's "branch in new chat" = instant;
+    #     GitHub Copilot's = create-now / visit-later) is captured by splitting
+    #     on busy state. We stop depending on a fragile auto-navigation race:
+    #       - call the raw connection RPC (`comms.connection.value.fork
+    #         Conversation(sessionId, resumeAt)`) to CREATE the branch with NO
+    #         forced navigation, and get its new id;
+    #       - if the source session is IDLE (`session.busy.value` false) -> open
+    #         the fork IMMEDIATELY (zero extra clicks — the loved instant feel).
+    #         Idle is exactly when the stock navigation already works, so there
+    #         is nothing to race; if that open reports false/throws we fall back
+    #         to the toast, so it is NEVER a silent no-op;
+    #       - if the source session is BUSY/streaming -> do NOT yank the user off
+    #         the live turn: confirm with a toast ("Forked from here ✓ — open
+    #         your new branch anytime", [Open]) and navigate only on [Open];
+    #       - if busy state is unreadable (a future minifier rename of the
+    #         `busy` signal) default to BUSY -> toast+Open, the safe behavior.
+    #     Navigation mirrors the service's own openNewInTab vs viewSession
+    #     choice. The first-message branch (`if(A){r(o)}` -> onCreateNewSession)
+    #     and the "Unknown session id" guard are preserved byte-for-byte; a
+    #     defensive fallback to the stock service call is kept in case the
+    #     `comms`/`connection` internals move in a future Claude build.
+    #     Identifiers are captured (not hard-coded) so minifier renames across
+    #     versions are handled. Anchored on the unique "Unknown session id" fork
+    #     string; the rewind-modal's `g(b)` twin shares that string but does NOT
+    #     match this shape (its guards are `!b.resumeAtMessageId`/`n(b.prompt
+    #     Text)`).
+    # ──────────────────────────────────────────────────────────────────────
+    fork_ee_re = re.compile(
+        rf'function (?P<FN>{JS_ID})\(\)\{{'
+        rf'if\((?P<A>{JS_ID})\)\{{(?P<R>{JS_ID})\((?P<O>{JS_ID})\);return\}}'
+        rf'if\(!(?P<S>{JS_ID})\)\{{(?P<TT>{JS_ID})\.showNotification\("Failed to fork conversation: Unknown session id","error"\);return\}}'
+        rf'(?P<E>{JS_ID})\.forkConversation\((?P=S),(?P=O),(?P<T>{JS_ID})\)\.catch\(\(?(?P<G>{JS_ID})\)?=>\{{'
+        rf'(?P=TT)\.showNotification\(`Failed to fork conversation: \$\{{(?P=G) instanceof Error\?(?P=G)\.message:String\((?P=G)\)\}}`,"error"\)\}}\)\}}'
+    )
+    if not feature_on("fork-row"):
+        pass  # fork UI disabled → leave native ee() alone
+    elif "ccForkConn" in text:
+        log("Fork-from-here rewrite already present; skipping")
+    else:
+        m_ee = fork_ee_re.search(text)
+        if m_ee is None:
+            log("Note: fork ee() handler anchor not found; skipping fork mid-stream fix")
+        else:
+            FN = m_ee.group("FN"); A = m_ee.group("A"); R = m_ee.group("R")
+            O = m_ee.group("O"); S = m_ee.group("S"); TT = m_ee.group("TT")
+            E = m_ee.group("E"); T = m_ee.group("T"); G = m_ee.group("G")
+            new_ee = (
+                f'function {FN}(){{if({A}){{{R}({O});return}}'
+                f'if(!{S}){{{TT}.showNotification("Failed to fork conversation: Unknown session id","error");return}}'
+                f'var ccForkConn={E}&&{E}.comms&&{E}.comms.connection&&{E}.comms.connection.value;'
+                f'function ccForkOpen(ccForkNewId){{var ccForkCfg=ccForkConn&&ccForkConn.config&&ccForkConn.config.value;'
+                f'if(ccForkCfg&&ccForkCfg.openNewInTab&&typeof {E}.startNewConversationTab==="function")return {E}.startNewConversationTab({O},ccForkNewId);'
+                f'if(typeof {E}.viewSession==="function")return {E}.viewSession(ccForkNewId,{O})}}'
+                f'function ccForkOffer(ccForkNewId){{{TT}.showNotification("Forked from here \\u2713 \\u2014 open your new branch anytime.","info",["Open"]).then(function(ccForkBtn){{if(ccForkBtn==="Open")ccForkOpen(ccForkNewId)}})}}'
+                f'if(!ccForkConn||typeof ccForkConn.forkConversation!=="function"){{'
+                f'{E}.forkConversation({S},{O},{T}).then(function(){{{TT}.showNotification("Forked from here \\u2713")}})'
+                f'.catch(function({G}){{{TT}.showNotification("Failed to fork conversation: "+({G} instanceof Error?{G}.message:String({G})),"error")}});return}}'
+                f'ccForkConn.forkConversation({S},{T}).then(function(ccForkNewId){{'
+                f'if(!ccForkNewId){{{TT}.showNotification("Couldn\\u2019t fork \\u2014 this point isn\\u2019t saved yet; try again in a moment.","error");return}}'
+                f'var ccForkBusy=({TT}&&{TT}.busy&&typeof {TT}.busy.value==="boolean")?{TT}.busy.value:!0;'
+                f'if(ccForkBusy){{ccForkOffer(ccForkNewId);return}}'
+                f'Promise.resolve(ccForkOpen(ccForkNewId)).then(function(ccForkOk){{if(ccForkOk===!1)ccForkOffer(ccForkNewId)}}).catch(function(){{ccForkOffer(ccForkNewId)}})'
+                f'}}).catch(function({G}){{{TT}.showNotification("Failed to fork conversation: "+({G} instanceof Error?{G}.message:String({G})),"error")}})}}'
+            )
+            text = text[: m_ee.start()] + new_ee + text[m_ee.end() :]
+            log("Fork-from-here rewired: branch-now/visit-later + auto-open when idle")
+
+    # ──────────────────────────────────────────────────────────────────────
     # 22. Rewind confirm-dialog fix — the native Us component disables the
     #     "Rewind" button when no files were changed (W = q?.canRewind && !Q
     #     && (B || J), where B = hasFileChanges). For plain Rewind (J=false),
@@ -1969,6 +2123,154 @@ def patch_webview_js(webview_js: Path) -> bool:
             f'{{className:{ZG}.expandButton,"aria-label":"Show more"}}'
         )
         text = text[: m_sm.start()] + new_sm + text[m_sm.end() :]
+
+    # ──────────────────────────────────────────────────────────────────────
+    # 18b. Copilot-style composer bottom bar. Reorder the footer (`XJe`) return
+    #      so the LEFT cluster is [Auto-mode][model][effort-slider] and the RIGHT
+    #      cluster is [context-pie][/command-menu][send]. Add a model-picker
+    #      button that reuses the native `ret` popup, and pull the effort slider
+    #      (`IK`) OUT of the Auto-mode popup into a standalone draggable control.
+    #
+    #      Runs BEFORE block 19 so it matches the PRISTINE native return; block 19
+    #      then rewraps the still-native, still-last send button, and the old
+    #      footer usage-meter insertion (block 19c) is gone — that ring now lives
+    #      in the sessions header (see usage_hdr_btn above).
+    # ──────────────────────────────────────────────────────────────────────
+    # Relabel the native bypassPermissions mode to "YOLO mode". It is added to the
+    # Auto-mode menu's available modes below; setPermissionMode already does the
+    # select-it / deselect-on-switch behavior the request describes.
+    if 'label:"Bypass permissions"' not in text:
+        raise RuntimeError("Lost bypassPermissions label anchor (YOLO relabel)")
+    text = text.replace('label:"Bypass permissions"', 'label:"YOLO mode"', 1)
+
+    # Current-model object var (S), captured off the unique XJe effort guard.
+    m_S = re.search(rf"if\((?P<S>{JS_ID})\?\.supportsEffort\)", text)
+    if m_S is None:
+        raise RuntimeError("Lost XJe current-model (S?.supportsEffort) anchor")
+    XS = m_S.group("S")
+
+    # Reusable native model-picker (`ret`) and effort-slider (`IK`) component ids.
+    m_ret = re.search(
+        rf"function (?P<ret>{JS_ID})\(\{{isOpen:{JS_ID},onClose:{JS_ID},"
+        rf"availableModels:{JS_ID},unavailableModels:{JS_ID},currentModel:{JS_ID},"
+        rf"onModelSelected:{JS_ID}\}}\)",
+        text,
+    )
+    if m_ret is None:
+        raise RuntimeError("Lost model-picker (ret) component anchor")
+    RET = m_ret.group("ret")
+    m_ik = re.search(
+        rf"function (?P<ik>{JS_ID})\(\{{level:(?P<lvl>{JS_ID}),levels:{JS_ID},showUltracode:{JS_ID},"
+        rf"ultracodeSelected:(?P<ucs>{JS_ID}),onSelect:{JS_ID},onSelectUltracode:{JS_ID}\}}\)",
+        text,
+    )
+    if m_ik is None:
+        raise RuntimeError("Lost effort-slider (IK) component anchor")
+    IKC = m_ik.group("ik")
+
+    # Effort-slider tooltip → the CURRENT level NAME ("High", "Ultracode - xhigh
+    # + workflows", …) instead of the generic "Click or drag to set effort level".
+    # Reuse the native name formatter (X2 over the a8t lookup, referenced right
+    # before IK's own definition → same module scope) and the ultracode label
+    # constant. Wrapped in try/catch so a future minifier rename can never break
+    # the slider — it just falls back to the original instruction text.
+    m_x2 = re.search(
+        rf'function (?P<x2>{JS_ID})\((?P<p>{JS_ID})\)\{{return (?P=p)\?{JS_ID}\[(?P=p)\]\?\?"Auto":"Auto"\}}',
+        text,
+    )
+    m_lk = re.search(rf'(?P<lk>{JS_ID})="Ultracode - xhigh \+ workflows"', text)
+    if m_x2 is None or m_lk is None:
+        raise RuntimeError("Lost effort name formatter (X2) / ultracode label (LK) anchor")
+    if 'title:"Click or drag to set effort level"' not in text:
+        raise RuntimeError("Lost effort-slider title anchor (slider tooltip)")
+    _eff_title = (
+        f'title:(function(){{try{{return {m_ik.group("ucs")}?{m_lk.group("lk")}:'
+        f'{m_x2.group("x2")}({m_ik.group("lvl")})}}'
+        f'catch(ccErr){{return "Click or drag to set effort level"}}}})()'
+    )
+    text = text.replace('title:"Click or drag to set effort level"', _eff_title, 1)
+    log("Effort slider tooltip now shows the current effort level name")
+
+    footer_re = re.compile(
+        rf'return (?P<open>(?P<RE>{JS_ID})\.default\.createElement\("div",\{{className:`\$\{{(?P<lu>{JS_ID})\.inputFooter\}} \$\{{(?P=lu)\.inputFooterV2\}}`\}},)'
+        rf'(?P<attach>(?P=RE)\.default\.createElement\({JS_ID},\{{onInsertAtMention:{JS_ID},onAttachFile:{JS_ID},browserIntegrationSupported:{JS_ID},onTerminalCollaborator:void 0\}}\)),'
+        rf'(?P<cmd>(?P=RE)\.default\.createElement\("button",\{{type:"button",className:(?P=lu)\.menuButton,title:"Show command menu \(/\)",onClick:{JS_ID}\}},(?P=RE)\.default\.createElement\({JS_ID},null\)\)),'
+        rf'(?P<usage>(?P=RE)\.default\.createElement\({JS_ID},\{{usedTokens:(?P<e>{JS_ID})\.usageData\.value\.totalTokens,contextWindow:(?P=e)\.usageData\.value\.contextWindow-(?P=e)\.usageData\.value\.maxOutputTokens-13000,onCompact:{JS_ID},buttonClassName:(?P=lu)\.usageButtonV2\}}\)),'
+        rf'(?P<sel>(?P<n>{JS_ID})&&(?P=RE)\.default\.createElement\("div",\{{className:(?P=lu)\.divider\}}\),(?P=n)&&(?P=RE)\.default\.createElement\({JS_ID},\{{includeSelection:{JS_ID}\?\?!1,currentSelection:(?P=n),onToggle:{JS_ID}\?\?\(\(\)=>\{{\}}\)\}}\)),'
+        rf'(?P<spacer>(?P=RE)\.default\.createElement\("div",\{{className:(?P=lu)\.spacer\}}\)),'
+        rf'(?P=RE)\.default\.createElement\((?P<gje>{JS_ID}),\{{mode:(?P<t>{JS_ID}),availableModes:(?P<i>{JS_ID}),onSelect:\((?P<E>{JS_ID})\)=>void (?P=e)\.setPermissionMode\((?P=E),!0\),anchorRight:!0,effortLevel:(?P<f>{JS_ID}),supportedEffortLevels:(?P<g>{JS_ID}),onSetEffort:(?P<b>{JS_ID}),ultracodeAvailable:(?P<uca>{JS_ID}),ultracodeSelected:(?P<ucs>{JS_ID}),onSelectUltracode:(?P<ouc>{JS_ID})\}}\),'
+        rf'(?P<sendbtn>(?P=RE)\.default\.createElement\("button",\{{type:"submit",disabled:!(?P=e)\.busy\.value&&!(?P<o>{JS_ID}),className:(?P=lu)\.sendButton,"data-permission-mode":(?P=t),onClick:\((?P<E2>{JS_ID})\)=>\{{if\((?P=e)\.busy\.value&&!(?P=o)\)(?P=E2)\.preventDefault\(\),(?P=e)\.interrupt\(\)\}}\}},(?P<p>{JS_ID})\))\)'
+    )
+    m_ft = footer_re.search(text)
+    if m_ft is None:
+        raise RuntimeError("Lost XJe composer-footer return anchor (bottom-bar reorder)")
+    RE = m_ft.group("RE")
+    XE = m_ft.group("e")
+    XT = m_ft.group("t")
+    XI = m_ft.group("i")
+    XF = m_ft.group("f")
+    XG = m_ft.group("g")
+    XB = m_ft.group("b")
+    XUCA = m_ft.group("uca")
+    XUCS = m_ft.group("ucs")
+    XOUC = m_ft.group("ouc")
+    GJE = m_ft.group("gje")
+    g_open = m_ft.group("open")
+    g_attach = m_ft.group("attach")
+    g_cmd = m_ft.group("cmd")
+    g_usage = m_ft.group("usage")
+    g_sel = m_ft.group("sel")
+    g_spacer = m_ft.group("spacer")
+    g_send = m_ft.group("sendbtn")
+
+    # Auto-mode selector: keep the polished V2 popup (anchorRight), DROP the effort
+    # props so the in-popup effort row disappears (it is standalone now), and
+    # guarantee "YOLO mode" (bypassPermissions) is always selectable.
+    # Wrapped in .ccPatchModeWrap so CSS can left-align + round its popup: with
+    # the button moved to the LEFT of the bar, the native anchorRight (right:0)
+    # would make the popup fly off to the left, so .ccPatchModeWrap re-anchors it
+    # left (above the button) without losing the polished V2 menu styling.
+    mode_new = (
+        f'{RE}.default.createElement("div",{{className:"ccPatchModeWrap"}},'
+        f"{RE}.default.createElement({GJE},{{mode:{XT},"
+        f'availableModes:(function(ccA){{return ccA&&ccA.indexOf("bypassPermissions")<0?ccA.concat(["bypassPermissions"]):ccA}})({XI}),'
+        f"onSelect:(ccPE)=>void {XE}.setPermissionMode(ccPE,!0),anchorRight:!0}}))"
+    )
+    # Model picker: a footer button that toggles the REUSED native `ret` popup.
+    model_new = (
+        f'{RE}.default.createElement("div",{{className:"ccPatchModelWrap"}},'
+        f'{RE}.default.createElement("button",{{type:"button",className:"ccPatchModelBtn",title:"Select model",'
+        f"onClick:function(){{ccPSetMO(function(ccZ){{return!ccZ}})}}}},"
+        f'{RE}.default.createElement("span",{{className:"ccPatchModelLabel"}},({XS}&&{XS}.displayName)||"Model"),'
+        f'{RE}.default.createElement("span",{{className:"ccPatchModelCaret","aria-hidden":true}},"\\u25BE")),'
+        f"{RE}.default.createElement({RET},{{isOpen:ccPMO,onClose:function(){{ccPSetMO(false)}},"
+        f"availableModels:{XE}.claudeConfig.value?.models,unavailableModels:{XE}.claudeConfig.value?.unavailable_models,"
+        f"currentModel:{XE}.modelSelection.value||{XE}.config?.value?.modelSetting,"
+        f"onModelSelected:function(ccM){{{XE}.setModel(ccM);ccPSetMO(false)}}}}))"
+    )
+    # Standalone effort/"usage" slider (drag, no popup) — only when the model
+    # supports effort; IK self-sizes via its own track class.
+    effort_new = (
+        f'(({XS}&&{XS}.supportsEffort)?{RE}.default.createElement("div",{{className:"ccPatchEffortSlider"}},'
+        f"{RE}.default.createElement({IKC},{{level:{XF},levels:{XG},showUltracode:{XUCA},"
+        f"ultracodeSelected:{XUCS},onSelect:{XB},onSelectUltracode:{XOUC}}})):null)"
+    )
+    # Close the model popup on any click outside .ccPatchModelWrap. This also
+    # gives the mutual-exclusion behavior: clicking the Auto-mode button (which is
+    # outside the model wrap) closes the model popup, and GJe's own outside-click
+    # handler closes the mode menu when the model button is clicked.
+    new_return = (
+        f"let[ccPMO,ccPSetMO]={RE}.useState(!1);"
+        f"{RE}.useEffect(function(){{if(!ccPMO)return;"
+        f"var ccH=function(ccEv){{var ccTg=ccEv.target;"
+        f'if(!(ccTg&&ccTg.closest&&ccTg.closest(".ccPatchModelWrap")))ccPSetMO(false)}};'
+        f'document.addEventListener("mousedown",ccH);'
+        f'return function(){{document.removeEventListener("mousedown",ccH)}}}},[ccPMO]);'
+        f"return {g_open}"
+        f"{g_attach},{mode_new},{model_new},{effort_new},{g_sel},{g_spacer},"
+        f"{g_usage},{g_cmd},{g_send})"
+    )
+    text = text[: m_ft.start()] + new_return + text[m_ft.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
     # 19. Composer send button → split control with steer / queue / stop menu.
@@ -2064,34 +2366,14 @@ def patch_webview_js(webview_js: Path) -> bool:
     text = text[: m_sb.start()] + new_btn + text[m_sb.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
-    # 19c. Usage meter button — sits in the composer footer immediately after
-    #      the "Show command menu (/)" button. Clicking it opens a popover with
-    #      one ring per limit window (5hr session / weekly), driven by the
-    #      connection's reactive `utilization` signal (see ccPatch usage helpers).
-    #      The icon itself reads that signal during render, so it stays live.
-    #      Anchored on the stable native title string so it survives minifier
-    #      churn; we capture the React alias and insert a sibling after it.
+    # 19c. Usage meter button — RELOCATED to the sessions-panel header (next to
+    #      Search) by the Copilot-style bottom-bar rework. See `usage_hdr_btn`
+    #      near the sidebar-header inline_body. The button markup is identical
+    #      (className "ccPatchUsageBtn", ccPatchUsageBtnIcon/ccPatchShowUsageMenu),
+    #      so the "usage meter" verification check still holds; it just mounts in
+    #      the header instead of the composer footer. Polling is unaffected (it is
+    #      driven from the global init IIFE, not this button).
     # ──────────────────────────────────────────────────────────────────────
-    if not feature_on("usage-meter"):
-        log("Skipping usage-meter button (feature disabled)")
-    else:
-        menubtn_re = re.compile(
-            rf'(?P<react>{JS_ID})\.default\.createElement\("button",\{{type:"button",'
-            rf'className:(?P<mod>{JS_ID})\.menuButton,title:"Show command menu \(/\)",'
-            rf'onClick:(?P<oc>{JS_ID})\}},'
-            rf'(?P=react)\.default\.createElement\((?P<icon>{JS_ID}),null\)\)'
-        )
-        m_mb = menubtn_re.search(text)
-        if m_mb is None:
-            raise RuntimeError("Lost composer command-menu button anchor (usage button)")
-        MRE = m_mb.group("react")
-        usage_btn = (
-            f',{MRE}.default.createElement("button",{{type:"button",'
-            f'className:"ccPatchUsageBtn",title:"Usage",'
-            f'onClick:function(ccE){{try{{ccPatchShowUsageMenu(ccE)}}catch(ccErr){{}}}},'
-            f'dangerouslySetInnerHTML:{{__html:ccPatchUsageBtnIcon()}}}})'
-        )
-        text = text[: m_mb.end()] + usage_btn + text[m_mb.end() :]
 
     # ──────────────────────────────────────────────────────────────────────
     # 19d. Compact confirmation. The native "<n>% context used · click to
@@ -2326,6 +2608,39 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchUsageBtn:hover,.ccPatchUsageBtn.ccPatchUsageBtnOpen{"
         "background:var(--app-ghost-button-hover-background);color:var(--app-primary-foreground)}"
         ".ccPatchUsageBtn svg{display:block}"
+        # ── Copilot-style bottom bar: model picker button + standalone effort
+        #    slider in the composer footer, and the usage ring relocated into the
+        #    sessions header. ──
+        ".ccPatchModelWrap{position:relative;display:inline-flex;align-items:center}"
+        # Match the native Auto-mode footer button exactly: 26px tall, 5px radius.
+        ".ccPatchModelBtn{appearance:none;cursor:pointer;color:var(--app-secondary-foreground);"
+        "background:0 0;border:none;border-radius:5px;display:inline-flex;align-items:center;"
+        "gap:4px;min-width:0;height:26px;box-sizing:border-box;padding:0 6px;"
+        "font-family:inherit;font-size:.85em}"
+        ".ccPatchModelBtn:hover{background-color:var(--app-ghost-button-hover-background);"
+        "color:var(--app-primary-foreground)}"
+        ".ccPatchModelLabel{text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:150px}"
+        ".ccPatchModelCaret{opacity:.55;font-size:.7em;flex-shrink:0}"
+        # Reused native model popup (`ret`) is the wrapper's only child <div>; widen
+        # it and stop it stretching to the small button's width (its own CSS pins
+        # left:0;right:0;bottom:100% so it already opens upward). Left-anchor it to
+        # the button and round its corners (native is a sharp 4px).
+        ".ccPatchModelWrap>div{left:0;right:auto;min-width:240px;width:max-content;"
+        "max-width:340px;border-radius:10px}"
+        # Auto-mode popup wrapper: the button sits on the LEFT now, so undo the
+        # native right-anchor (anchorRight => left:auto;right:0) and re-anchor the
+        # popup above the button, with matching slightly-rounded corners.
+        ".ccPatchModeWrap{position:relative;display:inline-flex;align-items:center}"
+        '.ccPatchModeWrap [class*="menuPopup"]{left:0;right:auto;border-radius:10px}'
+        # Standalone effort/usage slider — `IK` self-sizes (76px track); just space it.
+        ".ccPatchEffortSlider{display:inline-flex;align-items:center;margin:0 2px;flex-shrink:0}"
+        # ~10% shorter track (native --track-height 18px -> 16px); thumb stays 14px,
+        # so tighten its inset to 1px to keep it centered without clipping.
+        '.ccPatchEffortSlider [class*="toggle"]{--track-height:16px;--thumb-inset:1px}'
+        # Usage ring in the sessions header: match the other 24px header buttons.
+        ".ccPatchSidebarHeader .ccPatchUsageBtn{width:24px;height:24px;opacity:.7}"
+        ".ccPatchSidebarHeader .ccPatchUsageBtn:hover,"
+        ".ccPatchSidebarHeader .ccPatchUsageBtn.ccPatchUsageBtnOpen{opacity:1}"
         ".ccPatchUsageMenu{position:fixed;z-index:100000;padding:13px 15px 14px;min-width:200px;"
         "background:var(--app-primary-background);border:1px solid var(--app-primary-border-color);"
         "border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.45);color:var(--app-primary-foreground)}"
@@ -2745,6 +3060,25 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchYoloToggle input:checked+.ccPatchYoloSlider::before{transform:translateX(14px)}"
         # Settings gear button -- subtle highlight on open
         ".ccPatchSettingsBtnOpen{opacity:1!important;color:var(--app-primary-foreground)!important}"
+        # Auto-continue (Continuation) popup -- reuses the settings-menu chrome
+        ".ccPatchContMenu{min-width:250px;max-width:300px;padding:8px}"
+        ".ccPatchContHead{font-weight:600;font-size:13px;padding:4px 8px 1px}"
+        ".ccPatchContSub{font-size:11px;opacity:.6;padding:0 8px 7px;line-height:1.35}"
+        ".ccPatchContItem{align-items:center}"
+        ".ccPatchContText{display:flex;flex-direction:column;gap:1px;margin-right:8px;min-width:0;flex:1}"
+        ".ccPatchContLabel{font-size:12.5px}"
+        ".ccPatchContDesc{font-size:10.5px;opacity:.55;line-height:1.3}"
+        # Copy-message button (appears top-right on message hover)
+        ".ccPatchCopyBtn{position:absolute;top:6px;right:6px;z-index:6;opacity:0;"
+        "transition:opacity .12s,color .12s;width:24px;height:24px;padding:0;"
+        "display:inline-flex;align-items:center;justify-content:center;"
+        "background:var(--app-secondary-background,rgba(40,40,40,.92));"
+        "border:1px solid var(--app-primary-border-color,rgba(255,255,255,.12));"
+        "border-radius:5px;color:var(--app-secondary-foreground,#9a9a9a);cursor:pointer}"
+        "[class*=\"userMessageContainer_\"]:hover>.ccPatchCopyBtn,"
+        "[class*=\"messageContainer_\"]:hover>.ccPatchCopyBtn{opacity:.85}"
+        ".ccPatchCopyBtn:hover{opacity:1!important;color:var(--app-primary-foreground,#fff)}"
+        ".ccPatchCopyBtn.ccPatchCopied{color:#3fb950!important;opacity:1!important}"
         # Settings dropdown menu
         ".ccPatchSettingsMenu{position:fixed;z-index:2000;"
         "background:var(--app-menu-background);border:1px solid var(--app-menu-border);"
@@ -3000,6 +3334,8 @@ def verify_extension_dir(extension_dir: Path) -> None:
                             and "stopPropagation();" in js),
         "fork row dividers": ".ccPatchForkRow::before" in css,
         "fork wrapper left stock": "ccPatchForkOpened" not in js and "No forked session id returned" not in js,
+        "fork mid-stream fix": ("ccForkConn" in js and "ccForkNewId" in js
+                                and "ccForkOpen" in js and "ccForkBusy" in js),
         "image hover preview": ("ccPatchImgPreviewShow" in js
                                 and ".ccPatchImgPreview" in css),
         "sticky header neutralized": '[class*="stickyHeader"]{position:static' in css,
@@ -3036,6 +3372,21 @@ def verify_extension_dir(extension_dir: Path) -> None:
                         and "requestUsageUpdate" in js
                         and "ccPatchUsageStartPolling()" in js
                         and ".ccPatchUsageMenu" in css and ".ccPatchUsageArc" in css),
+        # Copilot-style bottom bar (block 18b).
+        "yolo mode label": 'label:"YOLO mode"' in js and 'label:"Bypass permissions"' not in js,
+        "bottom bar reorder": ('"ccPatchModelWrap"' in js and '"ccPatchModelBtn"' in js
+                               and '"ccPatchEffortSlider"' in js and '"ccPatchModeWrap"' in js
+                               and 'availableModes:(function(ccA)' in js
+                               and 'title:"Show command menu (/)"' in js),
+        # Model popup closes on outside click (also closes when the mode button
+        # is clicked → mutual exclusion).
+        "model popup outside-close": 'closest(".ccPatchModelWrap")' in js,
+        # Effort slider tooltip shows the current level name (static instruction
+        # text only survives as the try/catch fallback, no longer as the title).
+        "effort slider tooltip": ('title:(function(){try{return ' in js
+                                  and 'title:"Click or drag to set effort level"' not in js),
+        "bottom bar css": (".ccPatchModelWrap" in css and ".ccPatchModelBtn" in css
+                           and ".ccPatchEffortSlider" in css and ".ccPatchModeWrap" in css),
         "queue display": ("ccPatchRenderQueue(" in js and "ccPatchQueueListeners" in js
                           and "ccPatchComposerAction(" in js
                           and ".ccPatchQueueWrap" in css and ".ccPatchQueuedMsg" in css
@@ -3062,15 +3413,20 @@ def verify_extension_dir(extension_dir: Path) -> None:
         # gate should no longer gate the Rewind button. Verify the old pattern
         # .canRewind&&!<id>&&(...) is gone.
         "rewind gate removed": re.search(r'\.canRewind&&!\w+&&\(', js) is None,
-        # Fork is intentionally left stock — the context wrapper always returns ""
-        # even on success, so any return-value guard clobbers a working fork.
+        # Fork-from-here is rewired (block 17b): the stock service wrapper forks
+        # AND auto-navigates, but the un-awaited viewSession result is swallowed
+        # (return"") and the busy session's state churn overwrites the freshly
+        # activated session, so it silently no-ops mid-stream. We now call the
+        # raw connection RPC to create the branch with no forced navigation, then
+        # auto-open when idle (session.busy.value false) or toast+[Open] when busy
+        # — see "fork mid-stream fix" (ccForkConn/ccForkOpen/ccForkBusy).
     }
     # Gated features: if --disable/--enable left a feature out, don't require its
     # verification tokens (it was intentionally not applied).
     for _fid, _names in {
         "usage-meter": ["usage meter"],
         "yolo-mode": ["yolo helpers", "yolo perm init"],
-        "fork-row": ["fork action row", "fork row dividers"],
+        "fork-row": ["fork action row", "fork row dividers", "fork mid-stream fix"],
     }.items():
         if not feature_on(_fid):
             for _nm in _names:
