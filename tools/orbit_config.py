@@ -114,12 +114,87 @@ def cmd_check(_) -> int:
     return 0
 
 
+def replacement_pairs(src_cfg: dict, dst_cfg: dict) -> list:
+    """Ordered (old -> new) identity substitutions to turn the SRC product's
+    wrapper text into the DST product's. Longest source first so a shorter token
+    (e.g. slug `claude-code-orbit`) never corrupts a longer one that contains it
+    (e.g. repo `Lunarwerx/claude-code-orbit`)."""
+    sd, dd = derive(src_cfg), derive(dst_cfg)
+    src_patch_suffix = sd["otaPatcherUrl"][len(sd["otaBase"]):]
+    dst_patch_suffix = dd["otaPatcherUrl"][len(dd["otaBase"]):]
+    raw = [
+        (src_cfg["repo"], dst_cfg["repo"]),                 # Lunarwerx/<slug>  (before slug)
+        (src_patch_suffix, dst_patch_suffix),               # /<dir>/<entry>
+        (src_cfg["logo"], dst_cfg["logo"]),                 # <slug>.png
+        (src_cfg["target"], dst_cfg["target"]),             # anthropic.claude-code -> openai.chatgpt
+        (src_cfg["displayName"], dst_cfg["displayName"]),   # Claude Code Orbit -> Codex Orbit (before productNoun)
+        (src_cfg["slug"], dst_cfg["slug"]),                 # claude-code-orbit -> codex-orbit
+        (src_cfg["ns"], dst_cfg["ns"]),                     # claudeCodeOrbit -> codexOrbit
+        (src_cfg["productNoun"], dst_cfg["productNoun"]),   # Claude Code -> Codex
+    ]
+    seen, pairs = set(), []
+    for a, b in raw:
+        if a and a != b and a not in seen:
+            seen.add(a)
+            pairs.append((a, b))
+    pairs.sort(key=lambda p: len(p[0]), reverse=True)
+    return pairs
+
+
+def stamp_text(text: str, pairs: list) -> str:
+    for old, new in pairs:
+        text = text.replace(old, new)
+    return text
+
+
+def cmd_stamp(args) -> int:
+    """Rebrand THIS product's wrapper text into another product's identity.
+
+    Reads the live extension.js + package.json for the SRC (this repo's config)
+    and writes identity-stamped copies for the DST config to --out. This is the
+    'one source, N products' engine: Codex Orbit's build pulls our wrapper and
+    runs this with its own orbit.config.json to mint codex-orbit's wrapper —
+    nothing forked, nothing stored. Stamping SRC->SRC is a no-op (byte-identical),
+    which is the regression guard.
+    """
+    src_cfg = load()
+    dst_cfg = {k: v for k, v in json.loads(Path(args.to).read_text(encoding="utf-8")).items() if not k.startswith("_")}
+    pairs = replacement_pairs(src_cfg, dst_cfg)
+    src_wrap = ROOT / src_cfg["wrapperDir"]
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    for fname in ("extension.js", "package.json"):
+        # Byte-preserving: decode/encode utf-8 WITHOUT newline translation so a
+        # self-stamp is byte-identical and CRLF/LF is never silently rewritten.
+        text = (src_wrap / fname).read_bytes().decode("utf-8")
+        (out / fname).write_bytes(stamp_text(text, pairs).encode("utf-8"))
+    print(f"Stamped {src_cfg['slug']} -> {dst_cfg['slug']} into {out}")
+    print("  substitutions (old -> new), longest-first:")
+    for a, b in pairs:
+        print(f"    {a!r} -> {b!r}")
+    # Honesty: surface any residual source-product mentions the structural stamp
+    # does NOT cover (deep product-isms in copy/filenames that need neutralizing
+    # in the SOURCE for true parity).
+    resid = []
+    noun = src_cfg["productNoun"].split()[0].lower()  # "claude"
+    for fname in ("extension.js", "package.json"):
+        t = (out / fname).read_text(encoding="utf-8").lower()
+        resid.append((fname, t.count(noun)))
+    print(f"  residual '{noun}' mentions left (need source-side neutralizing for full parity): "
+          + ", ".join(f"{f}={n}" for f, n in resid))
+    return 0
+
+
 def main() -> int:
     import argparse
     ap = argparse.ArgumentParser(description="Orbit wrapper config tool")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("show", help="print canonical + derived values").set_defaults(func=cmd_show)
     sub.add_parser("check", help="verify live files match the config").set_defaults(func=cmd_check)
+    sp = sub.add_parser("stamp", help="rebrand this wrapper into another product's identity")
+    sp.add_argument("--to", required=True, help="path to the DST product's orbit.config.json")
+    sp.add_argument("--out", required=True, help="output dir for stamped extension.js + package.json")
+    sp.set_defaults(func=cmd_stamp)
     args = ap.parse_args()
     return args.func(args)
 

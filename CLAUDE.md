@@ -73,11 +73,20 @@ wrapper sidebar UI (`extension.js`: Install / Update / Previous-versions / the
 per-version `channel` field, the `ORBIT_CHANNEL`-in-patcher → `ccPatchChannel`
 embed). Jacob wants these two installers to **never drift**.
 
-**THE RULE — every time you change the installer here, mirror it to Codex:**
-when you push an update to this repo that touches the **installer / channel /
-release-pipeline** (not a Claude-only patcher feature), you must also apply the
-**comparable** change to Codex Orbit's installer, **build theirs, and ship it**,
-so both stay in lockstep. Don't wait to be asked.
+**THE MODEL — single source, downstream pulls (do NOT maintain a second copy):**
+the launcher lives ONLY here. Codex Orbit (and any future product) pulls our
+`extension.js` + `package.json` at build time and rebrands it into its identity
+via `python tools/orbit_config.py stamp --to <their>/orbit.config.json` — it keeps
+only the finished `.vsix`, never the launcher source. So you do **not** edit
+Codex's launcher.
+
+**THE RULE — your obligation on every launcher change:** when you change the
+installer / channel / release-pipeline here (not a Claude-only patcher feature),
+you MUST (1) bump `wrapper_version.txt` and (2) update **`LAUNCHER_SYNC.md`** — its
+version line + a changelog entry. That file is the contract + the "it moved"
+signal downstreams read; updating it is what propagates the change. The exact
+prompt the Codex repo's `AGENTS.md` carries to consume this lives in
+`docs/CODEX_LAUNCHER_PROMPT.md`.
 
 **Sync the installer, not the target-specific guts:**
 - **DO mirror:** wrapper UI/UX, the stable/experimental tag system (red/green,
