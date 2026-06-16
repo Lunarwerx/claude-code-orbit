@@ -790,16 +790,32 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
     // making its own network call (detectState is synchronous).
     await context.globalState.update(GS_REMOTE_PATCHER_VERSION, remoteVersion);
 
-    // Cache the release channel (experimental/stable) the same way, so the
-    // sidebar hero can tag the available update synchronously.
-    try { await context.globalState.update(GS_RELEASE_CHANNEL, await fetchReleaseChannel()); } catch (_) {}
+    // Resolve the channel (experimental/stable) of the AVAILABLE update. The
+    // patcher embeds its own ORBIT_CHANNEL, mirrored per-version into the
+    // manifest at ship time, so prefer the manifest entry for the EXACT remote
+    // version; fall back to release_channel.txt (the latest push's tag). Defaults
+    // to experimental on anything unreachable so an unknown build never falsely
+    // notifies. Cached so the sidebar hero can tag the update synchronously AND
+    // so the notification below can fire ONLY for stable.
+    let releaseChannel = "experimental";
+    try { releaseChannel = await fetchReleaseChannel(); } catch (_) {}
 
     // Cache the rollback registry too, so detectState() can offer "Use previous
-    // version" with no network call. Silent on failure — rollback is optional.
+    // version" with no network call. Silent on failure -- rollback is optional.
+    let patcherManifest = null;
     try {
-      const manifest = await fetchPatcherManifest();
-      if (manifest) await context.globalState.update(GS_PATCHER_MANIFEST, manifest);
+      patcherManifest = await fetchPatcherManifest();
+      if (patcherManifest) await context.globalState.update(GS_PATCHER_MANIFEST, patcherManifest);
     } catch (_) {}
+
+    // Prefer the manifest's per-version channel for the exact remote version
+    // (the patcher-sourced truth) over release_channel.txt.
+    try {
+      const entry = patcherManifest && Array.isArray(patcherManifest.patchers)
+        ? patcherManifest.patchers.find((p) => p && p.version === remoteVersion) : null;
+      if (entry && (entry.channel === "stable" || entry.channel === "experimental")) releaseChannel = entry.channel;
+    } catch (_) {}
+    try { await context.globalState.update(GS_RELEASE_CHANNEL, releaseChannel); } catch (_) {}
 
     // Also cache the newest Claude Code on the Marketplace, so detectState() and
     // the "Check updates" button can flag "a newer Claude Code exists — re-patch"
@@ -832,12 +848,16 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
       statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
       statusBarItem.show();
 
-      // Only notify once per version (dedup via globalState).
+      // Notify once per version (dedup via globalState) -- but ONLY for STABLE
+      // releases. Experimental pushes still flip the badge above and the sidebar
+      // hero (red tag) so anyone who wants the bleeding edge can pull it, but they
+      // never interrupt with a toast. This lets experimental ship freely without
+      // bothering anyone; only "stable" pushes actively notify.
       const lastNotified = context.globalState.get(GS_LAST_NOTIFIED_VERSION);
-      if (lastNotified !== remoteVersion) {
+      if (releaseChannel === "stable" && lastNotified !== remoteVersion) {
         await context.globalState.update(GS_LAST_NOTIFIED_VERSION, remoteVersion);
         const action = await vscode.window.showInformationMessage(
-          `Claude Code Orbit: Experimental patcher v${remoteVersion} is available (you have v${installedVersion}). Update now?`,
+          `Claude Code Orbit: Stable patcher v${remoteVersion} is available (you have v${installedVersion}). Update now?`,
           "Update", "Later"
         );
         if (action === "Update") {
