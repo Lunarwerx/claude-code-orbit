@@ -17,7 +17,7 @@ contract; the changelog at the bottom is the signal that the launcher moved.
 
 | field            | value                                   |
 |------------------|-----------------------------------------|
-| `wrapper`        | **1.2.9**                               |
+| `wrapper`        | **1.2.10**                              |
 | `repo`           | `Lunarwerx/claude-code-orbit` @ `main`  |
 | channel system   | tag lives in the patcher (`ORBIT_CHANNEL` → `ccPatchChannel`), mirrored to the manifest; wrapper reads it. Experimental (red) / Stable (green). No compatibility/preview cruft. |
 
@@ -61,6 +61,11 @@ next build picks it up automatically.
 
 ## Launcher changelog (newest first — this is the "it moved" signal)
 
+- **wrapper 1.2.10** — secondary actions (Check for updates, Previous versions,
+  Patches, Remove Orbit) moved into an always-on top-right **⚙ gear dropdown**, so
+  the main view stays hero + Install-newest + recommendations at any panel size.
+  The recommendations list now scrolls when the panel is short. The gear shows
+  only on the idle screen.
 - **wrapper 1.2.9** — channel tag relabeled **EXPERIMENTAL → UNTESTED** (it means
   "new or not-yet-tested against the newest target," not broken), with a hover
   tooltip explaining it; the red styling and the internal `experimental` channel

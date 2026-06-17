@@ -1578,8 +1578,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 /* recommended extensions block — grows to fill the panel's free space (the
    patched state has little else to show, so the ads get the real estate) and
    centers its enlarged cards vertically between the buttons and the footer. */
-.recommended{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
-  padding-top:22px;min-height:0}
+.recommended{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-start;
+  padding-top:22px;min-height:0;overflow-y:auto}
+.orbitGear{position:fixed;top:10px;right:10px;z-index:40;width:30px;height:30px;padding:0;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.22);border-radius:7px;
+  color:var(--vscode-foreground);opacity:.85;transition:opacity .12s,background .12s}
+.orbitGear:hover{opacity:1;background:rgba(127,127,127,.22)}
+.orbitGear[hidden]{display:none}
+.orbitGearMenu{position:fixed;top:46px;right:10px;z-index:39;width:240px;max-height:78vh;
+  overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:12px;
+  background:var(--vscode-menu-background,var(--vscode-editorWidget-background,#252526));
+  border:1px solid var(--vscode-menu-border,rgba(127,127,127,.3));border-radius:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,.42)}
+.orbitGearMenu[hidden]{display:none}
+.orbitGearMenu .patchPicker{margin-top:4px}
 .recHeader{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   opacity:.5;text-align:center;margin:0 0 14px}
 .recHeaderCompany{margin-top:20px}
@@ -1634,6 +1647,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     <div class="subtitle">Patch Companion</div>
   </div>
 
+  <button class="orbitGear" id="orbitGear" type="button" title="Settings" aria-label="Settings" hidden>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.4 3.4l1.05 1.05M11.55 11.55l1.05 1.05M3.4 12.6l1.05-1.05M11.55 4.45l1.05-1.05"/></svg>
+  </button>
+  <div class="orbitGearMenu" id="orbitGearMenu" hidden>
+    <button class="btn" id="checkUpdatesBtn" data-action="checkUpdates">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
+      Check for updates
+    </button>
+    <button class="altAction" id="versionsBtn" hidden
+            title="Pick an earlier version to install — handy if the newest one misbehaves. Each shows the Claude Code it's built for and its build number.">
+      Previous versions
+    </button>
+    <div class="patchPicker" id="patchPicker">
+      <button class="patchPickerHeader" id="patchPickerHeader" type="button"
+              title="Choose which Orbit patches get applied">
+        <span>Patches</span><span class="patchChevron">›</span>
+      </button>
+      <div class="patchPickerBody" id="patchPickerBody" hidden>
+        <p class="patchPickerNote">Uncheck to leave a patch out — applies the next time you Install / Update.</p>
+        ${patchTogglesHtml}
+      </div>
+    </div>
+    <button class="btn" id="disableBtn" data-action="disable"
+            title="Uninstall Orbit and restore the original, unpatched Claude Code.">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/></svg>
+      Remove Orbit
+    </button>
+  </div>
+
   <div class="card">
 
     <!-- IDLE -->
@@ -1655,29 +1697,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
         <span class="btnIcon" id="enableBtnIcon"></span>
         <span class="btnLabel" id="enableBtnLabel">Install newest</span>
       </button>
-      <button class="btn" id="disableBtn" data-action="disable"
-              title="Uninstall Orbit and restore the original, unpatched Claude Code.">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/></svg>
-        Remove Orbit
-      </button>
-      <button class="btn" id="checkUpdatesBtn" data-action="checkUpdates">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
-        Check for updates
-      </button>
-      <button class="altAction" id="versionsBtn" hidden
-              title="Pick an earlier version to install — handy if the newest one misbehaves. Each shows the Claude Code it's built for and its build number.">
-        Previous versions
-      </button>
-      <div class="patchPicker" id="patchPicker">
-        <button class="patchPickerHeader" id="patchPickerHeader" type="button"
-                title="Choose which Orbit patches get applied">
-          <span>Patches</span><span class="patchChevron">›</span>
-        </button>
-        <div class="patchPickerBody" id="patchPickerBody" hidden>
-          <p class="patchPickerNote">Uncheck to leave a patch out — applies the next time you Install / Update.</p>
-          ${patchTogglesHtml}
-        </div>
-      </div>
       <div class="hint" id="idleHint"></div>
     </div>
 
@@ -2036,6 +2055,17 @@ function setPane(name) {
   // confirm, working and done panes uncluttered AND stops the (grown) ad block
   // from competing for height and overlapping pane buttons (e.g. Back).
   if (recommendedEl) recommendedEl.style.display = (name === "idle") ? "" : "none";
+  var ccGear = document.getElementById("orbitGear");
+  if (ccGear) ccGear.hidden = (name !== "idle");
+  if (name !== "idle") { var ccGM = document.getElementById("orbitGearMenu"); if (ccGM) ccGM.hidden = true; }
+}
+
+const orbitGearEl = document.getElementById("orbitGear");
+const orbitGearMenuEl = document.getElementById("orbitGearMenu");
+if (orbitGearEl && orbitGearMenuEl) {
+  orbitGearEl.addEventListener("click", (e) => { e.stopPropagation(); orbitGearMenuEl.hidden = !orbitGearMenuEl.hidden; });
+  orbitGearMenuEl.addEventListener("click", (e) => e.stopPropagation());
+  document.addEventListener("click", () => { if (!orbitGearMenuEl.hidden) orbitGearMenuEl.hidden = true; });
 }
 
 document.querySelectorAll("[data-action]").forEach(btn => {
