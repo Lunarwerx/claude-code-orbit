@@ -1056,11 +1056,11 @@ class SidebarProvider {
             } else if (!installedVersion) {
               updateAvailable = true;
               resultMsg = "Claude Code is not patched yet.";
-              resultSub = "GitHub experimental patcher is v" + remoteVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install experimental now?";
+              resultSub = "GitHub untested patcher is v" + remoteVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install untested now?";
             } else if (cmpVer(installedVersion, remoteVersion) < 0) {
               updateAvailable = true;
-              resultMsg = "Experimental patcher v" + remoteVersion + " is available.";
-              resultSub = "Installed Claude Code has patcher v" + installedVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install experimental now?";
+              resultMsg = "Untested patcher v" + remoteVersion + " is available.";
+              resultSub = "Installed Claude Code has patcher v" + installedVersion + ". Orbit wrapper UI is v" + wrapperVersion + ". Install untested now?";
             } else if (claudeOutdated) {
               updateAvailable = true;
               updateAction = "enable";
@@ -1668,7 +1668,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
               title="Pick an earlier version to install — handy if the newest one misbehaves. Each shows the Claude Code it's built for and its build number.">
         Previous versions
       </button>
-      <div class="hint" id="idleHint"></div>
       <div class="patchPicker" id="patchPicker">
         <button class="patchPickerHeader" id="patchPickerHeader" type="button"
                 title="Choose which Orbit patches get applied">
@@ -1679,6 +1678,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
           ${patchTogglesHtml}
         </div>
       </div>
+      <div class="hint" id="idleHint"></div>
     </div>
 
     <!-- WORKING -->
@@ -1889,7 +1889,10 @@ function applyIdleState(state, info) {
     if (channel) {
       var ccHeroTag = document.createElement("span");
       ccHeroTag.className = "channelTag " + (channel === "stable" ? "stable" : "experimental");
-      ccHeroTag.textContent = channel === "stable" ? "STABLE" : "EXPERIMENTAL";
+      ccHeroTag.textContent = channel === "stable" ? "STABLE" : "UNTESTED";
+      ccHeroTag.title = channel === "stable"
+        ? "Stable — tested and verified for this Claude Code version."
+        : "Untested — may include new or not-yet-tested features, or simply hasn't been verified against the newest Claude Code yet.";
       patchedTitle.appendChild(document.createTextNode(" "));
       patchedTitle.appendChild(ccHeroTag);
     }
@@ -1951,7 +1954,10 @@ function ccChannelTag(channel) {
   var c = (channel === "stable") ? "stable" : "experimental";
   var t = document.createElement("span");
   t.className = "channelTag " + c;
-  t.textContent = c === "stable" ? "STABLE" : "EXPERIMENTAL";
+  t.textContent = c === "stable" ? "STABLE" : "UNTESTED";
+  t.title = c === "stable"
+    ? "Stable — tested and verified for this Claude Code version."
+    : "Untested — may include new or not-yet-tested features, or simply hasn't been verified against the newest Claude Code yet.";
   return t;
 }
 
@@ -2196,7 +2202,7 @@ window.addEventListener("message", (ev) => {
     lastIdleState = m.state;
     const labels = {
       patched: ["patched", "Orbit patched"],
-      outdated: ["outdated", "Experimental update available"],
+      outdated: ["outdated", "Untested update available"],
       stock: ["stock", "Original Claude Code"],
       none: ["none", "Claude Code not installed"],
     };
@@ -2273,7 +2279,7 @@ window.addEventListener("message", (ev) => {
       donePrimaryBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>Restart Claude Code';
       if (m.action === "checkUpdates" && m.updateAvailable) {
         donePrimaryBtn.dataset.action = m.updateAction || "enable";
-        donePrimaryBtn.innerHTML = m.updateAction === "updateWrapper" ? "Update Orbit wrapper" : "Install experimental";
+        donePrimaryBtn.innerHTML = m.updateAction === "updateWrapper" ? "Update Orbit wrapper" : "Install untested";
       } else if (m.action === "checkUpdates") {
         donePrimaryBtn.hidden = true;
       } else if (!doneSub.textContent) {

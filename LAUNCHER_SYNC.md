@@ -17,7 +17,7 @@ contract; the changelog at the bottom is the signal that the launcher moved.
 
 | field            | value                                   |
 |------------------|-----------------------------------------|
-| `wrapper`        | **1.2.8**                               |
+| `wrapper`        | **1.2.9**                               |
 | `repo`           | `Lunarwerx/claude-code-orbit` @ `main`  |
 | channel system   | tag lives in the patcher (`ORBIT_CHANNEL` → `ccPatchChannel`), mirrored to the manifest; wrapper reads it. Experimental (red) / Stable (green). No compatibility/preview cruft. |
 
@@ -61,6 +61,11 @@ next build picks it up automatically.
 
 ## Launcher changelog (newest first — this is the "it moved" signal)
 
+- **wrapper 1.2.9** — channel tag relabeled **EXPERIMENTAL → UNTESTED** (it means
+  "new or not-yet-tested against the newest target," not broken), with a hover
+  tooltip explaining it; the red styling and the internal `experimental` channel
+  id are unchanged. The "Patches" picker moved up directly under "Previous
+  versions" (it had been drifting down beside the recommended-extensions block).
 - **wrapper 1.2.8** — the auto "update available" toast now fires ONLY for
   **stable** releases. Experimental pushes still flip the status-bar badge and
   the sidebar hero (red tag) so the bleeding edge stays one click away, but they
