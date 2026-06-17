@@ -573,9 +573,9 @@ function ccPatchContTick(){if(!ccPatchContAnyOn())return;var now=Date.now();var 
 function ccPatchCloseContMenu(){var m=document.querySelector(`.ccPatchContMenu`);if(m){if(m._ccPatchOutsideHandler)document.removeEventListener(`mousedown`,m._ccPatchOutsideHandler);if(m._ccPatchKey)document.removeEventListener(`keydown`,m._ccPatchKey);m.remove()}}
 function ccPatchShowContinuationMenu(){if(document.querySelector(`.ccPatchContMenu`)){ccPatchCloseContMenu();return}try{ccPatchCloseSettingsMenu()}catch(e){}var btn=document.querySelector(`.ccPatchSettingsBtn`);var menu=document.createElement(`div`);menu.className=`ccPatchSettingsMenu ccPatchContMenu`;menu.style.left=`-9999px`;menu.style.top=`0px`;var head=document.createElement(`div`);head.className=`ccPatchContHead`;head.textContent=`Auto-continue`;menu.appendChild(head);var sub=document.createElement(`div`);sub.className=`ccPatchContSub`;sub.textContent=`Send "keep going" automatically when a chat stops. Off by default.`;menu.appendChild(sub);var defs=[[`usage`,`On any usage limit`,`Resume the moment the limit lifts.`],[`fiveHour`,`When my 5-hour limit resets`,`Waits out the session window.`],[`weekly`,`When my weekly limit resets`,`Waits out the 7-day window.`],[`error`,`If the chat errors out`,`Non-limit hiccups. Best-effort.`]];defs.forEach(function(df){var d=document.createElement(`div`);d.className=`ccPatchSettingsItem ccPatchContItem`;var col=document.createElement(`div`);col.className=`ccPatchContText`;var l=document.createElement(`div`);l.className=`ccPatchContLabel`;l.textContent=df[1];var de=document.createElement(`div`);de.className=`ccPatchContDesc`;de.textContent=df[2];col.appendChild(l);col.appendChild(de);d.appendChild(col);var lb=document.createElement(`span`);lb.className=`ccPatchYoloToggle`;var cb=document.createElement(`input`);cb.type=`checkbox`;cb.checked=ccPatchContOn(df[0]);var sl=document.createElement(`span`);sl.className=`ccPatchYoloSlider`;lb.appendChild(cb);lb.appendChild(sl);d.appendChild(lb);d.onmousedown=function(v){v.preventDefault();v.stopPropagation();cb.checked=!cb.checked;ccPatchContSet(df[0],cb.checked)};menu.appendChild(d)});document.body.appendChild(menu);var mw=menu.offsetWidth||252,mh=menu.offsetHeight||210;var left=8,top=80;if(btn){var r=btn.getBoundingClientRect();left=Math.round(r.right)-mw;top=Math.round(r.bottom+4);if(left+mw>window.innerWidth-8)left=window.innerWidth-8-mw;if(left<8)left=8;if(top+mh>window.innerHeight-8)top=Math.max(8,Math.round(r.top)-mh-4)}menu.style.left=left+`px`;menu.style.top=top+`px`;setTimeout(function(){var h=function(g){if(!menu.contains(g.target))ccPatchCloseContMenu()};var k=function(g){if(g.key===`Escape`)ccPatchCloseContMenu()};menu._ccPatchOutsideHandler=h;menu._ccPatchKey=k;document.addEventListener(`mousedown`,h);document.addEventListener(`keydown`,k)},0)}
 // ---- Default reasoning effort (new chats) ---------------------------------
-// An inline "Default" effort slider in the Settings gear. Drag low -> max
-// (with an "Ultra"/ultracode stop just before max, and an "Auto" stop at the
-// far left for the native account default). Whatever stop is chosen becomes the
+// An inline "Default" effort slider in the Settings gear. Its stops mirror the
+// native composer ladder exactly (Auto, Low, Medium, High, Extra high, and the
+// "Ultracode" top = xhigh + workflows). Whatever stop is chosen becomes the
 // effort every NEW chat opens on; a chat already in progress keeps its own.
 // Stored as the effort id in localStorage and applied at session construction
 // via the effortLevel field initializer (patcher block 16b), so a brand-new
@@ -585,20 +585,34 @@ function ccPatchShowContinuationMenu(){if(document.querySelector(`.ccPatchContMe
 // that model. ccPatchDefaultEffort MUST be exported (Object.assign) because the
 // field initializer references it bare from class-construction scope.
 // Ordered slot list, leftmost first. id "" = Auto (native default / unset).
-function ccPatchEffortStops(){return[[``,`Auto`],[`low`,`Low`],[`medium`,`Medium`],[`high`,`High`],[`xhigh`,`Ultra`]]}
-function ccPatchDefaultEffort(){try{var v=localStorage.getItem(`ccPatchDefaultEffort`)||``;return v===`max`?`xhigh`:v}catch(e){return``}}
+// Stops mirror Claude's NATIVE composer ladder exactly so the gear can't lie:
+// xhigh is "Extra high" (not "Ultra"), and the true top is "Ultracode" (= xhigh
+// + workflows), the stop the composer drags to. "ultracode" is a sentinel id,
+// not a native effort level — ccPatchDefaultEffort() coerces it to xhigh for the
+// effortLevel field, and ccPatchDefaultUltracode() carries the workflows flag.
+function ccPatchEffortStops(){return[[``,`Auto`],[`low`,`Low`],[`medium`,`Medium`],[`high`,`High`],[`xhigh`,`Extra high`],[`ultracode`,`Ultracode`]]}
+// Raw stored id (keeps the "ultracode" sentinel; legacy "max" -> xhigh). Drives
+// the slider position + label. ccPatchDefaultEffort() returns a VALID native
+// effort id (ultracode -> xhigh) for the effortLevel field initializer.
+function ccPatchDefaultEffortRaw(){try{var v=localStorage.getItem(`ccPatchDefaultEffort`)||``;return v===`max`?`xhigh`:v}catch(e){return``}}
+function ccPatchDefaultEffort(){var v=ccPatchDefaultEffortRaw();return v===`ultracode`?`xhigh`:v}
+function ccPatchDefaultUltracode(){return ccPatchDefaultEffortRaw()===`ultracode`}
 function ccPatchSetDefaultEffort(id){try{if(id)localStorage.setItem(`ccPatchDefaultEffort`,String(id));else localStorage.removeItem(`ccPatchDefaultEffort`)}catch(e){}}
 // Persist the chosen effort as Claude's NATIVE account setting (applySettings),
 // because a reactive settings effect overrides our session-constructor init right
 // after load — so the only thing new chats actually open on is the native setting.
 // Writing it here makes the slider the real default. Called on slider release.
-function ccPatchApplyDefaultEffort(id){try{var s=ccPatchActiveSession&&ccPatchActiveSession();if(!s)return;var v=id||null;var ap=(typeof s.applySettings===`function`)?function(o){s.applySettings(o)}:((s.connection&&s.connection.value&&typeof s.connection.value.applySettings===`function`)?function(o){s.connection.value.applySettings(o)}:null);if(ap)ap({effortLevel:v})}catch(e){}}
+// Top stop ("ultracode") -> the session's own enableUltracode() (sets xhigh +
+// the workflows flag). Any normal stop -> setEffortLevel(), which ALSO clears the
+// ultracode flag when stepping down off the top. Both fall back to raw
+// applySettings if the native methods are ever renamed.
+function ccPatchApplyDefaultEffort(id){try{var s=ccPatchActiveSession&&ccPatchActiveSession();if(!s)return;if(id===`ultracode`){if(typeof s.enableUltracode===`function`)return void s.enableUltracode();id=`xhigh`}if(typeof s.setEffortLevel===`function`)return void s.setEffortLevel(id||null);var v=id||null;var ap=(typeof s.applySettings===`function`)?function(o){s.applySettings(o)}:((s.connection&&s.connection.value&&typeof s.connection.value.applySettings===`function`)?function(o){s.connection.value.applySettings(o)}:null);if(ap)ap({effortLevel:v})}catch(e){}}
 function ccPatchEffortIndex(id){var st=ccPatchEffortStops();for(var i=0;i<st.length;i++){if(st[i][0]===(id||``))return i}return 0}
-function ccPatchDefaultEffortLabel(){try{var st=ccPatchEffortStops();return st[ccPatchEffortIndex(ccPatchDefaultEffort())][1]}catch(e){return null}}
+function ccPatchDefaultEffortLabel(){try{var st=ccPatchEffortStops();return st[ccPatchEffortIndex(ccPatchDefaultEffortRaw())][1]}catch(e){return null}}
 // Build the draggable slider element for the inline gear row. Pointerdown ->
 // pointermove/pointerup with clientX-to-slot mapping (clamped), mirroring
 // ccPatchStartResize. Each move/commit persists the chosen effort id.
-function ccPatchBuildEffortSlider(labelEl){var stops=ccPatchEffortStops(),n=stops.length;var wrap=document.createElement(`div`);wrap.className=`ccPatchEffWrap`;var track=document.createElement(`div`);track.className=`ccPatchEffTrack`;var fill=document.createElement(`div`);fill.className=`ccPatchEffFill`;var thumb=document.createElement(`div`);thumb.className=`ccPatchEffThumb`;track.appendChild(fill);for(var i=0;i<n;i++){var nt=document.createElement(`div`);nt.className=`ccPatchEffNotch`;if(stops[i][0]===`xhigh`)nt.classList.add(`ccPatchEffNotchUltra`);track.appendChild(nt)}track.appendChild(thumb);wrap.appendChild(track);function render(idx){var pct=n>1?idx/(n-1)*100:0;thumb.style.left=pct+`%`;fill.style.width=pct+`%`;if(labelEl)labelEl.textContent=stops[idx][1];wrap.classList.toggle(`ccPatchEffUltra`,stops[idx][0]===`xhigh`)}function setIdx(idx,persist){idx=Math.max(0,Math.min(n-1,idx));render(idx);if(persist)ccPatchSetDefaultEffort(stops[idx][0])}function idxFromX(cx){var r=track.getBoundingClientRect();var f=r.width>0?(cx-r.left)/r.width:0;return Math.round(Math.max(0,Math.min(1,f))*(n-1))}setIdx(ccPatchEffortIndex(ccPatchDefaultEffort()),false);track.onmousedown=function(e){e.preventDefault();e.stopPropagation();setIdx(idxFromX(e.clientX),true);var mv=function(g){setIdx(idxFromX(g.clientX),true)};var up=function(){document.removeEventListener(`pointermove`,mv);document.removeEventListener(`pointerup`,up);try{ccPatchApplyDefaultEffort(ccPatchDefaultEffort())}catch(e){}};document.addEventListener(`pointermove`,mv);document.addEventListener(`pointerup`,up)};return wrap}
+function ccPatchBuildEffortSlider(labelEl){var stops=ccPatchEffortStops(),n=stops.length;var wrap=document.createElement(`div`);wrap.className=`ccPatchEffWrap`;var track=document.createElement(`div`);track.className=`ccPatchEffTrack`;var fill=document.createElement(`div`);fill.className=`ccPatchEffFill`;var thumb=document.createElement(`div`);thumb.className=`ccPatchEffThumb`;track.appendChild(fill);for(var i=0;i<n;i++){var nt=document.createElement(`div`);nt.className=`ccPatchEffNotch`;if(stops[i][0]===`ultracode`)nt.classList.add(`ccPatchEffNotchUltra`);track.appendChild(nt)}track.appendChild(thumb);wrap.appendChild(track);function render(idx){var pct=n>1?idx/(n-1)*100:0;thumb.style.left=pct+`%`;fill.style.width=pct+`%`;if(labelEl)labelEl.textContent=stops[idx][1];wrap.classList.toggle(`ccPatchEffUltra`,stops[idx][0]===`ultracode`)}function setIdx(idx,persist){idx=Math.max(0,Math.min(n-1,idx));render(idx);if(persist)ccPatchSetDefaultEffort(stops[idx][0])}function idxFromX(cx){var r=track.getBoundingClientRect();var f=r.width>0?(cx-r.left)/r.width:0;return Math.round(Math.max(0,Math.min(1,f))*(n-1))}setIdx(ccPatchEffortIndex(ccPatchDefaultEffortRaw()),false);track.onmousedown=function(e){e.preventDefault();e.stopPropagation();setIdx(idxFromX(e.clientX),true);var mv=function(g){setIdx(idxFromX(g.clientX),true)};var up=function(){document.removeEventListener(`pointermove`,mv);document.removeEventListener(`pointerup`,up);try{ccPatchApplyDefaultEffort(ccPatchDefaultEffortRaw())}catch(e){}};document.addEventListener(`pointermove`,mv);document.addEventListener(`pointerup`,up)};return wrap}
 // ---- Copy-message buttons --------------------------------------------------
 // Hover any message (yours OR the assistant's) -> a copy button appears top-
 // right; click copies that whole message's text. Native Claude only offers
@@ -608,7 +622,7 @@ function ccPatchBuildEffortSlider(labelEl){var stops=ccPatchEffortStops(),n=stop
 function ccPatchMsgText(el){try{var c=el.cloneNode(true);var junk=c.querySelectorAll(`[class*="ccPatch"],button,[role="toolbar"]`);for(var i=0;i<junk.length;i++)junk[i].remove();return(c.innerText||c.textContent||``).replace(/ /g,` `).replace(/[ \t]+\n/g,`\n`).trim()}catch(e){try{return(el.innerText||``).trim()}catch(e2){return``}}}
 function ccPatchAddCopyBtn(el){try{if(!el||el.querySelector(`:scope > .ccPatchCopyBtn`))return;if(el.querySelector(`[class*="userMessageContainer_"],[class*="messageContainer_"]`))return;var cs=getComputedStyle(el);if(cs&&cs.position===`static`)el.style.position=`relative`;var b=document.createElement(`button`);b.type=`button`;b.className=`ccPatchCopyBtn`;b.title=`Copy message`;b.innerHTML=`<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5"/><path d="M9.5 4.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v5A1.5 1.5 0 0 0 3 9.5h1.5"/></svg>`;b.onmousedown=function(ev){ev.preventDefault();ev.stopPropagation()};b.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var t=ccPatchMsgText(el);try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t);else{var ta=document.createElement(`textarea`);ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand(`copy`)}catch(e){}ta.remove()}}catch(e){}b.classList.add(`ccPatchCopied`);b.title=`Copied`;setTimeout(function(){b.classList.remove(`ccPatchCopied`);b.title=`Copy message`},1200)};el.appendChild(b)}catch(e){}}
 function ccPatchCopySweep(){try{var nodes=document.querySelectorAll(`[class*="userMessageContainer_"],[class*="messageContainer_"]`);for(var i=0;i<nodes.length;i++)ccPatchAddCopyBtn(nodes[i])}catch(e){}}
-Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchRecency,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchErrorReason,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu,ccPatchUsageStartPolling,ccPatchContOn,ccPatchContSet,ccPatchContAnyOn,ccPatchContTick,ccPatchShowContinuationMenu,ccPatchCloseContMenu,ccPatchEffortStops,ccPatchDefaultEffort,ccPatchSetDefaultEffort,ccPatchEffortIndex,ccPatchDefaultEffortLabel,ccPatchBuildEffortSlider,ccPatchMsgText,ccPatchAddCopyBtn,ccPatchCopySweep});
+Object.assign(globalThis,{ccPatchTitle,ccPatchImgPreviewShow,ccPatchImgPreviewHide,ccPatchGetSS,ccPatchSetSS,ccPatchIsArchived,ccPatchIsPinned,ccPatchIsStarred,ccPatchToggleArchive,ccPatchTogglePin,ccPatchToggleStar,ccPatchRecency,ccPatchSortSessions,ccPatchSessionId,ccPatchTrackSessionStatus,ccPatchClearDone,ccPatchIsWaiting,ccPatchErrorReason,ccPatchSessionIndicator,ccPatchActivityText,ccPatchCloseMenu,ccPatchShowMenu,ccPatchTogglePane,ccPatchSetSearch,ccPatchToggleSearch,ccPatchStartResize,ccPatchFilterListeners,ccPatchAgeMsMap,ccPatchDefaultFilters,ccPatchReadFilters,ccPatchIsUntitledEmpty,ccPatchWriteFilters,ccPatchFiltersActive,ccPatchSessionMatchesFilters,ccPatchFilterSort,ccPatchCloseFilterMenu,ccPatchFilterIconSVG,ccPatchShowFilterMenu,ccPatchCloseSettingsMenu,ccPatchShowSettingsMenu,ccPatchYoloOn,ccPatchYoloDefault,ccPatchYoloApplyArr,ccPatchYoloToggle,ccPatchRpc,ccPatchOpenClaudeMd,ccPatchReadClaudeMd,ccPatchWriteClaudeMd,ccPatchInstructionsModal,ccPatchSwitchAccount,ccPatchSwitchAccountModal,ccPatchSendMenu,ccPatchCloseSendMenu,ccPatchTriggerSend,ccPatchQueueForm,ccPatchStopAndSendForm,ccPatchComposerForm,ccPatchComposerAction,ccPatchRenderQueue,ccPatchSetSendMode,ccPatchQueueAdd,ccPatchQueueRemove,ccPatchQueueEdit,ccPatchQueueCommitEdit,ccPatchQueueCancelEdit,ccPatchQueueSendNow,ccPatchQueueTick,ccPatchActiveSession,ccPatchSessionKey,ccPatchIsBusy,ccPatchQueueAddFull,ccPatchThemeModal,ccPatchApplyTheme,ccPatchSyncWsTheme,ccPatchWsTheme,ccPatchColorPalette,ccPatchColorHex,ccPatchGetColor,ccPatchSetColor,ccPatchShowColorMenu,ccPatchCloseColorMenu,ccPatchStickyOn,ccPatchStickyToggle,ccPatchUsageConn,ccPatchUsageData,ccPatchUsageRefresh,ccPatchUsageColor,ccPatchUsageResetText,ccPatchUsageEsc,ccPatchUsageRing,ccPatchUsageBtnIcon,ccPatchUsageWindows,ccPatchUsageRenderBody,ccPatchCloseUsageMenu,ccPatchShowUsageMenu,ccPatchUsageStartPolling,ccPatchContOn,ccPatchContSet,ccPatchContAnyOn,ccPatchContTick,ccPatchShowContinuationMenu,ccPatchCloseContMenu,ccPatchEffortStops,ccPatchDefaultEffort,ccPatchDefaultEffortRaw,ccPatchDefaultUltracode,ccPatchSetDefaultEffort,ccPatchEffortIndex,ccPatchDefaultEffortLabel,ccPatchBuildEffortSlider,ccPatchMsgText,ccPatchAddCopyBtn,ccPatchCopySweep});
 Object.defineProperty(globalThis,"ccPatchSearchQ",{configurable:true,get:function(){return ccPatchSearchQ},set:function(v){ccPatchSearchQ=String(v||"")}});
 try{ccPatchUsageStartPolling()}catch(e){}
 try{if(!globalThis.ccPatchContTimer)globalThis.ccPatchContTimer=setInterval(ccPatchContTick,4000)}catch(e){}
@@ -1944,6 +1958,30 @@ def patch_webview_js(webview_js: Path) -> bool:
             log("Default effort: new chats honor the Settings > Default slider")
 
     # ──────────────────────────────────────────────────────────────────────
+    # 16c. Default ultracode — the Settings ▸ "Default" slider's TOP stop is
+    #      "Ultracode" (= xhigh + workflows), the native composer's true top. For
+    #      a new chat to actually open there, effortLevel=xhigh is not enough — the
+    #      separate `ultracodeEnabled` flag must also seed true. Native hardcodes
+    #      its field initializer `ultracodeEnabled=<at>(!1)`; flip the seed to honor
+    #      ccPatchDefaultUltracode() (true only when the saved default is the
+    #      "ultracode" sentinel). Mirrors the 16b effortLevel seam; guarded with
+    #      `typeof` so a missing helper can never break session construction.
+    # ──────────────────────────────────────────────────────────────────────
+    m_defuc = re.search(rf"ultracodeEnabled=(?P<at>{JS_ID})\(!1\)", text)
+    if m_defuc is None:
+        log("Note: ultracodeEnabled init anchor not found; skipping default-ultracode patch")
+    else:
+        uc_at = m_defuc.group("at")
+        uc_anchor = f"ultracodeEnabled={uc_at}(!1)"
+        uc_replace = (
+            f'ultracodeEnabled={uc_at}(typeof ccPatchDefaultUltracode==="function"'
+            f'?ccPatchDefaultUltracode():!1)'
+        )
+        if uc_anchor in text and uc_replace not in text:
+            text = text.replace(uc_anchor, uc_replace, 1)
+            log("Default ultracode: new chats honor the Settings > Default 'Ultracode' top stop")
+
+    # ──────────────────────────────────────────────────────────────────────
     # 17. Hoist sessions panel: add wrapper classes so CSS can position it.
     #     Adds `claudePatchRoot` to the root div and `claudePatchHeader` to
     #     the header div.
@@ -3150,8 +3188,8 @@ def patch_webview_css(webview_css: Path) -> bool:
         ".ccPatchSettingsItemExtra{flex:0 0 auto;font-size:11px;opacity:.6;margin-left:6px;"
         "max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
         # Default reasoning-effort slider (inline gear row) -- a hand-built
-        # draggable track+thumb with one notch per effort level. The xhigh
-        # ("Ultra"/ultracode) notch and the active-ultra fill use a warmer tint.
+        # draggable track+thumb with one notch per effort level. The top
+        # "Ultracode" notch and the active-ultra fill use a warmer tint.
         ".ccPatchEffItem{align-items:center;cursor:default}"
         ".ccPatchEffWrap{flex:0 0 auto;display:flex;align-items:center;gap:7px;"
         "margin-left:auto;min-width:152px}"
@@ -3456,6 +3494,11 @@ def verify_extension_dir(extension_dir: Path) -> None:
         "default effort": ("ccPatchBuildEffortSlider" in js and "ccPatchDefaultEffort," in js
                            and ".ccPatchEffTrack" in css
                            and 'typeof ccPatchDefaultEffort==="function"?ccPatchDefaultEffort()' in js),
+        # Default ultracode: the "Ultracode" top stop + its exported flag getter +
+        # the construction-time ultracodeEnabled field patch (16c).
+        "default ultracode": ("ccPatchDefaultUltracode," in js and "`Extra high`" in js
+                              and "`Ultracode`" in js
+                              and 'typeof ccPatchDefaultUltracode==="function"?ccPatchDefaultUltracode()' in js),
         "account switch modal": "ccPatchSwitchAccountModal" in js and ".ccPatchConfirmOverlay" in css,
         "compact confirm": ("ccPatchConfirmDialog" in js and "ccPatchConfirmCompact" in js
                             and ".ccPatchConfirmConfirmBtn" in css),

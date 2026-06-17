@@ -17,7 +17,7 @@ contract; the changelog at the bottom is the signal that the launcher moved.
 
 | field            | value                                   |
 |------------------|-----------------------------------------|
-| `wrapper`        | **1.2.10**                              |
+| `wrapper`        | **1.2.11**                              |
 | `repo`           | `Lunarwerx/claude-code-orbit` @ `main`  |
 | channel system   | tag lives in the patcher (`ORBIT_CHANNEL` → `ccPatchChannel`), mirrored to the manifest; wrapper reads it. Experimental (red) / Stable (green). No compatibility/preview cruft. |
 
@@ -61,6 +61,18 @@ next build picks it up automatically.
 
 ## Launcher changelog (newest first — this is the "it moved" signal)
 
+- **wrapper 1.2.11** — gear-menu polish pass. The settings button is now a real
+  **cog** icon (was a sun). All four menu items render as consistent, left-aligned
+  buttons (Check for updates · Previous versions · Patches · Remove Orbit). **Remove
+  Orbit** now asks for inline confirmation ("…restore the original Claude Code?
+  Cancel / Yes, remove") instead of uninstalling on the first click. New **"Hide
+  untested updates"** toggle: when on, the red update banner, the status-bar badge,
+  and "Check for updates" only surface **stable** releases (persisted host-side via
+  `claudeCodeOrbit.hideUntested`; gated in `detectState`, the manual check, and the
+  background poller). The footer **"Show details"** toggle was removed (logging
+  still runs, just not surfaced). The recommendations list is now the sole scroll
+  region (`.wrap` is `overflow:hidden`), so the hero/footer stay put and only the
+  cards scroll.
 - **wrapper 1.2.10** — secondary actions (Check for updates, Previous versions,
   Patches, Remove Orbit) moved into an always-on top-right **⚙ gear dropdown**, so
   the main view stays hero + Install-newest + recommendations at any panel size.
