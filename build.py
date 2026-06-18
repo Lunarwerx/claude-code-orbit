@@ -21,7 +21,7 @@ ad-hoc zipping). Every run:
 
 INVARIANTS — a plain build NEVER changes a version NUMBER:
   * It does NOT touch Claude Code Orbit/package.json (that bumps only at push,
-    only when Jacob says so).
+    only when the owner says so).
   * It does NOT bump patcher_version.txt or the certified Claude target
     (certified_claude.txt) — it only READS them. That certified target is the one
     human-set value that survives ("the Claude Code version we've verified the

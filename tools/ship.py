@@ -4,7 +4,7 @@ ship.py — one command to cut an Orbit release, so the moving parts are never
 hand-fed again.
 
     python tools/ship.py            # experimental (DEFAULT)
-    python tools/ship.py --stable   # stable (ONLY when Jacob says "stable")
+    python tools/ship.py --stable   # stable (ONLY when the owner says "stable")
 
 What it does:
   1. PULLS THE NEWEST Claude Code from the Marketplace and runs the patcher

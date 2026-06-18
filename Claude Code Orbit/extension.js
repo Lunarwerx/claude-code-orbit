@@ -8,7 +8,7 @@ const https = require("https");
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  🚫 VERSION PROTECTION: Do NOT bump any version number (package.json,   ║
 // ║     patcher_version.txt, certified_claude.txt, or any other version    ║
-// ║     pin) without Jacob's explicit permission.                          ║
+// ║     pin) without owner's explicit permission.                          ║
 // ║     Rebuilding the VSIX for local testing does NOT require a bump.      ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 

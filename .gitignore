@@ -43,3 +43,13 @@ logs/
 monitoring/system-health/
 # Internal operating playbook — kept locally, NEVER published (this repo is public).
 docs/guides/
+
+# Internal-only docs & local workspace state — kept locally, NOT published to the
+# public repo. (Untracked via `git rm --cached`; the working copies stay on disk.)
+JUSTIFY_EXISTENCE.md
+RELEASE_RULES.md
+LAUNCHER_SYNC.md
+ORBIT_KIT.md
+CLAUDE.md
+docs/CODEX_LAUNCHER_PROMPT.md
+.vscode/paramount.json

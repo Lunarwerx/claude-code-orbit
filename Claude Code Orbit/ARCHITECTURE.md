@@ -193,7 +193,7 @@ This means:
 
 ## 🚫 Version Bump Protection
 
-**DO NOT bump any version number without Jacob's explicit permission.** This includes:
+**DO NOT bump any version number without the owner's explicit permission.** This includes:
 - `package.json` → `"version"` field
 - `patcher_version.txt` on GitHub
 - `certified_claude.txt` (the Claude version the patcher is certified against)
