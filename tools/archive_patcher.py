@@ -84,6 +84,23 @@ def read_patcher_channel() -> "str | None":
     return None
 
 
+def read_patcher_whatsnew() -> str:
+    """The release notes embedded in the patcher's own ORBIT_WHATSNEW constant
+    (JSON-encoded by tools/ship.py). Mirrored into the manifest's per-version
+    `whatsNew` field so the wrapper can show the What's-New popup without installing
+    anything. Returns "" when the marker is absent or empty."""
+    try:
+        src = EXPERIMENTAL_PATCHER.read_text(encoding="utf-8")
+        m = re.search(r'^ORBIT_WHATSNEW:\s*str\s*=\s*("(?:[^"\\]|\\.)*")\s*$', src, flags=re.M)
+        if m:
+            val = json.loads(m.group(1))
+            if isinstance(val, str):
+                return val
+    except Exception:
+        pass
+    return ""
+
+
 def read_release_channel_file() -> "str | None":
     """Back-compat fallback: the old side-file tag. Only used if the patcher has
     no embedded ORBIT_CHANNEL (it always should, going forward)."""
@@ -148,6 +165,9 @@ def archive_current(verbose: bool = True, build_number: "int | None" = None) -> 
         "claude": claude,
         "file": dest_name,
         "date": datetime.now().strftime("%Y-%m-%d"),
+        # "What's New" notes, mirrored from the patcher's ORBIT_WHATSNEW constant so
+        # the wrapper can show them per-version without installing.
+        "whatsNew": read_patcher_whatsnew(),
     }
 
     patchers = manifest["patchers"]

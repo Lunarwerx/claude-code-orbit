@@ -27,6 +27,7 @@ is just: run this, then commit + push the printed file list.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -39,6 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PATCHER = ROOT / "Claude Code" / "patch_claude_vsix_v147.py"
 CERTIFIED = ROOT / "certified_claude.txt"
 CHANNEL = ROOT / "release_channel.txt"
+WHATS_NEW = ROOT / "whats_new.md"
 
 
 def stamp_channel(channel: str) -> None:
@@ -63,6 +65,36 @@ def stamp_channel(channel: str) -> None:
     print(f"[ship] patcher ORBIT_CHANNEL = {channel} (tag now ships inside the patcher)")
 
 
+def stamp_whatsnew() -> None:
+    """Embed the current release notes (whats_new.md) INTO the patcher's own
+    ORBIT_WHATSNEW constant, JSON-encoded so the value stays a single safe line.
+
+    Ships inside the patcher exactly like ORBIT_CHANNEL: archive_patcher mirrors it
+    into the manifest's per-version `whatsNew` field, and the wrapper shows it in the
+    What's-New popup. A missing/empty whats_new.md just stamps "" (no notes).
+    """
+    notes = ""
+    try:
+        if WHATS_NEW.exists():
+            notes = WHATS_NEW.read_text(encoding="utf-8").strip()
+    except OSError:
+        notes = ""
+    src = PATCHER.read_text(encoding="utf-8")
+    # A function replacement (not a string) so JSON backslashes are never treated
+    # as regex backreferences.
+    new, n = re.subn(
+        r'^ORBIT_WHATSNEW:\s*str\s*=\s*".*"\s*$',
+        lambda _m: "ORBIT_WHATSNEW: str = " + json.dumps(notes),
+        src, count=1, flags=re.M,
+    )
+    if n != 1:
+        print("[ship] WARNING: could not find ORBIT_WHATSNEW in the patcher to stamp "
+              "release notes — What's New will be empty for this version.", file=sys.stderr)
+        return
+    PATCHER.write_text(new, encoding="utf-8")
+    print(f"[ship] patcher ORBIT_WHATSNEW = {len(notes)} char(s) from whats_new.md")
+
+
 def ensure_node_on_path() -> str | None:
     """The patcher only runs its node --check when `node` resolves on PATH."""
     found = shutil.which("node")
@@ -85,6 +117,9 @@ def main() -> int:
     # patcher tag. (release_channel.txt is still written below for back-compat
     # with already-installed wrappers, but the patcher is now the source of truth.)
     stamp_channel(channel)
+    # Embed this release's notes (whats_new.md) into the patcher too, so the
+    # archived copy + manifest carry the "What's New" text the same way the tag does.
+    stamp_whatsnew()
 
     node = ensure_node_on_path()
     if not node:
