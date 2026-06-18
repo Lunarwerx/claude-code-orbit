@@ -92,8 +92,8 @@
     },
     {
       "version": "1.2.95",
-      "channel": "experimental",
-      "build": 159,
+      "channel": "stable",
+      "build": 160,
       "claude": "2.1.181",
       "file": "patch_claude-1.2.95.py",
       "date": "2026-06-18"

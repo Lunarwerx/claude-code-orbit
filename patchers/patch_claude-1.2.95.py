@@ -1268,7 +1268,7 @@ PATCHER_VERSION: str = "dev"
 # (experimental by default; stable only with --stable). Because the tag travels
 # with the patcher, the wrapper reads it back from the webview instead of
 # inferring it from a separate file or defaulting it.
-ORBIT_CHANNEL: str = "experimental"
+ORBIT_CHANNEL: str = "stable"
 PATCHER_CHANNEL: str = ORBIT_CHANNEL
 
 
