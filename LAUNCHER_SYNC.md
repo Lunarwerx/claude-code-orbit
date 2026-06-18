@@ -17,7 +17,7 @@ contract; the changelog at the bottom is the signal that the launcher moved.
 
 | field            | value                                   |
 |------------------|-----------------------------------------|
-| `wrapper`        | **1.2.11**                              |
+| `wrapper`        | **1.2.12**                              |
 | `repo`           | `Lunarwerx/claude-code-orbit` @ `main`  |
 | channel system   | tag lives in the patcher (`ORBIT_CHANNEL` → `ccPatchChannel`), mirrored to the manifest; wrapper reads it. Experimental (red) / Stable (green). No compatibility/preview cruft. |
 
@@ -61,6 +61,14 @@ next build picks it up automatically.
 
 ## Launcher changelog (newest first — this is the "it moved" signal)
 
+- **wrapper 1.2.12** — **Remove Orbit** now opens a real **centered confirmation
+  modal** (dimmed backdrop, pop-in, Cancel / Yes-remove) instead of the inline
+  slide-down inside the gear menu; it dismisses on Cancel, a backdrop click, or
+  Escape, and any state change closes it. **Card-overlap fix:** the status/hero
+  card was `flex:1` (shrinkable), so dragging the panel short shrank it below its
+  content and the hero spilled down onto the recommendation cards (they visibly
+  stacked). It's now `flex:1 0 auto` — it still grows to fill a tall panel but
+  never shrinks past its content, so `.recommended` yields and scrolls instead.
 - **wrapper 1.2.11** — gear-menu polish pass. The settings button is now a real
   **cog** icon (was a sun). All four menu items render as consistent, left-aligned
   buttons (Check for updates · Previous versions · Patches · Remove Orbit). **Remove

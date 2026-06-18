@@ -1434,7 +1434,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   text-transform:uppercase;line-height:1.2}
 .subtitle{margin:6px 0 0;font-size:10px;opacity:.5;text-transform:uppercase;
   letter-spacing:.18em;font-weight:500}
-.card{flex:1;display:flex;flex-direction:column;justify-content:flex-start;
+/* flex:1 0 auto — card GROWS to fill a tall panel (unchanged look) but never
+   SHRINKS below its own content. Without this the card shrank when the panel was
+   dragged short and its content spilled down onto .recommended (the cards visibly
+   overlapped). Now .recommended yields + scrolls instead, so they never stack. */
+.card{flex:1 0 auto;display:flex;flex-direction:column;justify-content:flex-start;
   min-height:0}
 .statePane{display:none;flex-direction:column;animation:fadeIn .25s ease}
 .statePane.active{display:flex}
@@ -1625,8 +1629,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 /* Patches behaves like the other buttons but pushes its chevron to the edge. */
 .patchBtn .lbl{flex:1;text-align:left}
 .patchBtn.open .patchChevron{transform:rotate(90deg)}
-/* Confirm buttons sit side-by-side and read better centered. */
-.removeConfirmBtns .btn{justify-content:center}
 /* "Hide untested updates" — a settings toggle styled to sit among the buttons. */
 .gearToggle{display:flex;align-items:flex-start;gap:9px;width:100%;padding:9px 12px;
   border:1px solid rgba(127,127,127,.16);border-radius:7px;cursor:pointer;
@@ -1637,15 +1639,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .gearToggleText{display:flex;flex-direction:column;gap:1px;font-size:13px;font-weight:500;
   line-height:1.2;text-align:left}
 .gearToggleSub{font-size:10.5px;opacity:.5;font-weight:400}
-/* Remove-Orbit inline confirmation. */
-.removeConfirm{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:7px;
-  background:rgba(229,72,77,.08);border:1px solid rgba(229,72,77,.32)}
-.removeConfirm[hidden]{display:none}
-.removeConfirmText{margin:0;font-size:12px;line-height:1.4;opacity:.9;text-align:left}
-.removeConfirmBtns{display:flex;gap:8px}
-.removeConfirmBtns .btn{flex:1;width:auto;margin-bottom:0}
 .btn.danger{background:rgba(229,72,77,.16);color:#ff6b6b;border-color:rgba(229,72,77,.45)}
 .btn.danger:hover{background:rgba(229,72,77,.28)}
+/* Remove-Orbit confirmation modal — a real centered popup over a dimmed
+   backdrop, replacing the old inline slide-down inside the gear menu. */
+.modalOverlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;
+  justify-content:center;padding:20px;background:rgba(0,0,0,.55);animation:fadeIn .14s ease}
+.modalOverlay[hidden]{display:none}
+.modalBox{width:min(330px,100%);padding:22px 22px 16px;border-radius:12px;text-align:center;
+  background:var(--vscode-menu-background,var(--vscode-editorWidget-background,#252526));
+  border:1px solid var(--vscode-menu-border,rgba(127,127,127,.3));
+  box-shadow:0 16px 44px rgba(0,0,0,.55);animation:modalPop .18s cubic-bezier(.2,.8,.3,1)}
+@keyframes modalPop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+.modalTitle{margin:0 0 9px;font-size:15px;font-weight:600}
+.modalText{margin:0 0 18px;font-size:12.5px;opacity:.68;line-height:1.5}
+.modalBtns{display:flex;gap:10px}
+.modalBtns .btn{flex:1;margin-bottom:0;justify-content:center}
 .recHeader{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   opacity:.5;text-align:center;margin:0 0 14px}
 .recHeaderCompany{margin-top:20px}
@@ -1726,13 +1735,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h8M5.5 4V2.8h3V4M5 4l.4 7.2h3.2L9 4"/></svg>
       Remove Orbit
     </button>
-    <div class="removeConfirm" id="removeConfirm" hidden>
-      <p class="removeConfirmText">Remove Orbit and restore the original, unpatched Claude Code?</p>
-      <div class="removeConfirmBtns">
-        <button class="btn" id="removeCancelBtn" type="button">Cancel</button>
-        <button class="btn danger" id="removeYesBtn" type="button">Yes, remove</button>
-      </div>
-    </div>
   </div>
 
   <div class="card">
@@ -1822,6 +1824,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     <div class="brand">CLAUDE CODE ORBIT${version ? " v" + version : ""}</div>
   </div>
 
+  <!-- Remove-Orbit confirmation modal (centered popup, not an inline slide-down) -->
+  <div class="modalOverlay" id="removeModal" hidden>
+    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="removeModalTitle">
+      <p class="modalTitle" id="removeModalTitle">Remove Orbit?</p>
+      <p class="modalText">This uninstalls Orbit and restores the original, unpatched Claude Code.</p>
+      <div class="modalBtns">
+        <button class="btn" id="removeCancelBtn" type="button">Cancel</button>
+        <button class="btn danger" id="removeYesBtn" type="button">Yes, remove</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script nonce="${nonce}">
@@ -1902,8 +1916,8 @@ function applyIdleState(state, info) {
   disableBtn.disabled = false;
   enableBtn.hidden = false;
   disableBtn.hidden = false;
-  var ccRemoveConfirm = document.getElementById("removeConfirm");
-  if (ccRemoveConfirm) ccRemoveConfirm.hidden = true;
+  var ccRemoveModal = document.getElementById("removeModal");
+  if (ccRemoveModal) ccRemoveModal.hidden = true;   // dismiss the confirm modal on any state change
   checkUpdatesBtn.hidden = true;
   statusEl.hidden = false;
   patchedHero.classList.remove("updateAvailable", "experimental", "stable");
@@ -2126,28 +2140,30 @@ if (orbitGearEl && orbitGearMenuEl) {
   document.addEventListener("click", () => { if (!orbitGearMenuEl.hidden) orbitGearMenuEl.hidden = true; });
 }
 
-// Remove Orbit → confirm first; the uninstall only runs on an explicit "Yes, remove".
-const removeConfirmEl = document.getElementById("removeConfirm");
+// Remove Orbit → a centered confirmation MODAL (not the old inline slide-down).
+// The uninstall only runs on an explicit "Yes, remove"; Cancel, a backdrop click,
+// or Escape all dismiss it.
+const removeModalEl = document.getElementById("removeModal");
 const removeYesBtn = document.getElementById("removeYesBtn");
 const removeCancelBtn = document.getElementById("removeCancelBtn");
-if (disableBtn && removeConfirmEl) {
+function closeRemoveModal() { if (removeModalEl) removeModalEl.hidden = true; }
+if (disableBtn && removeModalEl) {
   disableBtn.addEventListener("click", () => {
     if (disableBtn.disabled) return;
-    disableBtn.hidden = true;
-    removeConfirmEl.hidden = false;
+    if (orbitGearMenuEl) orbitGearMenuEl.hidden = true;  // close the gear menu behind it
+    removeModalEl.hidden = false;
   });
 }
-if (removeCancelBtn && removeConfirmEl) {
-  removeCancelBtn.addEventListener("click", () => {
-    removeConfirmEl.hidden = true;
-    if (disableBtn) disableBtn.hidden = false;
-  });
+if (removeCancelBtn) removeCancelBtn.addEventListener("click", closeRemoveModal);
+if (removeModalEl) {
+  removeModalEl.addEventListener("click", (e) => { if (e.target === removeModalEl) closeRemoveModal(); });
 }
-if (removeYesBtn && removeConfirmEl) {
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && removeModalEl && !removeModalEl.hidden) closeRemoveModal();
+});
+if (removeYesBtn) {
   removeYesBtn.addEventListener("click", () => {
-    removeConfirmEl.hidden = true;
-    if (disableBtn) disableBtn.hidden = false;
-    if (orbitGearMenuEl) orbitGearMenuEl.hidden = true;
+    closeRemoveModal();
     resetWorkingState();
     setPane("working");
     vscode.postMessage({ type: "action", action: "disable" });
