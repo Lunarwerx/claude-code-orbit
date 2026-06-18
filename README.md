@@ -151,12 +151,12 @@ If a Claude Code release breaks one of the patch anchors, the patcher refuses to
 
 ## License
 
-The Orbit wrapper is MIT-licensed. Patches operate on Anthropic's distribution, which remains © Anthropic PBC under its own Commercial Terms of Service. **Orbit does not redistribute the Anthropic VSIX** — it downloads it from the Marketplace on the user's machine at install time.
+The Orbit wrapper is licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** — you're free to copy, use, and modify it for any noncommercial purpose, but you may **not** sell it or use it commercially for profit. Patches operate on Anthropic's distribution, which remains © Anthropic PBC under its own Commercial Terms of Service. **Orbit does not redistribute the Anthropic VSIX** — it downloads it from the Marketplace on the user's machine at install time.
 
 ---
 
 <div align="center">
 
-Built by [**lunawerx**](https://github.com/Lunarwerx/claude-code-orbit) · UI inspiration from Cursor and GitHub Copilot
+Built by [**lunawerx**](https://lunarwerx.com) · [**Source on GitHub**](https://github.com/Lunarwerx/claude-code-orbit) · UI inspiration from Cursor and GitHub Copilot
 
 </div>

@@ -4,7 +4,7 @@
   "description": "Power-up for Claude Code: pin, archive, filter, search, and YOLO mode.",
   "version": "1.2.13",
   "publisher": "LunarWerx",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "icon": "media/claude-code-orbit.png",
   "repository": {
     "type": "git",
