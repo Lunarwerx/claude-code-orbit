@@ -17,7 +17,7 @@ contract; the changelog at the bottom is the signal that the launcher moved.
 
 | field            | value                                   |
 |------------------|-----------------------------------------|
-| `wrapper`        | **1.2.12**                              |
+| `wrapper`        | **1.2.13**                              |
 | `repo`           | `Lunarwerx/claude-code-orbit` @ `main`  |
 | channel system   | tag lives in the patcher (`ORBIT_CHANNEL` → `ccPatchChannel`), mirrored to the manifest; wrapper reads it. Experimental (red) / Stable (green). No compatibility/preview cruft. |
 
@@ -61,6 +61,16 @@ next build picks it up automatically.
 
 ## Launcher changelog (newest first — this is the "it moved" signal)
 
+- **wrapper 1.2.13** — update detection surfaces **automatically** again. The
+  panel now runs a fresh background check on open/refocus (`provider.autoCheck()`,
+  throttled to once a minute) instead of only on the 4-hour poll or a manual
+  "Check for updates" — so a newly-published applicable update shows its "Install
+  newest" button without any click. When **Hide untested updates** is holding
+  releases back, the count is now visible: the manual-check result reads "No stable
+  updates — N untested update(s) hidden" (was a generic "untested updates hidden"),
+  and the patched hero shows a quiet "N untested update(s) hidden · turn off Hide
+  untested updates to install" line (new `hiddenUntestedCount` from `detectState`),
+  so you always know something's waiting.
 - **wrapper 1.2.12** — **Remove Orbit** now opens a real **centered confirmation
   modal** (dimmed backdrop, pop-in, Cancel / Yes-remove) instead of the inline
   slide-down inside the gear menu; it dismisses on Cancel, a backdrop click, or

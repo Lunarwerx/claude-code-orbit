@@ -148,6 +148,10 @@ function activate(context) {
 
   startClaudeZombieReaper(context);
 
+  // Hand the status bar item to the provider so opening the panel can trigger a
+  // fresh check (provider.autoCheck) instead of waiting for the 4-hour poll.
+  provider.statusBarItem = statusBarItem;
+
   // --- Background patcher-version polling ---
   startBackgroundPolling(context, provider, statusBarItem);
 }
@@ -937,6 +941,8 @@ class SidebarProvider {
     this.context = context;
     this.view = null;
     this.busy = false;
+    this.statusBarItem = null;   // set in activate() so autoCheck() can run the poller
+    this._lastAutoCheck = 0;
   }
 
   resolveWebviewView(view) {
@@ -944,8 +950,24 @@ class SidebarProvider {
     view.webview.options = { enableScripts: true, localResourceRoots: [this.context.extensionUri] };
     view.webview.html = this.renderHTML();
     view.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
-    view.onDidChangeVisibility(() => { if (view.visible) this.pushState(); });
+    view.onDidChangeVisibility(() => { if (view.visible) { this.pushState(); this.autoCheck(); } });
     this.pushState();
+    this.autoCheck();
+  }
+
+  // Fire a fresh background update check whenever the panel opens or refocuses, so
+  // a newly-published applicable update surfaces its "Install newest" button
+  // automatically — no manual "Check for updates" needed. checkForPatcherUpdate()
+  // caches the result and calls pushState() when done. Throttled to once a minute
+  // so flipping between views doesn't hammer GitHub.
+  autoCheck() {
+    try {
+      if (!this.statusBarItem || this.busy) return;
+      const now = Date.now();
+      if (now - (this._lastAutoCheck || 0) < 60 * 1000) return;
+      this._lastAutoCheck = now;
+      checkForPatcherUpdate(this.context, this, this.statusBarItem);
+    } catch (_) {}
   }
 
   send(type, payload) {
@@ -1135,10 +1157,20 @@ class SidebarProvider {
             // first-time install.
             if (updateAvailable && installedVersion && releaseChannel !== "stable"
                 && this.context.globalState.get(GS_HIDE_UNTESTED)) {
+              // Count the untested releases newer than the installed patcher that
+              // are being held back, so the message says HOW MANY are waiting (not
+              // just "an update exists"). At least 1 — we already found remoteVersion.
+              var ccHidden = (patcherHistoryFromManifest(getEffectiveManifest(this.context)) || []).filter(function (v) {
+                return v && v.version && v.channel !== "stable" && cmpVer(v.version, installedVersion) > 0;
+              }).length;
+              if (ccHidden < 1) ccHidden = 1;
               updateAvailable = false;
               updateAction = "enable";
-              resultMsg = "You're current — untested updates hidden.";
-              resultSub = "An untested release is available, but “Hide untested updates” is on in the gear menu, so it isn't offered. Turn it off to install untested releases.";
+              resultMsg = "No stable updates — " + ccHidden + " untested update" + (ccHidden === 1 ? "" : "s") + " hidden.";
+              resultSub = (ccHidden === 1
+                ? "An untested release (v" + remoteVersion + ") is available but held back by "
+                : ccHidden + " untested releases (newest v" + remoteVersion + ") are available but held back by ")
+                + "“Hide untested updates” in the gear menu. Turn it off to install " + (ccHidden === 1 ? "it." : "them.");
               resultSubHtml = "";
             }
           } catch (err) {
@@ -1969,7 +2001,15 @@ function applyIdleState(state, info) {
       }
       enableBtn.hidden = true;               // hide entirely — patched hero already says "enabled"
       disableBtn.title = "Uninstall Orbit and restore the original, unpatched Claude Code.";
-      idleHint.innerHTML = '';
+      // Quiet, non-alarming line when "Hide untested updates" is holding releases
+      // back — so the user knows one is waiting without opening Check for updates.
+      var ccHiddenN = (info && info.hiddenUntestedCount) || 0;
+      if (ccHiddenN > 0) {
+        idleHint.textContent = ccHiddenN + " untested update" + (ccHiddenN === 1 ? "" : "s")
+          + " hidden · turn off “Hide untested updates” to install.";
+      } else {
+        idleHint.innerHTML = '';
+      }
     }
   } else if (state === "outdated") {
     patchedHero.hidden = false;
@@ -2614,6 +2654,14 @@ function detectState(context) {
         const manifest = getEffectiveManifest(context);
         const previousPatcher = pickPreviousPatcher(manifest, installedVersion);
         const patcherHistory = patcherHistoryFromManifest(manifest);
+        // How many untested releases newer than the installed patcher are being
+        // held back by "Hide untested updates". Surfaced as a quiet hero line so
+        // the user knows something IS waiting (just hidden), without checking.
+        const hiddenUntestedCount = hideUntested
+          ? patcherHistory.filter(function (v) {
+              return v && v.version && v.channel !== "stable" && cmpVer(v.version, installedVersion) > 0;
+            }).length
+          : 0;
         return {
           state: isOutdated ? "outdated" : "patched",
           installedVersion,
@@ -2628,6 +2676,7 @@ function detectState(context) {
           previousPatcher,
           patcherHistory,
           hideUntested,
+          hiddenUntestedCount,
         };
       }
     }
