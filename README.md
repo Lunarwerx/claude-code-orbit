@@ -157,6 +157,6 @@ The Orbit wrapper is MIT-licensed. Patches operate on Anthropic's distribution, 
 
 <div align="center">
 
-Built by [**lunawerx**](https://github.com/Testingfor333) · UI inspiration from Cursor and GitHub Copilot
+Built by [**lunawerx**](https://github.com/Lunarwerx/claude-code-orbit) · UI inspiration from Cursor and GitHub Copilot
 
 </div>
