@@ -81,6 +81,14 @@
       "claude": "2.1.181",
       "file": "patch_claude-1.2.93.py",
       "date": "2026-06-17"
+    },
+    {
+      "version": "1.2.94",
+      "channel": "stable",
+      "build": 156,
+      "claude": "2.1.181",
+      "file": "patch_claude-1.2.94.py",
+      "date": "2026-06-17"
     }
   ]
 }
