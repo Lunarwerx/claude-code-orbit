@@ -62,9 +62,15 @@ const OTA_RELEASE_CHANNEL_URL = OTA_BASE + "/release_channel.txt";
 const OTA_PATCHERS_BASE = OTA_BASE + "/patchers";
 const OTA_PATCHERS_MANIFEST_URL = OTA_PATCHERS_BASE + "/manifest.json";
 
-// Background polling: how often to check GitHub for a new patcher version.
-const POLL_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
-const STARTUP_DELAY_MS = 30 * 1000;           // wait 30s before first check
+// Background polling: how often to check GitHub for a new patcher version. GitHub raw
+// is CDN-cached and cheap, so a tight interval auto-surfaces a new push within ~a minute
+// WITHOUT the user clicking off/on the panel (the old 4-hour interval is why it felt dead).
+const POLL_INTERVAL_MS = 60 * 1000;           // 60 seconds
+const STARTUP_DELAY_MS = 8 * 1000;            // first check ~8s after the window loads
+// The Marketplace "newest Claude Code" lookup (fetchLatestClaudeVersion) is heavier than
+// the GitHub raw checks, so it is throttled INDEPENDENTLY of the poll — at most once per
+// this interval — so a 60s poll never hammers the VS Marketplace gallery at scale.
+const CLAUDE_FETCH_THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
 
 // globalState keys for cross-session persistence of the remote version and
 // notification deduplication.
@@ -154,6 +160,14 @@ function activate(context) {
 
   // --- Background patcher-version polling ---
   startBackgroundPolling(context, provider, statusBarItem);
+
+  // Also re-check the instant the VS Code window regains focus, so coming back to the
+  // editor after a push surfaces "Install newest" on its own. autoCheck() is throttled to
+  // once a minute, so refocus spam can't hammer GitHub. This + the 60s poll above means an
+  // update appears without the user toggling the panel off and back on.
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState((e) => { if (e && e.focused) provider.autoCheck(); })
+  );
 }
 
 function getReaperConfig() {
@@ -830,7 +844,15 @@ async function checkForPatcherUpdate(context, provider, statusBarItem) {
     // even when our (version-agnostic) patcher itself hasn't changed. Refresh the
     // sidebar when the value actually changes so the hero updates without a reload.
     const prevLatestClaude = context.globalState.get(GS_LATEST_CLAUDE_VERSION);
-    const latestClaude = await fetchLatestClaudeVersion();
+    // Throttle the heavier Marketplace lookup independently of the (now 60s) poll: refetch
+    // the newest Claude Code at most once per CLAUDE_FETCH_THROTTLE_MS, else reuse the cache.
+    let latestClaude;
+    if (Date.now() - (globalThis.__ccOrbitLastClaudeFetch || 0) > CLAUDE_FETCH_THROTTLE_MS) {
+      globalThis.__ccOrbitLastClaudeFetch = Date.now();
+      latestClaude = await fetchLatestClaudeVersion();
+    } else {
+      latestClaude = context.globalState.get(GS_LATEST_CLAUDE_VERSION) || null;
+    }
     if (latestClaude) {
       await context.globalState.update(GS_LATEST_CLAUDE_VERSION, latestClaude);
       if (latestClaude !== prevLatestClaude && provider && !provider.busy) provider.pushState();
