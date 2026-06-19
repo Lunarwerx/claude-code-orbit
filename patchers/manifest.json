@@ -132,6 +132,15 @@
       "file": "patch_claude-1.2.99.py",
       "date": "2026-06-19",
       "whatsNew": "**Gear menu polish.** \"Join the beta program\" now has a distinct accent highlight so it stands out from the other items, and \"Remove Orbit\" is now red \u2014 a clear signal that it's the destructive option.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
+    },
+    {
+      "version": "1.2.100",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.100.py",
+      "date": "2026-06-19",
+      "whatsNew": "**Auto-continue now actually resumes after a usage limit.** Before, if you hit your usage limit at the same moment the server showed a temporary \"Server is temporarily limiting requests (not your usage limit)\" message, auto-continue trusted that \"not your usage limit\" wording, fast-retried a few times into the wall, and then went silent \u2014 so the chat never came back. Now, when your live usage meter confirms you're actually maxed out, it ignores that wording, waits for your limit to reset, and then resumes \u2014 which is what you wanted all along. Pure temporary server hiccups (with no real limit) still get the quick retry.\n\n**Debug breadcrumb.** Each auto-continue decision is now recorded at `ccPatchContDbg` (per chat) so a stuck chat can be diagnosed instead of guessed at."
     }
   ]
 }
