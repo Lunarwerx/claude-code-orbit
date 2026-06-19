@@ -177,6 +177,15 @@
       "file": "patch_claude-1.2.104.py",
       "date": "2026-06-19",
       "whatsNew": "**Nicer confirmation dialogs.** The in-chat pop-ups (Goal enforcement, Switch account, Compact, and the rest) got a Material-style refresh to match the beta-program dialog you liked \u2014 a rounder surface, a softer hero icon, a lighter headline, more breathing room, and pill-shaped buttons with a clean filled primary. Same wording as before, much better feel."
+    },
+    {
+      "version": "1.2.105",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.105.py",
+      "date": "2026-06-19",
+      "whatsNew": "**Goal enforcement: smarter stop check.** Tuned the \"is it done?\" rule so a chat correctly stops when the ball is in your court \u2014 a handoff, a question, or \"now you go test it\" \u2014 instead of treating something *you* still need to do as unfinished work for Claude (which could trap a chat in a loop). It still keeps going whenever there's real, do-it-now work left. Caught from a live run where it over-eagerly kept going on a handoff \u2014 so the autonomous loop itself is confirmed working."
     }
   ]
 }
