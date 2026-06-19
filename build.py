@@ -19,23 +19,32 @@ ad-hoc zipping). Every run:
   * copies the new artifact to latest/claude-code-orbit.vsix (the "newest build"
     pointer that gets shipped on push).
 
-VERSIONING — every build AUTO-ITERATES the wrapper version (owner's standing
-choice, so hundreds of local builds never collide on a version VS Code would
-ignore):
-  * It bumps Claude Code Orbit/package.json's PATCH component by 1 on every run
-    (…2000 -> 2001 -> 2002 …). Each VSIX therefore carries a version VS Code
-    treats as new, so reinstalling always takes effect. The bump happens ONCE,
-    up front; bundling never touches it again (guarded at the end).
+VERSIONING — a build AUTO-ITERATES the wrapper version ONLY when the wrapper code
+actually changed (so local rebuilds never collide on a version VS Code would
+ignore, but a patcher-only release does NOT mint a cosmetic wrapper version):
+  * Before bumping, it diffs the wrapper payload (extension.js / package.json /
+    media) byte-for-byte against the last shipped latest/claude-code-orbit.vsix
+    (see wrapper_payload_changed). If NOTHING changed, the whole wrapper half is
+    SKIPPED — no version bump, no VSIX, no wrapper_version.txt / wrapper_build.txt
+    / latest copy / BUILD_LOG line. Only the patcher is archived. This is what
+    stops a patcher-only release from producing a PHANTOM "wrapper update" (a
+    higher version number over byte-identical code) that the sidebar updater would
+    offer, costing the user a pointless restart.
+  * When the wrapper DID change, it bumps Claude Code Orbit/package.json's PATCH
+    component by 1 (…2000 -> 2001 -> 2002 …) so the VSIX is a version VS Code
+    treats as new. The bump happens ONCE, up front; bundling never touches it
+    again (guarded at the end). An explicit --out always builds (dev escape hatch).
   * Only the WRAPPER/package version iterates here. It does NOT bump
     patcher_version.txt or the certified Claude target
     (certified_claude.txt) — it only READS them. That certified target is the one
     human-set value that survives ("the Claude Code version we've verified the
     patcher against"); the archiver stamps each snapshot with it.
-  * It DOES write patchers/ (the remote rollback snapshot of the current
-    version) so users can roll back to it after the commit is pushed.
-The build NUMBER (builds/…-build-<N>.vsix, wrapper_build.txt) also increments on
-its own — it is the artifact counter; the package version is the VS-Code-facing
-version. Both now climb together, one per build.
+  * It ALWAYS writes patchers/ (the remote rollback snapshot of the current
+    patcher) so users can roll back to it after the commit is pushed — that half
+    runs on every build, wrapper change or not.
+The build NUMBER (builds/…-build-<N>.vsix, wrapper_build.txt) increments only on a
+real wrapper build — it is the wrapper-artifact counter; the package version is the
+VS-Code-facing version. Both climb together, one per wrapper change.
 """
 from __future__ import annotations
 
@@ -123,6 +132,46 @@ def load_manifest() -> dict:
     return json.loads((WRAPPER_DIR / "package.json").read_text(encoding="utf-8"))
 
 
+def wrapper_payload_changed() -> bool:
+    """True if the wrapper's installed payload differs from what's already shipped
+    in latest/claude-code-orbit.vsix.
+
+    Compares every file the VSIX actually carries (extension.js, package.json, the
+    media icons) BYTE-FOR-BYTE against the matching `extension/<path>` entry inside
+    the last shipped VSIX. The comparison runs BEFORE the version bump, so the
+    package.json being checked still holds the previously-shipped version — meaning
+    a "version-only" difference reads as UNCHANGED. Any real edit (a UI change in
+    extension.js, a new command in package.json, a new icon) reads as CHANGED.
+
+    Why this gate exists: build.py used to bump the wrapper version on every build,
+    even a patcher-only release where extension.js never changed. The sidebar
+    updater offers a wrapper update whenever the remote version is higher — so those
+    cosmetic bumps produced a PHANTOM "wrapper update" that cost the user a restart
+    for byte-identical code, then surfaced the real patcher update right after (the
+    "update, restart, oh here's another update" treadmill). Skipping the wrapper
+    bump/rebuild when nothing changed kills the phantom at the source.
+
+    Returns True (i.e. "build the wrapper") whenever the latest VSIX is missing or
+    unreadable, so uncertainty never silently skips a needed build."""
+    if not LATEST_VSIX.exists():
+        return True
+    try:
+        with zipfile.ZipFile(LATEST_VSIX) as z:
+            shipped = set(z.namelist())
+            for rel in INCLUDED_PATHS:
+                src = WRAPPER_DIR / rel
+                arc = f"extension/{rel.as_posix()}"
+                if not src.exists():
+                    return True            # a tracked wrapper file vanished -> changed
+                if arc not in shipped:
+                    return True            # file not in the last VSIX -> changed
+                if z.read(arc) != src.read_bytes():
+                    return True            # content differs -> changed
+        return False
+    except Exception:
+        return True                        # unreadable VSIX -> rebuild to be safe
+
+
 def bump_package_version() -> str:
     """Auto-iterate the wrapper version on EVERY build (owner's standing choice):
     increment the patch component so each VSIX is a version VS Code treats as new
@@ -170,22 +219,19 @@ def newest_registry_entry():
 
 
 def build(out: Path | None = None) -> Path:
-    # Auto-iterate the wrapper version FIRST, so the bundled manifest + every
-    # downstream write (VSIX, wrapper_version.txt, BUILD_LOG) carries the new number.
-    new_version = bump_package_version()
-    print(f"Wrapper version auto-bumped -> {new_version}")
-    manifest = load_manifest()
-    build_number = None
-    if out is None:
-        build_number = next_build_number()
-        out = BUILDS_DIR / f"{EXT_NAME}-build-{build_number}.vsix"
-    if out.exists():
-        out.unlink()
+    explicit_out = out is not None
+    # A release is USUALLY a patcher change. Only bump + re-ship the wrapper when its
+    # installed payload (extension.js / package.json / media) actually differs from
+    # what's already in latest/claude-code-orbit.vsix — otherwise the version bumps
+    # with no functional change and the sidebar updater offers a PHANTOM wrapper
+    # update (see wrapper_payload_changed). An explicit --out always builds.
+    wrapper_changed = explicit_out or wrapper_payload_changed()
+    build_number = next_build_number() if (wrapper_changed and not explicit_out) else None
 
-    # Snapshot the current patcher into the rollback registry FIRST, so "newest
-    # archived version" below already includes what we're about to ship.
-    # Idempotent; non-fatal. Every build saving its version to the registry is
-    # what makes "just bump and push, roll back if it breaks" work.
+    # Snapshot the current patcher into the rollback registry on EVERY build (wrapper
+    # changed or not) — the registry must always carry the newest patcher. Idempotent;
+    # we refuse to proceed without it. Done before the wrapper bump because the
+    # archiver reads patcher_version.txt / certified_claude.txt, never package.json.
     try:
         sys.path.insert(0, str(ROOT / "tools"))
         import archive_patcher
@@ -196,6 +242,35 @@ def build(out: Path | None = None) -> Path:
     patcher_version = archive_info["version"]
     certified_claude = archive_info["claude"]
     source_label = f"registry patchers/{archive_info['file']}"
+
+    if not wrapper_changed:
+        # Patcher-only release: leave EVERY wrapper artifact untouched — no version
+        # bump, no VSIX, no wrapper_version.txt / wrapper_build.txt / latest copy /
+        # BUILD_LOG line. This is the fix for the phantom "wrapper update + restart"
+        # treadmill: the remote wrapper version only advances when the wrapper code
+        # truly changed, so the updater never offers a cosmetic-only update.
+        wv = load_manifest().get("version")
+        print("Wrapper payload unchanged vs latest/claude-code-orbit.vsix —")
+        print("  skipping wrapper rebuild + version bump (no phantom update emitted).")
+        print(f"  wrapper stays:     v{wv}  ({WRAPPER_VERSION_SRC.name} untouched)")
+        print(f"  archived: patcher v{archive_info['version']} ({archive_info['_action']}) -> "
+              f"patchers/{archive_info['file']}  [registry: {archive_info['_count']} version(s)]")
+        print("\n" + "=" * 56)
+        print("  PATCHER-ONLY RELEASE COMPLETE — wrapper unchanged")
+        print(f"     registry: certified Claude {certified_claude} / patcher {patcher_version}")
+        print("=" * 56)
+        return LATEST_VSIX
+
+    # --- wrapper changed (or explicit --out): full wrapper build ---------------
+    # Auto-iterate the wrapper version, so the bundled manifest + every downstream
+    # write (VSIX, wrapper_version.txt, BUILD_LOG) carries the new number.
+    new_version = bump_package_version()
+    print(f"Wrapper version auto-bumped -> {new_version}")
+    manifest = load_manifest()
+    if out is None:
+        out = BUILDS_DIR / f"{EXT_NAME}-build-{build_number}.vsix"
+    if out.exists():
+        out.unlink()
 
     print(f"Bundling Claude Code Orbit -> {out.name}")
     print(f"  patcher registry:  {source_label}")
