@@ -141,6 +141,15 @@
       "file": "patch_claude-1.2.100.py",
       "date": "2026-06-19",
       "whatsNew": "**Auto-continue now actually resumes after a usage limit.** Before, if you hit your usage limit at the same moment the server showed a temporary \"Server is temporarily limiting requests (not your usage limit)\" message, auto-continue trusted that \"not your usage limit\" wording, fast-retried a few times into the wall, and then went silent \u2014 so the chat never came back. Now, when your live usage meter confirms you're actually maxed out, it ignores that wording, waits for your limit to reset, and then resumes \u2014 which is what you wanted all along. Pure temporary server hiccups (with no real limit) still get the quick retry.\n\n**Debug breadcrumb.** Each auto-continue decision is now recorded at `ccPatchContDbg` (per chat) so a stuck chat can be diagnosed instead of guessed at."
+    },
+    {
+      "version": "1.2.101",
+      "channel": "stable",
+      "build": 178,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.101.py",
+      "date": "2026-06-19",
+      "whatsNew": "**This stable release rolls up everything from the recent betas \u2014 here's what's new.**\n\n**Auto-continue is now dependable.** Turn it on from the gear menu and Orbit sends \"keep going\" for you when a chat stops. This release fixes every case where it used to get stuck:\n- It resumes the moment your **5-hour or weekly usage limit resets** \u2014 previously a limited chat could stay parked even after the limit lifted.\n- It **survives a reload or window restart** \u2014 a chat that stopped on an error or a usage limit gets picked back up on its own (non-archived chats only, and only from a real stop, never a chat that merely mentioned an error).\n- It handles the **tricky double case**: when the server flashes a temporary \"rate limited (not your usage limit)\" message at the same moment you've genuinely hit your limit, it now trusts your live usage meter \u2014 waits for the reset and resumes \u2014 instead of retrying into a wall and going silent. Pure temporary server hiccups still get a quick retry.\n\n**Beta program + patch notes.** Updates now default to **stable-only**. Want early builds? Opt in via the gear menu's **\"Join the beta program.\"** Every update ships its own patch notes \u2014 read them anytime from the gear's **\"Patch notes,\"** or the **\"?\"** next to any entry under Previous versions.\n\n**Gear menu polish.** \"Join the beta program\" is now clearly highlighted, and \"Remove Orbit\" is red so the destructive option is unmistakable.\n\n**Smoother updates.** Updating no longer nags you with an extra \"wrapper update + restart\" when only the patch tool changed \u2014 you get one update, not a restart treadmill."
     }
   ]
 }
