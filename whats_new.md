@@ -1,5 +1,5 @@
-**Auto-continue now survives a reload.** If a chat stops on an error or a usage limit, Orbit remembers it — so even after a window restart or a developer reload (which wipes the live error signal), auto-continue picks the chat back up and continues it on its own. It only ever does this for **non-archived** chats, and only from a **real** stop (a genuine error or the usage-limit banner) — never a chat that merely *mentioned* an error in its text.
+**Auto-continue keeps retrying transient rate-limits.** When a turn fails with a server "temporarily limiting requests (not your usage limit)" hiccup, Orbit now recognizes it even after it scrolls into the chat as the last message (before, it only saw the live banner). And transient retries now use a short, steady ~8–20s cadence instead of an exponential back-off that ballooned to two minutes — so a brief server limit no longer leaves the chat stalled.
 
-**Auto-continue resumes after a usage limit resets** (recent): fixed a deadlock where a chat stopped by your 5-hour limit never auto-resumed even after the limit lifted, because "resume" waited on a banner that only clears once a turn starts.
+**Auto-continue survives a reload** (recent): errored or usage-limited chats are remembered and continued after a window restart or developer reload — non-archived only.
 
-**Per-project effort** (recent): the Default effort slider remembers its setting per project, instead of one machine-wide value.
+**Auto-continue resumes after a usage limit resets** (recent): fixed the deadlock that left 5-hour-limited chats stuck even after the limit lifted.

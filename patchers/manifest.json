@@ -123,6 +123,15 @@
       "file": "patch_claude-1.2.98.py",
       "date": "2026-06-18",
       "whatsNew": "**Auto-continue now survives a reload.** If a chat stops on an error or a usage limit, Orbit remembers it \u2014 so even after a window restart or a developer reload (which wipes the live error signal), auto-continue picks the chat back up and continues it on its own. It only ever does this for **non-archived** chats, and only from a **real** stop (a genuine error or the usage-limit banner) \u2014 never a chat that merely *mentioned* an error in its text.\n\n**Auto-continue resumes after a usage limit resets** (recent): fixed a deadlock where a chat stopped by your 5-hour limit never auto-resumed even after the limit lifted, because \"resume\" waited on a banner that only clears once a turn starts.\n\n**Per-project effort** (recent): the Default effort slider remembers its setting per project, instead of one machine-wide value."
+    },
+    {
+      "version": "1.2.99",
+      "channel": "experimental",
+      "build": 165,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.99.py",
+      "date": "2026-06-18",
+      "whatsNew": "**Auto-continue keeps retrying transient rate-limits.** When a turn fails with a server \"temporarily limiting requests (not your usage limit)\" hiccup, Orbit now recognizes it even after it scrolls into the chat as the last message (before, it only saw the live banner). And transient retries now use a short, steady ~8\u201320s cadence instead of an exponential back-off that ballooned to two minutes \u2014 so a brief server limit no longer leaves the chat stalled.\n\n**Auto-continue survives a reload** (recent): errored or usage-limited chats are remembered and continued after a window restart or developer reload \u2014 non-archived only.\n\n**Auto-continue resumes after a usage limit resets** (recent): fixed the deadlock that left 5-hour-limited chats stuck even after the limit lifted."
     }
   ]
 }
