@@ -19,22 +19,29 @@ ad-hoc zipping). Every run:
   * copies the new artifact to latest/claude-code-orbit.vsix (the "newest build"
     pointer that gets shipped on push).
 
-INVARIANTS — a plain build NEVER changes a version NUMBER:
-  * It does NOT touch Claude Code Orbit/package.json (that bumps only at push,
-    only when the owner says so).
-  * It does NOT bump patcher_version.txt or the certified Claude target
+VERSIONING — every build AUTO-ITERATES the wrapper version (owner's standing
+choice, so hundreds of local builds never collide on a version VS Code would
+ignore):
+  * It bumps Claude Code Orbit/package.json's PATCH component by 1 on every run
+    (…2000 -> 2001 -> 2002 …). Each VSIX therefore carries a version VS Code
+    treats as new, so reinstalling always takes effect. The bump happens ONCE,
+    up front; bundling never touches it again (guarded at the end).
+  * Only the WRAPPER/package version iterates here. It does NOT bump
+    patcher_version.txt or the certified Claude target
     (certified_claude.txt) — it only READS them. That certified target is the one
     human-set value that survives ("the Claude Code version we've verified the
     patcher against"); the archiver stamps each snapshot with it.
   * It DOES write patchers/ (the remote rollback snapshot of the current
     version) so users can roll back to it after the commit is pushed.
-The build NUMBER is independent of the package.json version and increments on
-its own.
+The build NUMBER (builds/…-build-<N>.vsix, wrapper_build.txt) also increments on
+its own — it is the artifact counter; the package version is the VS-Code-facing
+version. Both now climb together, one per build.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 import zipfile
@@ -116,6 +123,24 @@ def load_manifest() -> dict:
     return json.loads((WRAPPER_DIR / "package.json").read_text(encoding="utf-8"))
 
 
+def bump_package_version() -> str:
+    """Auto-iterate the wrapper version on EVERY build (owner's standing choice):
+    increment the patch component so each VSIX is a version VS Code treats as new
+    (…2000 -> 2001 -> 2002 …) — letting the owner rebuild hundreds of times locally
+    without the "same version, VS Code won't pick it up" trap. Only the wrapper/
+    package version iterates; the patcher version is separate. Regex-replaces just
+    the digits so package.json formatting/key-order is preserved."""
+    pkg_path = WRAPPER_DIR / "package.json"
+    text = pkg_path.read_text(encoding="utf-8")
+    m = re.search(r'("version"\s*:\s*")(\d+)\.(\d+)\.(\d+)(")', text)
+    if not m:
+        raise SystemExit("bump_package_version: no X.Y.Z version found in package.json")
+    new_v = f"{m.group(2)}.{m.group(3)}.{int(m.group(4)) + 1}"
+    pkg_path.write_text(text[: m.start()] + m.group(1) + new_v + m.group(5) + text[m.end():],
+                        encoding="utf-8")
+    return new_v
+
+
 def get_patcher_version(manifest: dict) -> str:
     """Use package.json's version as the patcher version. Single source of
     truth — every Marketplace upload requires a version bump anyway, so the
@@ -145,6 +170,10 @@ def newest_registry_entry():
 
 
 def build(out: Path | None = None) -> Path:
+    # Auto-iterate the wrapper version FIRST, so the bundled manifest + every
+    # downstream write (VSIX, wrapper_version.txt, BUILD_LOG) carries the new number.
+    new_version = bump_package_version()
+    print(f"Wrapper version auto-bumped -> {new_version}")
     manifest = load_manifest()
     build_number = None
     if out is None:
@@ -244,14 +273,14 @@ def build(out: Path | None = None) -> Path:
                 encoding="utf-8",
             )
 
-    # HARD GUARD: a build must NEVER change package.json's version. We only ever
-    # READ it. Re-read from disk and fail loudly if it somehow differs — proof the
-    # build can't silently bump the Marketplace number.
+    # GUARD: bundling must not change the version BEYOND the single intentional
+    # bump done up front (bump_package_version). Re-read and confirm it still
+    # matches what we bundled — proof nothing downstream silently re-bumped it.
     after_version = load_manifest().get("version")
     if after_version != manifest["version"]:
         raise SystemExit(
-            f"ABORT: build changed package.json version {manifest['version']} -> {after_version}. "
-            "Builds must never touch package.json; only an explicit release bumps it."
+            f"ABORT: version changed during bundling {manifest['version']} -> {after_version}. "
+            "Only the upfront auto-bump may change package.json; bundling must not."
         )
 
     # Report the archive snapshot taken at the top of the build (the thing that
@@ -267,7 +296,7 @@ def build(out: Path | None = None) -> Path:
     print(f"  BUILD {bn} COMPLETE")
     print(f"     file:     {out.name}")
     print(f"     registry: certified Claude {certified_claude} / patcher {patcher_version}")
-    print(f"     pkg ver:  {manifest['version']}  (verified UNCHANGED by build)")
+    print(f"     pkg ver:  {manifest['version']}  (auto-bumped; bundling verified clean)")
     print("=" * 56)
     return out
 

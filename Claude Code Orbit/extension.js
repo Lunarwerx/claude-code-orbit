@@ -1459,9 +1459,9 @@ class SidebarProvider {
     const recExtHtml = recs.filter(r => !r.company && (r.id || "").toLowerCase() !== selfId).map(renderRec).join("");
     const disabledPatches = this.context.globalState.get(GS_DISABLED_PATCHES, []) || [];
     const patchTogglesHtml = TOGGLEABLE_PATCHES.map(p => `
-        <label class="patchRow">
-          <input type="checkbox" class="patchChk" data-patch-id="${p.id}"${disabledPatches.includes(p.id) ? "" : " checked"}/>
-          <span class="patchInfo"><span class="patchName">${p.label}</span><span class="patchDesc">${p.desc}</span></span>
+        <label class="patchOptRow">
+          <span class="patchOptInfo"><span class="patchOptName">${p.label}</span><span class="patchOptDesc" id="patchDesc-${p.id}">${p.desc}</span></span>
+          <span class="switch"><input type="checkbox" role="switch" class="patchChk" data-patch-id="${p.id}" aria-label="${p.label}" aria-describedby="patchDesc-${p.id}"${disabledPatches.includes(p.id) ? "" : " checked"}/><span class="switchTrack"></span></span>
         </label>`).join("");
     const recCompanyHtml = recs.filter(r => r.company).map(renderRec).join("");
     let version = "";
@@ -1570,6 +1570,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .patchedMeta[hidden]{display:none}
 /* Green "✓ Latest" badge — confirms you're on the newest Claude Code. */
 .latestBadge{color:#3fb950;font-weight:600;opacity:.95}
+.stableWord{color:#3fb950;font-weight:600}
 /* Release-channel tag shown on an available update: red = experimental (the
    default — "maybe I won't update"), green = stable ("cool, I'll update"). */
 .channelTag{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;
@@ -1636,25 +1637,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   border:1px solid rgba(127,127,127,.16);background:rgba(127,127,127,.05)}
 .verItem.current{border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.07)}
 .verItemInfo{flex:1;min-width:0}
-.verItemVer{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.verItemVer{font-size:12.5px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .verItemBadge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:#3fb950;border:1px solid rgba(63,185,80,.5);border-radius:4px;padding:1px 5px}
-.verItemMeta{font-size:10.5px;opacity:.55;margin-top:2px;
+.verItemClaude{font-size:11px;font-weight:400;opacity:.55;
   font-variant-numeric:tabular-nums}
 .verItemInstall{flex:0 0 auto;border:1px solid var(--vscode-button-background,#3b82f6);
   background:transparent;color:var(--vscode-foreground);border-radius:6px;
+  min-width:88px;text-align:center;
   padding:5px 12px;font-size:11.5px;cursor:pointer;font-family:inherit;
   transition:background .12s,opacity .12s}
 .verItemInstall:hover{background:var(--vscode-button-background,#3b82f6);
   color:var(--vscode-button-foreground,#fff)}
 .verItemInstall[disabled]{opacity:.4;cursor:default;border-color:transparent}
 .verEmpty{font-size:12px;opacity:.55;text-align:center;padding:18px 4px}
-.statePane[data-pane="versions"]{position:relative}
-.verBackTop{position:fixed;top:8px;left:8px;z-index:50;
-  background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.28);
-  color:var(--vscode-foreground);opacity:1;font-size:12px;font-weight:500;cursor:pointer;
-  font-family:inherit;padding:5px 11px;border-radius:6px;transition:background .12s}
-.verBackTop:hover{background:rgba(127,127,127,.32)}
+/* Back lives in the page flow at the top of the versions pane (was a floating
+   position:fixed button that overlapped the hero and looked detached). */
+.verBack{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;
+  margin:0 0 12px;padding:6px 12px 6px 8px;border-radius:8px;
+  background:transparent;border:1px solid transparent;color:var(--vscode-foreground);
+  opacity:.7;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;
+  transition:background .12s ease,opacity .12s ease}
+.verBack:hover{opacity:1;background:rgba(127,127,127,.13)}
+.verBack svg{width:15px;height:15px;flex-shrink:0}
 .errorSub{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;opacity:.85;
   background:rgba(239,68,68,.06);padding:9px 11px;border-radius:5px;text-align:left;
   max-height:140px;overflow:auto;border-left:2px solid rgba(239,68,68,.4)}
@@ -1670,6 +1675,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   color:var(--vscode-foreground);opacity:.85;transition:opacity .12s,background .12s}
 .orbitGear:hover{opacity:1;background:rgba(127,127,127,.22)}
 .orbitGear[hidden]{display:none}
+/* Refresh button — a standalone "Check for updates" sitting just left of the gear. */
+.orbitRefresh{position:fixed;top:10px;right:48px;z-index:40;width:30px;height:30px;padding:0;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.22);border-radius:7px;
+  color:var(--vscode-foreground);opacity:.85;transition:opacity .12s,background .12s}
+.orbitRefresh:hover{opacity:1;background:rgba(127,127,127,.22)}
+.orbitRefresh:focus-visible{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:2px}
+.orbitRefresh[hidden]{display:none}
+.orbitRefresh svg{width:16px;height:16px}
 .orbitGearMenu{position:fixed;top:46px;right:10px;z-index:39;width:240px;max-height:78vh;
   overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:12px;
   background:var(--vscode-menu-background,var(--vscode-editorWidget-background,#252526));
@@ -1680,10 +1694,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 /* Inside the gear menu every row is the same .btn block, left-aligned like a
    settings menu; the menu's own gap handles spacing, so drop the stacking margin. */
 .orbitGearMenu .btn{margin-bottom:0;justify-content:flex-start;text-align:left}
-.orbitGearMenu .patchPickerBody{padding:2px 2px 0}
-/* Patches behaves like the other buttons but pushes its chevron to the edge. */
-.patchBtn .lbl{flex:1;text-align:left}
-.patchBtn.open .patchChevron{transform:rotate(90deg)}
 /* "Hide untested updates" — a settings toggle styled to sit among the buttons. */
 .gearToggle{display:flex;align-items:flex-start;gap:9px;width:100%;padding:9px 12px;
   border:1px solid rgba(127,127,127,.16);border-radius:7px;cursor:pointer;
@@ -1718,22 +1728,56 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .modalText{margin:0 0 18px;font-size:12.5px;opacity:.68;line-height:1.5}
 .modalBtns{display:flex;gap:10px}
 .modalBtns .btn{flex:1;margin-bottom:0;justify-content:center}
-/* Patch-notes popup — scrollable release notes (gear "Patch notes" + the "?" on each version row). */
-.pnBox{width:min(420px,100%);max-height:76vh;padding:0;text-align:left;display:flex;flex-direction:column;overflow:hidden}
-.pnHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 11px;flex-shrink:0;border-bottom:1px solid var(--vscode-menu-border,rgba(127,127,127,.22))}
-.pnHead .modalTitle{margin:0}
-.pnClose{background:none;border:none;color:inherit;opacity:.55;font-size:20px;line-height:1;cursor:pointer;padding:0 4px;flex-shrink:0}
-.pnClose:hover{opacity:1}
-.pnBody{overflow-y:auto;padding:13px 16px 16px;white-space:pre-wrap;font-size:12px;line-height:1.55;word-break:break-word;text-align:left}
-.pnBody .pnEmpty{opacity:.5;font-style:italic}
-.verItemHelp{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--vscode-menu-border,rgba(127,127,127,.35));background:transparent;color:inherit;opacity:.55;font-size:12px;line-height:1;cursor:pointer;padding:0}
+/* Content popups (Patch notes + Patches) — a rounded "sheet" with a header bar
+   and a scrollable body. Shared shell; each fills its own body below. */
+.pnBox,.patchesBox{width:min(420px,100%);max-height:80vh;padding:0;text-align:left;
+  display:flex;flex-direction:column;overflow:hidden;border-radius:18px}
+.pnHead,.sheetHead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:17px 18px 13px;flex-shrink:0;
+  border-bottom:1px solid var(--vscode-menu-border,rgba(127,127,127,.16))}
+.pnHead .modalTitle,.sheetHead .modalTitle{margin:0;font-size:16px;font-weight:600}
+.pnClose,.sheetClose{flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:transparent;border:none;
+  color:inherit;opacity:.5;font-size:18px;line-height:1;cursor:pointer;padding:0;
+  transition:background .12s,opacity .12s}
+.pnClose:hover,.sheetClose:hover{opacity:1;background:rgba(127,127,127,.16)}
+.pnClose:focus-visible,.sheetClose:focus-visible,.verBack:focus-visible,.verItemHelp:focus-visible,.modalBtns .btn:focus-visible{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:2px}
+/* Patch-notes body — rendered from light markdown (paragraphs, **bold**, bullets). */
+.pnBody{overflow-y:auto;padding:14px 18px 20px;font-size:13px;line-height:1.55;
+  word-break:break-word;text-align:left;
+  color:var(--vscode-descriptionForeground,var(--vscode-foreground))}
+.pnBody p{margin:0 0 11px}
+.pnBody p:last-child{margin:0}
+.pnBody strong{font-weight:600;color:var(--vscode-foreground)}
+.pnBody ul{margin:2px 0 12px;padding-left:18px}
+.pnBody li{margin:0 0 5px}
+.pnBody code{font-family:ui-monospace,Consolas,monospace;font-size:12px;
+  background:rgba(127,127,127,.16);padding:1px 5px;border-radius:5px}
+.pnBody .pnEmpty{opacity:.55;font-style:italic}
+.verItemHelp{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--vscode-menu-border,rgba(127,127,127,.35));background:transparent;color:inherit;opacity:.7;font-size:12px;line-height:1;cursor:pointer;padding:0}
 .verItemHelp:hover{opacity:1;background:rgba(127,127,127,.14)}
-/* Beta popup — smaller, scannable, higher-contrast than the generic modal text. */
-.betaTitle{font-size:14px;margin-bottom:11px}
-.betaText{font-size:11px;line-height:1.6;text-align:left;opacity:.9;margin:0 0 16px}
-.betaText p{margin:0 0 8px}
+/* Beta popup — Google/Material-style dialog: large 28px-rounded surface, tonal
+   circular hero icon, centered headline + supporting text, and a right-aligned
+   action row of pill buttons (low-emphasis text "Cancel" + filled primary). */
+.betaBox{width:min(340px,100%);padding:24px 22px 16px;border-radius:28px;text-align:center}
+.betaIcon{width:56px;height:56px;margin:2px auto 16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(167,139,250,.16);color:#c4b5fd}
+.betaIcon svg{width:26px;height:26px}
+.betaTitle{font-size:20px;font-weight:500;margin:0 0 12px;letter-spacing:0;line-height:1.25}
+.betaText{font-size:13.5px;line-height:1.5;text-align:center;
+  color:var(--vscode-descriptionForeground,var(--vscode-foreground));margin:0 0 22px}
+.betaText p{margin:0 0 10px}
 .betaText p:last-child{margin:0}
-.betaText b{font-weight:600}
+.betaText b{font-weight:600;color:var(--vscode-foreground)}
+/* Material action row — right-aligned, pill-shaped: text "Cancel" + filled primary. */
+.betaBox .modalBtns{justify-content:flex-end;gap:8px}
+.betaBox .modalBtns .btn{flex:0 0 auto;width:auto;min-width:0;margin:0;
+  padding:9px 18px;border-radius:999px;font-size:13px;font-weight:600}
+.betaBox .modalBtns #betaCancelBtn{background:transparent;border-color:transparent;color:#c4b5fd}
+.betaBox .modalBtns #betaCancelBtn:hover{background:rgba(167,139,250,.14)}
+.betaBox .modalBtns .btn.primary{background:#7c3aed;color:#fff;border-color:transparent}
+.betaBox .modalBtns .btn.primary:hover{background:#6d28d9}
 .recHeader{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   opacity:.5;text-align:center;margin:0 0 14px}
 .recHeaderCompany{margin-top:20px}
@@ -1744,14 +1788,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
   font:inherit;transition:background .12s ease,border-color .12s ease,transform .08s ease}
 .recItem:hover{background:rgba(127,127,127,.12);border-color:rgba(127,127,127,.28)}
 .recItem:active{transform:translateY(1px)}
-.patchChevron{transition:transform .15s ease;display:inline-block}
-.patchPickerNote{font-size:10.5px;opacity:.5;margin:6px 0 8px}
-.patchRow{display:flex;align-items:flex-start;gap:9px;padding:6px 4px;border-radius:7px;cursor:pointer}
-.patchRow:hover{background:rgba(127,127,127,.10)}
-.patchChk{margin-top:2px;flex-shrink:0;accent-color:var(--vscode-button-background,#3794ff);cursor:pointer}
-.patchInfo{display:flex;flex-direction:column;gap:1px}
-.patchName{font-size:12.5px;font-weight:600;line-height:1.2}
-.patchDesc{font-size:10.5px;opacity:.55;line-height:1.3}
+/* Patches popup — settings rows, each a label with an on/off toggle switch. */
+.patchesBody{overflow-y:auto;padding:14px 18px 18px;display:flex;flex-direction:column;gap:9px}
+.patchesNote{font-size:11.5px;color:var(--vscode-descriptionForeground);line-height:1.4;margin:0 2px 2px}
+.patchOptRow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
+  background:rgba(127,127,127,.05);border:1px solid rgba(127,127,127,.14);cursor:pointer;
+  transition:background .12s ease,border-color .12s ease}
+.patchOptRow:hover{background:rgba(127,127,127,.10);border-color:rgba(127,127,127,.24)}
+.patchOptInfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.patchOptName{font-size:13px;font-weight:600;line-height:1.25}
+.patchOptDesc{font-size:11.5px;color:var(--vscode-descriptionForeground);line-height:1.35}
+/* On/off toggle switch (replaces the old checkboxes). On = green (enabled). */
+.switch{position:relative;flex:0 0 auto;width:38px;height:22px}
+.switch input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.switchTrack{position:absolute;inset:0;border-radius:999px;background:rgba(127,127,127,.50);
+  transition:background .18s ease;pointer-events:none}
+.switchTrack::before{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;
+  border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.14);
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+  transition:transform .18s cubic-bezier(.2,.8,.3,1)}
+.switch input:checked + .switchTrack{background:#3fb950}
+.switch input:checked + .switchTrack::before{transform:translateX(16px)}
+.switch input:focus-visible + .switchTrack{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:2px}
 .recIcon{width:44px;height:44px;flex-shrink:0;border-radius:9px;object-fit:contain}
 .recBody{flex:1;min-width:0}
 .recName{font-size:14px;font-weight:600;line-height:1.25;
@@ -1779,6 +1837,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     <div class="subtitle">Patch Companion</div>
   </div>
 
+  <button class="orbitRefresh" id="orbitRefresh" type="button" title="Check for updates" aria-label="Check for updates" data-action="checkUpdates" hidden>
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7a5.5 5.5 0 1 1-1.7-3.95"/><polyline points="13,1 13,4.2 9.8,4.2"/></svg>
+  </button>
   <button class="orbitGear" id="orbitGear" type="button" title="Settings" aria-label="Settings" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
   </button>
@@ -1793,7 +1854,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     </button>
     <button class="btn" id="betaBtn" type="button"
             title="Join the beta program to get new releases the moment they're pushed (they may have bugs). Off = stable only.">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.7l1.55 3.15 3.45.5-2.5 2.45.6 3.45L7 9.55 3.85 11.2l.6-3.45-2.5-2.45 3.45-.5z"/></svg>
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.7 1.6h2.6"/><path d="M5.7 1.6v3.3L2.8 10.4a1 1 0 0 0 .9 1.5h6.6a1 1 0 0 0 .9-1.5L8.3 4.9V1.6"/><path d="M4.6 8.3h4.8"/></svg>
       <span class="lbl" id="betaBtnLabel">Join the beta program</span>
     </button>
     <button class="btn" id="versionsBtn" hidden
@@ -1801,16 +1862,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 1 0 1.5-3.6"/><polyline points="1.4,1.6 1.4,4.2 4,4.2"/><path d="M7 4.3V7l1.9 1.1"/></svg>
       <span class="lbl" id="versionsBtnLabel">Previous versions</span>
     </button>
-    <button class="btn patchBtn" id="patchPickerHeader" type="button"
+    <button class="btn" id="patchPickerHeader" type="button"
             title="Choose which Orbit patches get applied">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h6"/><path d="M2 9.5h4"/><circle cx="10" cy="4.5" r="1.6"/><circle cx="8" cy="9.5" r="1.6"/></svg>
-      <span class="lbl">Patches</span>
-      <span class="patchChevron">›</span>
+      Patches
     </button>
-    <div class="patchPickerBody" id="patchPickerBody" hidden>
-      <p class="patchPickerNote">Uncheck to leave a patch out — applies the next time you Install / Update.</p>
-      ${patchTogglesHtml}
-    </div>
     <button class="btn" id="disableBtn" type="button"
             title="Uninstall Orbit and restore the original, unpatched Claude Code.">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h8M5.5 4V2.8h3V4M5 4l.4 7.2h3.2L9 4"/></svg>
@@ -1841,7 +1897,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       </button>
       <button class="btn" id="installStableBtn" hidden type="button"
               title="Install the newest STABLE release, replacing the beta build you're on.">
-        <span class="btnLabel" id="installStableLabel">Install stable</span>
+        <span class="btnLabel" id="installStableLabel">Install <span class="stableWord">stable</span></span>
       </button>
       <div class="hint" id="idleHint"></div>
     </div>
@@ -1870,7 +1926,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 
     <!-- VERSIONS (picker) -->
     <div class="statePane" data-pane="versions">
-      <button class="verBackTop" data-action="back">Back</button>
+      <button class="verBack" data-action="back" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9.5,3.5 5,8 9.5,12.5"/></svg>Back</button>
       <p class="doneMsg">Choose a version</p>
       <p class="doneSub">Install an earlier version if the newest one misbehaves.</p>
       <div class="verList" id="verList"></div>
@@ -1923,7 +1979,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 
   <!-- Patch-notes popup (scrollable). Filled client-side from the manifest's per-version whatsNew. -->
   <div class="modalOverlay" id="pnModal" hidden>
-    <div class="modalBox pnBox" role="dialog" aria-modal="true" aria-labelledby="pnTitle">
+    <div class="modalBox pnBox" role="dialog" aria-modal="true" aria-labelledby="pnTitle" aria-describedby="pnBody">
       <div class="pnHead">
         <p class="modalTitle" id="pnTitle">What's new</p>
         <button class="pnClose" id="pnClose" type="button" aria-label="Close">×</button>
@@ -1932,10 +1988,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     </div>
   </div>
 
+  <!-- Patches popup — toggle each Orbit patch on/off (applied next Install/Update). -->
+  <div class="modalOverlay" id="patchesModal" hidden>
+    <div class="modalBox patchesBox" role="dialog" aria-modal="true" aria-labelledby="patchesTitle" aria-describedby="patchesNote">
+      <div class="sheetHead">
+        <p class="modalTitle" id="patchesTitle">Patches</p>
+        <button class="sheetClose" id="patchesClose" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="patchesBody">
+        <p class="patchesNote" id="patchesNote">Turn a patch off to leave it out — applies the next time you Install or Update.</p>
+        ${patchTogglesHtml}
+      </div>
+    </div>
+  </div>
+
   <!-- Beta program popup (adaptive: join warning / leave confirm; body filled by JS) -->
   <div class="modalOverlay" id="betaModal" hidden>
-    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="betaModalTitle">
-      <p class="modalTitle betaTitle" id="betaModalTitle">Join the beta program?</p>
+    <div class="modalBox betaBox" role="dialog" aria-modal="true" aria-labelledby="betaModalTitle" aria-describedby="betaModalText">
+      <div class="betaIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3h5"/><path d="M9.5 3v6L4.6 17.4A1.6 1.6 0 0 0 6 20h12a1.6 1.6 0 0 0 1.4-2.6L14.5 9V3"/><path d="M7.6 14h8.8"/></svg>
+      </div>
+      <p class="modalTitle betaTitle" id="betaModalTitle">Join the beta program</p>
       <div class="betaText" id="betaModalText"></div>
       <div class="modalBtns">
         <button class="btn" id="betaCancelBtn" type="button">Cancel</button>
@@ -2071,7 +2144,7 @@ function applyIdleState(state, info) {
         if (installStableBtn && ccInstBeta && !betaOptIn && ccNewestStable && ccNewestStable.version !== installedVersion) {
           installStableBtn.hidden = false;
           installStableBtn.dataset.version = ccNewestStable.version;
-          if (installStableLabel) installStableLabel.textContent = "Install stable (v" + ccNewestStable.version + ")";
+          if (installStableLabel) installStableLabel.innerHTML = 'Install <span class="stableWord">stable</span> (v' + ccNewestStable.version + ')';
         }
       }
       // Claude version is the headline (+ a ✓ Latest badge when on the newest);
@@ -2137,6 +2210,7 @@ function applyIdleState(state, info) {
     patchedHero.hidden = true;
     stockHero.hidden = false;
     statusEl.hidden = true;                // hide pill — stock hero card says it
+    checkUpdatesBtn.hidden = false;        // let users re-poll from the stock screen too ("maybe there's a newer one")
     stockSub.textContent = claudeCodeVersion
       ? "Claude Code v" + claudeCodeVersion + " — no Orbit patches yet."
       : "Claude Code is installed without Orbit patches.";
@@ -2157,7 +2231,7 @@ function applyIdleState(state, info) {
     enableBtn.classList.add("primary");
     enableBtn.title = "Download the newest Claude Code, pull the latest patcher, and install.";
     disableBtn.hidden = true;
-    checkUpdatesBtn.hidden = true;
+    checkUpdatesBtn.hidden = false;        // reachable in every state — re-poll the registry before installing
     versionsBtn.hidden = !hasOtherVersions;
     versionsBtnLabel.textContent = "Install specific version";
     idleHint.innerHTML = '<b>Install newest</b> downloads <code>anthropic.claude-code</code>, pulls the latest patcher, and installs it.<br><b>Install specific version</b> picks an archived patcher + its certified Claude Code from the registry.';
@@ -2202,11 +2276,11 @@ function renderVersions() {
     ver.className = "verItemVer";
     ver.textContent = "v" + v.version;
     ver.appendChild(ccChannelTag(v.channel));
-    const meta = document.createElement("div");
-    meta.className = "verItemMeta";
-    meta.textContent = "Claude " + (v.claude || "?");
+    const claude = document.createElement("span");
+    claude.className = "verItemClaude";
+    claude.textContent = "Claude " + (v.claude || "?");
+    ver.appendChild(claude);
     info.appendChild(ver);
-    info.appendChild(meta);
     const btn = document.createElement("button");
     btn.className = "verItemInstall";
     btn.textContent = isCurrent ? "Installed" : "Install";
@@ -2265,6 +2339,8 @@ function setPane(name) {
   if (recommendedEl) recommendedEl.style.display = (name === "idle") ? "" : "none";
   var ccGear = document.getElementById("orbitGear");
   if (ccGear) ccGear.hidden = (name !== "idle");
+  var ccRefresh = document.getElementById("orbitRefresh");
+  if (ccRefresh) ccRefresh.hidden = (name !== "idle");
   if (name !== "idle") { var ccGM = document.getElementById("orbitGearMenu"); if (ccGM) ccGM.hidden = true; }
 }
 
@@ -2274,6 +2350,9 @@ if (orbitGearEl && orbitGearMenuEl) {
   orbitGearEl.addEventListener("click", (e) => { e.stopPropagation(); orbitGearMenuEl.hidden = !orbitGearMenuEl.hidden; });
   orbitGearMenuEl.addEventListener("click", (e) => e.stopPropagation());
   document.addEventListener("click", () => { if (!orbitGearMenuEl.hidden) orbitGearMenuEl.hidden = true; });
+  // Clicking OUTSIDE the sidebar (anywhere else in VS Code) blurs the webview —
+  // close the gear menu then too, not only on in-sidebar clicks.
+  window.addEventListener("blur", () => { if (!orbitGearMenuEl.hidden) orbitGearMenuEl.hidden = true; });
 }
 
 // Remove Orbit → a centered confirmation MODAL (not the old inline slide-down).
@@ -2326,10 +2405,10 @@ function closeBetaModal() { if (betaModal) betaModal.hidden = true; }
 function openBetaModal(mode) {
   if (!betaModal) return;
   var leaving = mode === "leave";
-  if (betaModalTitle) betaModalTitle.textContent = leaving ? "Leave the beta program?" : "Join the beta program?";
+  if (betaModalTitle) betaModalTitle.textContent = leaving ? "Leave the beta program" : "Join the beta program";
   if (betaModalText) betaModalText.innerHTML = leaving
-    ? "<p>You'll stop getting beta updates and go back to <b>stable-only</b> releases.</p><p>If you're on a beta build right now, we recommend installing the latest stable to continue — you'll get an <b>Install stable</b> button on the main screen.</p>"
-    : "<p>Beta builds are <b>testing releases</b> — you get them the moment they ship.</p><p>They're <b>unverified</b>: they may have bugs, break things, or interrupt your work.</p><p>Stay out and you'll only ever get <b>stable</b>, tested releases.</p>";
+    ? "<p>You'll go back to <b>stable</b> releases only and stop receiving betas.</p><p>On a beta build now? Use <b>Install stable</b> on the main screen to return to a tested release.</p>"
+    : "<p>Beta builds ship the moment they're ready — <b>before they've been fully tested</b>.</p><p>They may have bugs or interrupt your work. You can leave anytime.</p>";
   if (betaJoinBtn) betaJoinBtn.textContent = leaving ? "Leave beta program" : "Join beta program";
   betaModal.dataset.mode = leaving ? "leave" : "join";
   betaModal.hidden = false;
@@ -2351,9 +2430,10 @@ if (installStableBtnEl) installStableBtnEl.addEventListener("click", () => {
 
 // ---- Patch notes popup ----------------------------------------------------
 // Notes ride in the manifest (lastHistory[i].whatsNew), so the popup is fully
-// client-side. Rendered as plain text (textContent) = XSS-safe; CSS preserves the
-// line breaks. Opened from the gear ("Patch notes" -> installed version) and the
-// "?" on each Previous-versions row (that row's version).
+// client-side. Rendered from light markdown via pnRender (escape-first, then
+// re-introduce only bold, inline code, paragraphs and bullets) = XSS-safe. Opened
+// from the gear ("Patch notes" -> installed version) and the "?" on each
+// Previous-versions row (that row's version).
 const pnModal = document.getElementById("pnModal");
 const pnTitle = document.getElementById("pnTitle");
 const pnBody = document.getElementById("pnBody");
@@ -2363,18 +2443,39 @@ function whatsNewFor(version) {
     return (e && e.whatsNew) || "";
   } catch (_) { return ""; }
 }
+// Light markdown -> HTML for the notes body: escape everything first (XSS-safe
+// even though the notes are our own), then re-introduce only bold, inline code,
+// blank-line paragraphs, and "-"/"*" bullet lists. (Backticks are escaped because
+// this whole webview script lives inside a Node template literal.)
+function pnEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function pnInline(s) {
+  return pnEsc(s)
+    .replace(/\\*\\*([^*]+?)\\*\\*/g, "<strong>$1</strong>")
+    .replace(/\`([^\`]+?)\`/g, "<code>$1</code>");
+}
+function pnRender(text) {
+  const lines = String(text).replace(/\\r/g, "").split("\\n");
+  let html = "", para = [], list = null;
+  const flushPara = () => { if (para.length) { html += "<p>" + para.join("<br>") + "</p>"; para = []; } };
+  const flushList = () => { if (list) { html += "<ul>" + list.join("") + "</ul>"; list = null; } };
+  lines.forEach((raw) => {
+    const line = raw.trim();
+    if (!line) { flushPara(); flushList(); return; }
+    const m = line.match(/^[-*]\\s+(.*)$/);
+    if (m) { flushPara(); (list = list || []).push("<li>" + pnInline(m[1]) + "</li>"); return; }
+    flushList(); para.push(pnInline(line));
+  });
+  flushPara(); flushList();
+  return html;
+}
 function openPatchNotes(version) {
   if (!pnModal) return;
   const notes = whatsNewFor(version);
   pnTitle.textContent = "What's new" + (version ? " — v" + version : "");
-  pnBody.textContent = "";
   if (notes && notes.trim()) {
-    pnBody.textContent = notes;
+    pnBody.innerHTML = pnRender(notes);
   } else {
-    const em = document.createElement("div");
-    em.className = "pnEmpty";
-    em.textContent = "No patch notes were shipped for this version.";
-    pnBody.appendChild(em);
+    pnBody.innerHTML = '<div class="pnEmpty">No patch notes were shipped for this version.</div>';
   }
   pnBody.scrollTop = 0;
   pnModal.hidden = false;
@@ -2443,18 +2544,22 @@ document.querySelectorAll(".recItem").forEach(el => {
   });
 });
 
-// Patch picker — collapse/expand + persist which patches stay enabled. Unchecking
-// a box sends the full disabled set to the extension host; applied on next
-// Install / Update.
+// Patch picker — open the Patches popup (#patchesModal) from the gear button and
+// persist which patches stay enabled. Toggling a switch sends the full disabled
+// set to the extension host; applied on next Install / Update.
 const patchPickerHeader = document.getElementById("patchPickerHeader");
-const patchPickerBody = document.getElementById("patchPickerBody");
-if (patchPickerHeader && patchPickerBody) {
+const patchesModal = document.getElementById("patchesModal");
+const patchesCloseBtn = document.getElementById("patchesClose");
+function closePatchesModal() { if (patchesModal) patchesModal.hidden = true; }
+if (patchPickerHeader && patchesModal) {
   patchPickerHeader.addEventListener("click", () => {
-    const willOpen = patchPickerBody.hidden;
-    patchPickerBody.hidden = !willOpen;
-    patchPickerHeader.classList.toggle("open", willOpen);
+    if (orbitGearMenuEl) orbitGearMenuEl.hidden = true;  // close the gear menu behind the popup
+    patchesModal.hidden = false;
   });
 }
+if (patchesCloseBtn) patchesCloseBtn.addEventListener("click", closePatchesModal);
+if (patchesModal) patchesModal.addEventListener("click", (e) => { if (e.target === patchesModal) closePatchesModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePatchesModal(); });
 document.querySelectorAll(".patchChk").forEach(chk => {
   chk.addEventListener("change", () => {
     const ids = Array.from(document.querySelectorAll(".patchChk"))

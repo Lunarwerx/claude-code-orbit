@@ -127,10 +127,10 @@
     {
       "version": "1.2.99",
       "channel": "experimental",
-      "build": 169,
+      "build": 177,
       "claude": "2.1.183",
       "file": "patch_claude-1.2.99.py",
-      "date": "2026-06-18",
+      "date": "2026-06-19",
       "whatsNew": "**Gear menu polish.** \"Join the beta program\" now has a distinct accent highlight so it stands out from the other items, and \"Remove Orbit\" is now red \u2014 a clear signal that it's the destructive option.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
     }
   ]
