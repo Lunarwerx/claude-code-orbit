@@ -1,5 +1,5 @@
-**Patch notes — right here.** Every Orbit update now ships its own notes. Open the gear menu's new "Patch notes" to see what's in your installed version, or click the "?" next to any entry under Previous versions — a scrollable popup, without leaving the sidebar.
+**Beta program — cleaner.** "Join the beta program" is now a single, clear button (no more checkbox). Clicking it opens an in-sidebar warning that explains what beta means, with a "Join beta program" button — so you opt in deliberately, not by a stray click. Already in? The button becomes "Leave the beta program."
 
-**Updates are now an opt-in Beta program.** By default you only get STABLE releases, so you're not nudged to update every day. Want the newest the moment it ships? Gear menu → "Join the Beta program" (it warns you that betas may have bugs). The old red "untested" tag is now "BETA," and the "Hide untested updates" toggle is gone — you opt in instead of opting out.
+**"Install stable" button.** If you're on a beta build but haven't joined the beta program, the sidebar now offers a one-click "Install stable" to drop straight back to the newest stable release.
 
-**Auto-continue, hardened** (recent betas): it now survives a window reload, resumes on its own after a 5-hour usage limit resets, and retries transient server rate-limits promptly instead of stalling.
+**Patch notes + opt-in Beta program** (recent): every update ships its own notes — see them from the gear's "Patch notes" or the "?" next to any entry under Previous versions. Updates default to stable-only unless you join the beta program.

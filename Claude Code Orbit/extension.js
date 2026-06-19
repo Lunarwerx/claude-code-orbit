@@ -1038,21 +1038,10 @@ class SidebarProvider {
       return;
     }
     if (msg.type === "setBetaOptIn") {
-      let optIn = !!msg.value;
-      if (optIn) {
-        // Opting INTO beta — confirm, because beta releases are unverified.
-        const choice = await vscode.window.showWarningMessage(
-          "Join the Orbit Beta program? You'll get new patcher releases the moment they're pushed — but they're unverified and may have bugs or not work. You can leave anytime from the gear menu.",
-          { modal: true },
-          "Join Beta"
-        );
-        optIn = choice === "Join Beta";
-      }
-      await this.context.globalState.update(GS_BETA_OPTIN, optIn);
-      this.log("Beta program: " + (optIn ? "JOINED (beta releases now shown)" : "not joined (stable only)"));
-      // Re-evaluate the hero immediately so a beta update banner appears or disappears
-      // the moment the toggle flips. pushState also re-syncs the checkbox, reverting it
-      // if the user cancelled the confirm above.
+      // The join confirmation is an in-sidebar popup (webview side), so just persist here.
+      await this.context.globalState.update(GS_BETA_OPTIN, !!msg.value);
+      this.log("Beta program: " + (msg.value ? "JOINED (beta releases now shown)" : "left (stable only)"));
+      // Re-evaluate the hero/badge immediately so beta updates appear/disappear at once.
       this.pushState();
       return;
     }
@@ -1788,13 +1777,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.5h5l3 3v8h-8z"/><path d="M8 1.5v3h3"/><path d="M5 7.5h4M5 9.5h4"/></svg>
       Patch notes
     </button>
-    <label class="gearToggle" id="betaOptInRow"
-           title="Join the Beta program to get new patcher releases the moment they're pushed. They're unverified — they may have bugs or not work yet. Off (the default) means you only ever get STABLE releases.">
-      <input type="checkbox" id="betaOptInChk"/>
-      <span class="gearToggleText">Join the Beta program
-        <span class="gearToggleSub">Get new releases early (may have bugs)</span>
-      </span>
-    </label>
+    <button class="btn" id="betaBtn" type="button"
+            title="Join the beta program to get new releases the moment they're pushed (they may have bugs). Off = stable only.">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.7l1.55 3.15 3.45.5-2.5 2.45.6 3.45L7 9.55 3.85 11.2l.6-3.45-2.5-2.45 3.45-.5z"/></svg>
+      <span class="lbl" id="betaBtnLabel">Join the beta program</span>
+    </button>
     <button class="btn" id="versionsBtn" hidden
             title="Pick an earlier version to install — handy if the newest one misbehaves. Each shows the Claude Code it's built for and its build number.">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 1 0 1.5-3.6"/><polyline points="1.4,1.6 1.4,4.2 4,4.2"/><path d="M7 4.3V7l1.9 1.1"/></svg>
@@ -1837,6 +1824,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
       <button class="btn" id="enableBtn" data-action="enable">
         <span class="btnIcon" id="enableBtnIcon"></span>
         <span class="btnLabel" id="enableBtnLabel">Install newest</span>
+      </button>
+      <button class="btn" id="installStableBtn" hidden type="button"
+              title="Install the newest STABLE release, replacing the beta build you're on.">
+        <span class="btnLabel" id="installStableLabel">Install stable</span>
       </button>
       <div class="hint" id="idleHint"></div>
     </div>
@@ -1927,6 +1918,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     </div>
   </div>
 
+  <!-- Beta program join warning (in-sidebar popup) -->
+  <div class="modalOverlay" id="betaModal" hidden>
+    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="betaModalTitle">
+      <p class="modalTitle" id="betaModalTitle">Join the beta program?</p>
+      <p class="modalText" style="text-align:left">The beta program is for testing builds. If you join, you'll be able to install new releases the moment they're pushed, and you'll start seeing beta updates that aren't fully released yet. These are <b>unverified</b> — they may have bugs, may not work, and could interrupt your workflow. Stay out and you'll only ever get <b>stable</b>, tested releases.</p>
+      <div class="modalBtns">
+        <button class="btn" id="betaCancelBtn" type="button">Cancel</button>
+        <button class="btn primary" id="betaJoinBtn" type="button">Join beta program</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script nonce="${nonce}">
@@ -1989,6 +1992,7 @@ function applyIdleState(state, info) {
   const patcherHistory = (info && info.patcherHistory) || [];
   const channel = info && info.channel;
   const installedChannel = info && info.installedChannel;   // read from the patcher itself (ccPatchChannel)
+  const betaOptIn = info && info.betaOptIn;
 
   // "Install newest" is the always-present primary verb (was "Use experimental").
   enableBtnIcon.innerHTML = ICON_CHECK;
@@ -2013,6 +2017,9 @@ function applyIdleState(state, info) {
   statusEl.hidden = false;
   patchedHero.classList.remove("updateAvailable", "experimental", "stable");
   patchedMeta.hidden = true;   // quiet patch-# line; only the normal patched view shows it
+  var installStableBtn = document.getElementById("installStableBtn");
+  var installStableLabel = document.getElementById("installStableLabel");
+  if (installStableBtn) installStableBtn.hidden = true;   // only shown for "on a beta, not in the program"
 
   if (state === "patched") {
     patchedHero.hidden = false;
@@ -2043,6 +2050,15 @@ function applyIdleState(state, info) {
           || (patcherHistory.find(function (v) { return v && v.version === installedVersion; }) || {}).channel;
         patchedTitle.appendChild(document.createTextNode(" "));
         patchedTitle.appendChild(ccChannelTag(ccInstCh));
+        // On a BETA build but NOT in the beta program -> offer a one-click drop to the
+        // newest STABLE release (patcherHistory is newest-first, so the first stable is newest).
+        var ccInstBeta = ccInstCh && ccInstCh !== "stable";
+        var ccNewestStable = patcherHistory.find(function (v) { return v && v.channel === "stable"; });
+        if (installStableBtn && ccInstBeta && !betaOptIn && ccNewestStable && ccNewestStable.version !== installedVersion) {
+          installStableBtn.hidden = false;
+          installStableBtn.dataset.version = ccNewestStable.version;
+          if (installStableLabel) installStableLabel.textContent = "Install stable (v" + ccNewestStable.version + ")";
+        }
       }
       // Claude version is the headline (+ a ✓ Latest badge when on the newest);
       // the Orbit patch # drops to a quiet meta line. Version strings are
@@ -2279,12 +2295,35 @@ if (removeYesBtn) {
 // "Join the Beta program" — OPT-IN (checked = joined). Persisted host-side; checking it
 // triggers a confirm dialog (beta is unverified). Reflected back via state (m.betaOptIn),
 // which reverts the checkbox if the user cancels the confirm.
-const betaOptInChk = document.getElementById("betaOptInChk");
-if (betaOptInChk) {
-  betaOptInChk.addEventListener("change", () => {
-    vscode.postMessage({ type: "setBetaOptIn", value: betaOptInChk.checked });
-  });
-}
+// ---- Beta program (opt-in) ------------------------------------------------
+// Clicking the gear item does NOT just toggle a checkbox: JOINING opens an in-sidebar
+// warning popup (then "Join beta program" confirms); LEAVING (already joined) is safe,
+// so it drops to stable-only directly. Button label reflects state via setBetaBtnLabel.
+const betaModal = document.getElementById("betaModal");
+const betaBtn = document.getElementById("betaBtn");
+const betaBtnLabel = document.getElementById("betaBtnLabel");
+let ccBetaJoined = false;
+function setBetaBtnLabel() { if (betaBtnLabel) betaBtnLabel.textContent = ccBetaJoined ? "Leave the beta program" : "Join the beta program"; }
+function closeBetaModal() { if (betaModal) betaModal.hidden = true; }
+if (betaBtn) betaBtn.addEventListener("click", () => {
+  if (ccBetaJoined) { vscode.postMessage({ type: "setBetaOptIn", value: false }); }
+  else if (betaModal) { betaModal.hidden = false; }
+});
+const betaCancelBtn = document.getElementById("betaCancelBtn");
+const betaJoinBtn = document.getElementById("betaJoinBtn");
+if (betaCancelBtn) betaCancelBtn.addEventListener("click", closeBetaModal);
+if (betaJoinBtn) betaJoinBtn.addEventListener("click", () => { closeBetaModal(); vscode.postMessage({ type: "setBetaOptIn", value: true }); });
+if (betaModal) betaModal.addEventListener("click", (e) => { if (e.target === betaModal) closeBetaModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBetaModal(); });
+
+// "Install stable" — drop from a beta build to the newest stable (version stamped by the render).
+const installStableBtnEl = document.getElementById("installStableBtn");
+if (installStableBtnEl) installStableBtnEl.addEventListener("click", () => {
+  const v = installStableBtnEl.dataset.version;
+  if (!v) return;
+  setPane("working");
+  vscode.postMessage({ type: "action", action: "enablePrevious", version: v });
+});
 
 // ---- Patch notes popup ----------------------------------------------------
 // Notes ride in the manifest (lastHistory[i].whatsNew), so the popup is fully
@@ -2497,9 +2536,10 @@ window.addEventListener("message", (ev) => {
       onLatestClaude: m.onLatestClaude,
       claudeUpdateAvailable: m.claudeUpdateAvailable,
       patcherHistory: m.patcherHistory,
+      betaOptIn: m.betaOptIn,
     });
-    var ccBetaChk = document.getElementById("betaOptInChk");
-    if (ccBetaChk) ccBetaChk.checked = !!m.betaOptIn;
+    ccBetaJoined = !!m.betaOptIn;
+    setBetaBtnLabel();
     lastHistory = Array.isArray(m.patcherHistory) ? m.patcherHistory : [];
     lastInstalledVersion = m.installedVersion || null;
     // Reveal the idle screen. Panes default to display:none and only show with
