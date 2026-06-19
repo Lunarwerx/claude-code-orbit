@@ -1,5 +1,5 @@
-**Auto-continue keeps retrying transient rate-limits.** When a turn fails with a server "temporarily limiting requests (not your usage limit)" hiccup, Orbit now recognizes it even after it scrolls into the chat as the last message (before, it only saw the live banner). And transient retries now use a short, steady ~8–20s cadence instead of an exponential back-off that ballooned to two minutes — so a brief server limit no longer leaves the chat stalled.
+**Patch notes — right here.** Every Orbit update now ships its own notes. Open the gear menu's new "Patch notes" to see what's in your installed version, or click the "?" next to any entry under Previous versions — a scrollable popup, without leaving the sidebar.
 
-**Auto-continue survives a reload** (recent): errored or usage-limited chats are remembered and continued after a window restart or developer reload — non-archived only.
+**Updates are now an opt-in Beta program.** By default you only get STABLE releases, so you're not nudged to update every day. Want the newest the moment it ships? Gear menu → "Join the Beta program" (it warns you that betas may have bugs). The old red "untested" tag is now "BETA," and the "Hide untested updates" toggle is gone — you opt in instead of opting out.
 
-**Auto-continue resumes after a usage limit resets** (recent): fixed the deadlock that left 5-hour-limited chats stuck even after the limit lifted.
+**Auto-continue, hardened** (recent betas): it now survives a window reload, resumes on its own after a 5-hour usage limit resets, and retries transient server rate-limits promptly instead of stalling.
