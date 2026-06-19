@@ -1720,6 +1720,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .pnBody .pnEmpty{opacity:.5;font-style:italic}
 .verItemHelp{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--vscode-menu-border,rgba(127,127,127,.35));background:transparent;color:inherit;opacity:.55;font-size:12px;line-height:1;cursor:pointer;padding:0}
 .verItemHelp:hover{opacity:1;background:rgba(127,127,127,.14)}
+/* Beta popup — smaller, scannable, higher-contrast than the generic modal text. */
+.betaTitle{font-size:14px;margin-bottom:11px}
+.betaText{font-size:11px;line-height:1.6;text-align:left;opacity:.9;margin:0 0 16px}
+.betaText p{margin:0 0 8px}
+.betaText p:last-child{margin:0}
+.betaText b{font-weight:600}
 .recHeader{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   opacity:.5;text-align:center;margin:0 0 14px}
 .recHeaderCompany{margin-top:20px}
@@ -1918,11 +1924,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
     </div>
   </div>
 
-  <!-- Beta program join warning (in-sidebar popup) -->
+  <!-- Beta program popup (adaptive: join warning / leave confirm; body filled by JS) -->
   <div class="modalOverlay" id="betaModal" hidden>
     <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="betaModalTitle">
-      <p class="modalTitle" id="betaModalTitle">Join the beta program?</p>
-      <p class="modalText" style="text-align:left">The beta program is for testing builds. If you join, you'll be able to install new releases the moment they're pushed, and you'll start seeing beta updates that aren't fully released yet. These are <b>unverified</b> — they may have bugs, may not work, and could interrupt your workflow. Stay out and you'll only ever get <b>stable</b>, tested releases.</p>
+      <p class="modalTitle betaTitle" id="betaModalTitle">Join the beta program?</p>
+      <div class="betaText" id="betaModalText"></div>
       <div class="modalBtns">
         <button class="btn" id="betaCancelBtn" type="button">Cancel</button>
         <button class="btn primary" id="betaJoinBtn" type="button">Join beta program</button>
@@ -2302,17 +2308,27 @@ if (removeYesBtn) {
 const betaModal = document.getElementById("betaModal");
 const betaBtn = document.getElementById("betaBtn");
 const betaBtnLabel = document.getElementById("betaBtnLabel");
+const betaModalTitle = document.getElementById("betaModalTitle");
+const betaModalText = document.getElementById("betaModalText");
+const betaCancelBtn = document.getElementById("betaCancelBtn");
+const betaJoinBtn = document.getElementById("betaJoinBtn");
 let ccBetaJoined = false;
 function setBetaBtnLabel() { if (betaBtnLabel) betaBtnLabel.textContent = ccBetaJoined ? "Leave the beta program" : "Join the beta program"; }
 function closeBetaModal() { if (betaModal) betaModal.hidden = true; }
-if (betaBtn) betaBtn.addEventListener("click", () => {
-  if (ccBetaJoined) { vscode.postMessage({ type: "setBetaOptIn", value: false }); }
-  else if (betaModal) { betaModal.hidden = false; }
-});
-const betaCancelBtn = document.getElementById("betaCancelBtn");
-const betaJoinBtn = document.getElementById("betaJoinBtn");
+function openBetaModal(mode) {
+  if (!betaModal) return;
+  var leaving = mode === "leave";
+  if (betaModalTitle) betaModalTitle.textContent = leaving ? "Leave the beta program?" : "Join the beta program?";
+  if (betaModalText) betaModalText.innerHTML = leaving
+    ? "<p>You'll stop getting beta updates and go back to <b>stable-only</b> releases.</p><p>If you're on a beta build right now, we recommend installing the latest stable to continue — you'll get an <b>Install stable</b> button on the main screen.</p>"
+    : "<p>Beta builds are <b>testing releases</b> — you get them the moment they ship.</p><p>They're <b>unverified</b>: they may have bugs, break things, or interrupt your work.</p><p>Stay out and you'll only ever get <b>stable</b>, tested releases.</p>";
+  if (betaJoinBtn) betaJoinBtn.textContent = leaving ? "Leave beta program" : "Join beta program";
+  betaModal.dataset.mode = leaving ? "leave" : "join";
+  betaModal.hidden = false;
+}
+if (betaBtn) betaBtn.addEventListener("click", () => { openBetaModal(ccBetaJoined ? "leave" : "join"); });
 if (betaCancelBtn) betaCancelBtn.addEventListener("click", closeBetaModal);
-if (betaJoinBtn) betaJoinBtn.addEventListener("click", () => { closeBetaModal(); vscode.postMessage({ type: "setBetaOptIn", value: true }); });
+if (betaJoinBtn) betaJoinBtn.addEventListener("click", () => { var leave = !!(betaModal && betaModal.dataset.mode === "leave"); closeBetaModal(); vscode.postMessage({ type: "setBetaOptIn", value: !leave }); });
 if (betaModal) betaModal.addEventListener("click", (e) => { if (e.target === betaModal) closeBetaModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBetaModal(); });
 
