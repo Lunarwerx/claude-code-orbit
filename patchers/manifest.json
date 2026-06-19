@@ -127,11 +127,11 @@
     {
       "version": "1.2.99",
       "channel": "experimental",
-      "build": 168,
+      "build": 169,
       "claude": "2.1.183",
       "file": "patch_claude-1.2.99.py",
       "date": "2026-06-18",
-      "whatsNew": "**Cleaner beta popup.** The \"Join the beta program\" dialog is now smaller, higher-contrast, and broken into short scannable lines \u2014 much easier to read at a glance.\n\n**Leave confirmation.** Clicking \"Leave the beta program\" now asks first \u2014 \"Are you sure?\" \u2014 and recommends installing the latest stable build before you go, so you don't get stranded on a beta.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
+      "whatsNew": "**Gear menu polish.** \"Join the beta program\" now has a distinct accent highlight so it stands out from the other items, and \"Remove Orbit\" is now red \u2014 a clear signal that it's the destructive option.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
     }
   ]
 }

@@ -1311,7 +1311,7 @@ PATCHER_CHANNEL: str = ORBIT_CHANNEL
 # into the manifest's per-version `whatsNew` field. The wrapper reads it back from
 # the manifest to drive the What's-New popup (gear menu, update banner, and the
 # "?" next to every entry under Previous versions). Empty = no notes for this build.
-ORBIT_WHATSNEW: str = "**Cleaner beta popup.** The \"Join the beta program\" dialog is now smaller, higher-contrast, and broken into short scannable lines \u2014 much easier to read at a glance.\n\n**Leave confirmation.** Clicking \"Leave the beta program\" now asks first \u2014 \"Are you sure?\" \u2014 and recommends installing the latest stable build before you go, so you don't get stranded on a beta.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
+ORBIT_WHATSNEW: str = "**Gear menu polish.** \"Join the beta program\" now has a distinct accent highlight so it stands out from the other items, and \"Remove Orbit\" is now red \u2014 a clear signal that it's the destructive option.\n\n**Beta program + patch notes** (recent): updates default to stable-only unless you join the beta program (gear \u2192 \"Join the beta program\"). Every update ships its own patch notes \u2014 see them from the gear's \"Patch notes\" or the \"?\" next to any entry under Previous versions."
 def patch_webview_js(webview_js: Path) -> bool:
     text = read(webview_js)
 

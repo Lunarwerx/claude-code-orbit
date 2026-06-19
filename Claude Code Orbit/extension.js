@@ -1696,6 +1696,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .gearToggleSub{font-size:10.5px;opacity:.5;font-weight:400}
 .btn.danger{background:rgba(229,72,77,.16);color:#ff6b6b;border-color:rgba(229,72,77,.45)}
 .btn.danger:hover{background:rgba(229,72,77,.28)}
+/* Beta-program button: a distinct accent highlight so it stands out from the plain gear buttons. */
+#betaBtn{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.10)}
+#betaBtn svg{color:#c4b5fd}
+#betaBtn:hover{background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.78)}
+/* Remove Orbit: red, because it's a destructive action. */
+#disableBtn{color:#ff7a7a}
+#disableBtn svg{color:#ff7a7a;opacity:.85}
+#disableBtn:hover{background:rgba(229,72,77,.16);color:#ff9494}
 /* Remove-Orbit confirmation modal — a real centered popup over a dimmed
    backdrop, replacing the old inline slide-down inside the gear menu. */
 .modalOverlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;
