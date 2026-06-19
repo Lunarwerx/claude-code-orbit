@@ -159,6 +159,15 @@
       "file": "patch_claude-1.2.102.py",
       "date": "2026-06-19",
       "whatsNew": "**New: Goal enforcement (gear menu).** A toggle that makes every chat keep working on its own until the job is genuinely done \u2014 no more typing \"keep going\" over and over. After each turn, a quick check decides whether the chat is allowed to stop: it stops only if the work is truly finished (and verified) or it's genuinely blocked on a decision only you can make \u2014 otherwise it keeps going by itself.\n\nIt's **off by default**. Turning it on adds a \"keep working until done\" rule to your Claude settings (and cleanly removes it when you turn it off), and it applies to every project \u2014 so expect it to use more of your usage. Takes effect on new chats; reload to apply it to the current one.\n\nThis is the always-on, generic version of Claude's `/goal` command \u2014 you set it once with a switch instead of typing a goal every time."
+    },
+    {
+      "version": "1.2.103",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.103.py",
+      "date": "2026-06-19",
+      "whatsNew": "**Polish: cleaner Goal enforcement dialog.** Rewrote the \"Turn on Goal enforcement?\" confirmation so it reads like a real product, not dev notes \u2014 a clear one-line summary up top, with the practical details (usage, settings, reload) as tidy, de-emphasized fine print beneath a divider, instead of one dense paragraph full of file paths and jargon."
     }
   ]
 }
