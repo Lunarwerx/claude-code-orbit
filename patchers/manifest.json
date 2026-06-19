@@ -186,6 +186,15 @@
       "file": "patch_claude-1.2.105.py",
       "date": "2026-06-19",
       "whatsNew": "**Goal enforcement: smarter stop check.** Tuned the \"is it done?\" rule so a chat correctly stops when the ball is in your court \u2014 a handoff, a question, or \"now you go test it\" \u2014 instead of treating something *you* still need to do as unfinished work for Claude (which could trap a chat in a loop). It still keeps going whenever there's real, do-it-now work left. Caught from a live run where it over-eagerly kept going on a handoff \u2014 so the autonomous loop itself is confirmed working."
+    },
+    {
+      "version": "1.2.106",
+      "channel": "stable",
+      "build": 178,
+      "claude": "2.1.183",
+      "file": "patch_claude-1.2.106.py",
+      "date": "2026-06-19",
+      "whatsNew": "**This stable adds Goal enforcement and refreshes the dialogs \u2014 everything new since the last stable.**\n\n**New: Goal enforcement.** A gear-menu toggle that keeps a chat working on its own until the task is genuinely done \u2014 no more typing \"keep going\" over and over. After each turn a quick check decides whether to stop: it stops when the work is finished and verified, or when the ball is in your court (your turn to test, decide, or approve), and otherwise keeps going by itself.\n\nIt's **off by default**. Turning it on adds a \"keep working until done\" rule to your Claude settings (cleanly removed when you turn it off) and applies to every project, so expect it to use more of your usage. It's the always-on version of Claude's `/goal` \u2014 set it once with a switch instead of typing a goal each time. Takes effect on new chats.\n\n**Nicer confirmation dialogs.** Every in-chat pop-up \u2014 Goal enforcement, Switch account, Compact, and the rest \u2014 got a cleaner, Material-style refresh: a rounder surface, a softer hero icon, a lighter headline, more breathing room, and pill-shaped buttons with a clean filled primary."
     }
   ]
 }
