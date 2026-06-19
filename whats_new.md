@@ -1,12 +1,5 @@
-**This stable release rolls up everything from the recent betas — here's what's new.**
+**New: Goal enforcement (gear menu).** A toggle that makes every chat keep working on its own until the job is genuinely done — no more typing "keep going" over and over. After each turn, a quick check decides whether the chat is allowed to stop: it stops only if the work is truly finished (and verified) or it's genuinely blocked on a decision only you can make — otherwise it keeps going by itself.
 
-**Auto-continue is now dependable.** Turn it on from the gear menu and Orbit sends "keep going" for you when a chat stops. This release fixes every case where it used to get stuck:
-- It resumes the moment your **5-hour or weekly usage limit resets** — previously a limited chat could stay parked even after the limit lifted.
-- It **survives a reload or window restart** — a chat that stopped on an error or a usage limit gets picked back up on its own (non-archived chats only, and only from a real stop, never a chat that merely mentioned an error).
-- It handles the **tricky double case**: when the server flashes a temporary "rate limited (not your usage limit)" message at the same moment you've genuinely hit your limit, it now trusts your live usage meter — waits for the reset and resumes — instead of retrying into a wall and going silent. Pure temporary server hiccups still get a quick retry.
+It's **off by default**. Turning it on adds a "keep working until done" rule to your Claude settings (and cleanly removes it when you turn it off), and it applies to every project — so expect it to use more of your usage. Takes effect on new chats; reload to apply it to the current one.
 
-**Beta program + patch notes.** Updates now default to **stable-only**. Want early builds? Opt in via the gear menu's **"Join the beta program."** Every update ships its own patch notes — read them anytime from the gear's **"Patch notes,"** or the **"?"** next to any entry under Previous versions.
-
-**Gear menu polish.** "Join the beta program" is now clearly highlighted, and "Remove Orbit" is red so the destructive option is unmistakable.
-
-**Smoother updates.** Updating no longer nags you with an extra "wrapper update + restart" when only the patch tool changed — you get one update, not a restart treadmill.
+This is the always-on, generic version of Claude's `/goal` command — you set it once with a switch instead of typing a goal every time.
