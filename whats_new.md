@@ -1,7 +1,5 @@
-**This stable adds Goal enforcement and refreshes the dialogs — everything new since the last stable.**
+**New: Copy diagnostics.** When a chat hits an "API Error" or rate-limit, open the **gear menu ▸ Copy diagnostics** and paste the result to Claude. Instead of a vague "something went wrong," Claude can now tell you exactly what the error is and whether it's a transient server hiccup or your real usage cap.
 
-**New: Goal enforcement.** A gear-menu toggle that keeps a chat working on its own until the task is genuinely done — no more typing "keep going" over and over. After each turn a quick check decides whether to stop: it stops when the work is finished and verified, or when the ball is in your court (your turn to test, decide, or approve), and otherwise keeps going by itself.
+It captures what the Anthropic API *actually* returned — the HTTP status (429 / 529 / 5xx), the error type (overloaded vs rate-limit), and the `retry-after` / rate-limit-reset headers — alongside your live usage meters and precisely what Auto-continue decided and why. That last part is the fix for "Auto-continue never seems to work": the report shows whether it parked, retried, or went silent, so the behaviour is finally debuggable.
 
-It's **off by default**. Turning it on adds a "keep working until done" rule to your Claude settings (cleanly removed when you turn it off) and applies to every project, so expect it to use more of your usage. It's the always-on version of Claude's `/goal` — set it once with a switch instead of typing a goal each time. Takes effect on new chats.
-
-**Nicer confirmation dialogs.** Every in-chat pop-up — Goal enforcement, Switch account, Compact, and the rest — got a cleaner, Material-style refresh: a rounder surface, a softer hero icon, a lighter headline, more breathing room, and pill-shaped buttons with a clean filled primary.
+Nothing sensitive leaves your machine: it never touches your API key or the contents of your requests — only the (non-secret) error responses and Orbit's own state. If the clipboard is blocked, the full report is also logged to the DevTools console and saved as `ccOrbitLastDiagnostics`.
