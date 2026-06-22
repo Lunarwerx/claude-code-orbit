@@ -213,6 +213,15 @@
       "file": "patch_claude-1.2.108.py",
       "date": "2026-06-21",
       "whatsNew": "**Fix: Auto-continue no longer gets stuck on a stale \"usage limit\" banner.** This is the bug behind \"auto-continue never works\" \u2014 and the new Copy diagnostics button is what caught it.\n\nWhat was happening: after a usage limit reset, Claude's **\"You've hit your usage limit\"** banner can linger on screen even though your live meter is back down with plenty of headroom. Auto-continue trusted that stale banner, decided \"I'll wait for the reset\" \u2014 but since there was no real maxed window to wait on, it could never schedule a resume and just sat there forever, never sending \"keep going.\" Now the **live usage meter is the tiebreaker**: if it shows headroom, auto-continue treats the lingering banner as stale and resumes the chat (which also clears the banner).\n\n**Copy diagnostics now names this case.** If a chat shows a usage-limit banner while the meter isn't actually maxed, the report calls it out as a stale banner instead of saying \"nothing wrong\" \u2014 so it's obvious at a glance."
+    },
+    {
+      "version": "1.2.109",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.185",
+      "file": "patch_claude-1.2.109.py",
+      "date": "2026-06-21",
+      "whatsNew": "**Copy diagnostics now sees errors that live in the chat \u2014 like \"529 Overloaded.\"**\n\nThe first cut had a blind spot: when Claude shows an inline error in the conversation (e.g. *\"API Error: 529 Overloaded \u2014 this is a server-side issue, usually temporary\"*), the report wasn't looking there and wrongly said \"no recent API failures.\" Now it captures the **recent message flow** and the **last error-flagged message**, and the summary names the error \u2014 a 529 is a transient *server overload*, not your usage limit (with the \"error\" toggle on, Auto-continue retries it on its own ~6s after the chat goes idle).\n\nIt's also honest about the host log now: Claude runs its API calls in a **separate CLI process**, so an empty \"Host API log\" is normal and expected \u2014 the new In-chat error section is the real source for these server errors."
     }
   ]
 }
