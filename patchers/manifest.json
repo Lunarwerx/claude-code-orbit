@@ -258,6 +258,15 @@
       "file": "patch_claude-1.2.113.py",
       "date": "2026-06-23",
       "whatsNew": "**Two fixes from your feedback \u2014 and the drag-and-drop file tray is up next.**\n\n- **Running chats no longer get mislabeled \"dead.\"** If a chat was actively working but a rate-limit warning was floating around (e.g. a *different* account or a subagent hit a limit), Orbit was tagging the live chat as limit-blocked in the session list. Now **\"busy\" wins** \u2014 a streaming chat shows its real activity instead of a stale limit message.\n- **Background task-notifications now look like tasks, not a debug log you typed.** When a command runs in the background, Claude Code feeds its result back into the chat as a `<task-notification>` (that's native Claude, not a message you sent). Orbit now reframes those as a tidy **\"\u2699 Background task\"** card with the summary, so they stop reading like something you wrote.\n\n**Coming in the next beta:** drag files from the Explorer onto the composer to reference them, each with an eyeball toggle to include/exclude."
+    },
+    {
+      "version": "1.2.114",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.186",
+      "file": "patch_claude-1.2.114.py",
+      "date": "2026-06-23",
+      "whatsNew": "**Auto-continue no longer fires on a stuck/stale usage-limit flag.**\n\nYou caught this one: when Claude's \"You've hit your weekly limit\" flag latches onto a chat \u2014 e.g. a *different* account or a subagent hit the limit, so the flag sticks for the full ~3-day weekly window even though **this** account has plenty left \u2014 Auto-continue was reading that stuck flag and sending \"keep going\" on its own (sometimes right when the AI was handing off to you).\n\nNow Auto-continue trusts your **live usage meter** instead of the flag: if the meter shows you actually have headroom, a stale limit flag is treated as stale and **nothing auto-sends**. Real usage limits and real errors still pause and resume exactly as before \u2014 this only stops the phantom \"keep going\" on a chat that isn't truly limited.\n\n*(Auto-continue is opt-in \u2014 gear \u25b8 Auto-continue \u2014 and you can turn any of its toggles off there.)*"
     }
   ]
 }

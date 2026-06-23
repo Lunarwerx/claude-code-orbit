@@ -1,6 +1,7 @@
-**Two fixes from your feedback — and the drag-and-drop file tray is up next.**
+**Auto-continue no longer fires on a stuck/stale usage-limit flag.**
 
-- **Running chats no longer get mislabeled "dead."** If a chat was actively working but a rate-limit warning was floating around (e.g. a *different* account or a subagent hit a limit), Orbit was tagging the live chat as limit-blocked in the session list. Now **"busy" wins** — a streaming chat shows its real activity instead of a stale limit message.
-- **Background task-notifications now look like tasks, not a debug log you typed.** When a command runs in the background, Claude Code feeds its result back into the chat as a `<task-notification>` (that's native Claude, not a message you sent). Orbit now reframes those as a tidy **"⚙ Background task"** card with the summary, so they stop reading like something you wrote.
+You caught this one: when Claude's "You've hit your weekly limit" flag latches onto a chat — e.g. a *different* account or a subagent hit the limit, so the flag sticks for the full ~3-day weekly window even though **this** account has plenty left — Auto-continue was reading that stuck flag and sending "keep going" on its own (sometimes right when the AI was handing off to you).
 
-**Coming in the next beta:** drag files from the Explorer onto the composer to reference them, each with an eyeball toggle to include/exclude.
+Now Auto-continue trusts your **live usage meter** instead of the flag: if the meter shows you actually have headroom, a stale limit flag is treated as stale and **nothing auto-sends**. Real usage limits and real errors still pause and resume exactly as before — this only stops the phantom "keep going" on a chat that isn't truly limited.
+
+*(Auto-continue is opt-in — gear ▸ Auto-continue — and you can turn any of its toggles off there.)*
