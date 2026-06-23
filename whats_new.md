@@ -1,11 +1,6 @@
-**Orbit now fully supports the latest Claude Code (2.1.186) — plus new diagnostics and a steadier Auto-continue.**
+**Two fixes from your feedback — and the drag-and-drop file tray is up next.**
 
-Everything new since the last stable release, in one place:
+- **Running chats no longer get mislabeled "dead."** If a chat was actively working but a rate-limit warning was floating around (e.g. a *different* account or a subagent hit a limit), Orbit was tagging the live chat as limit-blocked in the session list. Now **"busy" wins** — a streaming chat shows its real activity instead of a stale limit message.
+- **Background task-notifications now look like tasks, not a debug log you typed.** When a command runs in the background, Claude Code feeds its result back into the chat as a `<task-notification>` (that's native Claude, not a message you sent). Orbit now reframes those as a tidy **"⚙ Background task"** card with the summary, so they stop reading like something you wrote.
 
-**Works on the newest Claude Code.** Claude Code 2.1.186 rebuilt how its UI is rendered under the hood, which broke the old patch. Orbit is fully re-fitted, so the complete experience is back on 2.1.186:
-- The whole **sessions sidebar** — archive / pin / star, per-chat color, status dots, "2 days ago" times, the collapsible Starred / Pinned / Sessions / Archived sections, search, and the settings gear.
-- The whole **Copilot-style composer** — model picker, the standalone effort slider (with the Ultracode top stop), the Steer / Add-to-queue / Stop-and-send split, queued-message bubbles in the transcript, YOLO mode, and the inline Fork / Rewind / Fork + rewind row.
-
-**New: Copy diagnostics.** When a chat hits an "API Error" or rate limit, the gear ▸ **Copy diagnostics** button copies a clean report — including in-chat server errors like "529 Overloaded" — so problems are actually diagnosable instead of a mystery.
-
-**Auto-continue is steadier.** It no longer gets stuck on a stale "usage limit" banner, so chats resume reliably once your usage window resets.
+**Coming in the next beta:** drag files from the Explorer onto the composer to reference them, each with an eyeball toggle to include/exclude.
