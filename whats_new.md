@@ -1,11 +1,11 @@
-**The full composer is back on Claude Code 2.1.186.**
+**Orbit now fully supports the latest Claude Code (2.1.186) — plus new diagnostics and a steadier Auto-continue.**
 
-The previous beta restored the sessions sidebar on 2.1.186 but left the Copilot-style composer turned off while we re-fit it to Claude's new layout. That re-fit is done — everything is wired up again:
+Everything new since the last stable release, in one place:
 
-- **Model picker** — the model button + dropdown on the composer bar.
-- **Standalone effort slider** — drag to set effort, with the live level name in its tooltip; the "Ultracode" top stop included.
-- **Send-split** — Steer with message / Add to queue / Stop and send, the dedicated Stop button while busy, and the blue idle "send" state.
-- **Queued-message bubbles** — queued messages show as bubbles in the transcript with edit / delete / send-now, and auto-send when the turn ends.
-- **YOLO mode** in the Auto-mode menu, and the **inline Fork / Rewind / Fork + rewind** row above your messages.
+**Works on the newest Claude Code.** Claude Code 2.1.186 rebuilt how its UI is rendered under the hood, which broke the old patch. Orbit is fully re-fitted, so the complete experience is back on 2.1.186:
+- The whole **sessions sidebar** — archive / pin / star, per-chat color, status dots, "2 days ago" times, the collapsible Starred / Pinned / Sessions / Archived sections, search, and the settings gear.
+- The whole **Copilot-style composer** — model picker, the standalone effort slider (with the Ultracode top stop), the Steer / Add-to-queue / Stop-and-send split, queued-message bubbles in the transcript, YOLO mode, and the inline Fork / Rewind / Fork + rewind row.
 
-Combined with the sidebar work, 2.1.186 now has the complete Orbit experience again. Thanks for riding the betas — if anything looks off, the gear ▸ Copy diagnostics report is the fastest way to flag it.
+**New: Copy diagnostics.** When a chat hits an "API Error" or rate limit, the gear ▸ **Copy diagnostics** button copies a clean report — including in-chat server errors like "529 Overloaded" — so problems are actually diagnosable instead of a mystery.
+
+**Auto-continue is steadier.** It no longer gets stuck on a stale "usage limit" banner, so chats resume reliably once your usage window resets.
