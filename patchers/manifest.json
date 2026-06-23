@@ -267,6 +267,15 @@
       "file": "patch_claude-1.2.114.py",
       "date": "2026-06-23",
       "whatsNew": "**Auto-continue no longer fires on a stuck/stale usage-limit flag.**\n\nYou caught this one: when Claude's \"You've hit your weekly limit\" flag latches onto a chat \u2014 e.g. a *different* account or a subagent hit the limit, so the flag sticks for the full ~3-day weekly window even though **this** account has plenty left \u2014 Auto-continue was reading that stuck flag and sending \"keep going\" on its own (sometimes right when the AI was handing off to you).\n\nNow Auto-continue trusts your **live usage meter** instead of the flag: if the meter shows you actually have headroom, a stale limit flag is treated as stale and **nothing auto-sends**. Real usage limits and real errors still pause and resume exactly as before \u2014 this only stops the phantom \"keep going\" on a chat that isn't truly limited.\n\n*(Auto-continue is opt-in \u2014 gear \u25b8 Auto-continue \u2014 and you can turn any of its toggles off there.)*"
+    },
+    {
+      "version": "1.2.115",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.186",
+      "file": "patch_claude-1.2.115.py",
+      "date": "2026-06-23",
+      "whatsNew": "**Background task-notifications no longer wear the human message bubble.**\n\nA background command's result is system output (Claude injects it as a message), but it was rendering inside the light, rounded \"you-typed-this\" bubble \u2014 so it read like a message you sent. That bubble is now **stripped** for these: they show as a quiet, dim **\"\u2699 Background task\"** line, clearly system output and not a human message."
     }
   ]
 }
