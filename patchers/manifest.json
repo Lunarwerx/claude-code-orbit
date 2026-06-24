@@ -294,6 +294,15 @@
       "file": "patch_claude-1.2.117.py",
       "date": "2026-06-24",
       "whatsNew": "**The Usage popover is clearer and roomier.**\n\n- **Time-left now shows minutes** \u2014 \"3h 59m left\" instead of a vague \"3h\" (and \"21h 04m left\" for the weekly). It ticks down live while the popover is open.\n- **\"resets in\" \u2192 \"left\"**, and the countdown is now the bold, bright line under each window's name \u2014 no longer the same dim grey as everything else.\n- **No more \"7 days 21 hours\" mix-up.** The window length is now a quiet footnote (\"5-hour window\" / \"7-day window\" / \"Sonnet \u00b7 weekly\") that can't be misread as the countdown.\n- **Wider popover** that spans the sidebar instead of squishing three rings into a tiny box."
+    },
+    {
+      "version": "1.2.118",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.190",
+      "file": "patch_claude-1.2.118.py",
+      "date": "2026-06-24",
+      "whatsNew": "**Usage popover: tighter width.**\n\n- Trimmed the popover width so the three rings sit closer together \u2014 same layout, less empty space."
     }
   ]
 }
