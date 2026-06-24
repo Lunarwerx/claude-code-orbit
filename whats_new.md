@@ -1,3 +1,4 @@
-**Background task-notifications no longer wear the human message bubble.**
+**The sessions refresh button is back, and "Show more" stops flickering.**
 
-A background command's result is system output (Claude injects it as a message), but it was rendering inside the light, rounded "you-typed-this" bubble — so it read like a message you sent. That bubble is now **stripped** for these: they show as a quiet, dim **"⚙ Background task"** line, clearly system output and not a human message.
+- **Refresh icon** added to the sessions header (right before Search) — re-lists your local + remote sessions on demand. Plus a **gentle auto-refresh** so the list keeps itself current on its own (it isn't push-live, which is why stale rows used to linger).
+- **"Show more" no longer appears/disappears on hover.** It now shows whenever a message is actually clipped, and is simply absent when it isn't — no more flicker.
