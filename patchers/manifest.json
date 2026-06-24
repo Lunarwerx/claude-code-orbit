@@ -303,6 +303,15 @@
       "file": "patch_claude-1.2.118.py",
       "date": "2026-06-24",
       "whatsNew": "**Usage popover: tighter width.**\n\n- Trimmed the popover width so the three rings sit closer together \u2014 same layout, less empty space."
+    },
+    {
+      "version": "1.2.119",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.190",
+      "file": "patch_claude-1.2.119.py",
+      "date": "2026-06-24",
+      "whatsNew": "**\"New Session\" now actually starts a new session.**\n\n- Fixed the New Session button (and the collapsed \"+\") getting stuck \u2014 it would dump you right back on the chat you were already in instead of opening a fresh one.\n- Cause: when \"open conversations in a new tab\" is on, the button was trying to open a separate editor tab, which doesn't exist inside Orbit's single pane \u2014 so the click did nothing. It now always opens the new session right here in the pane."
     }
   ]
 }
