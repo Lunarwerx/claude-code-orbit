@@ -1,4 +1,6 @@
-**The sessions refresh button is back, and "Show more" stops flickering.**
+**The Usage popover is clearer and roomier.**
 
-- **Refresh icon** added to the sessions header (right before Search) — re-lists your local + remote sessions on demand. Plus a **gentle auto-refresh** so the list keeps itself current on its own (it isn't push-live, which is why stale rows used to linger).
-- **"Show more" no longer appears/disappears on hover.** It now shows whenever a message is actually clipped, and is simply absent when it isn't — no more flicker.
+- **Time-left now shows minutes** — "3h 59m left" instead of a vague "3h" (and "21h 04m left" for the weekly). It ticks down live while the popover is open.
+- **"resets in" → "left"**, and the countdown is now the bold, bright line under each window's name — no longer the same dim grey as everything else.
+- **No more "7 days 21 hours" mix-up.** The window length is now a quiet footnote ("5-hour window" / "7-day window" / "Sonnet · weekly") that can't be misread as the countdown.
+- **Wider popover** that spans the sidebar instead of squishing three rings into a tiny box.
