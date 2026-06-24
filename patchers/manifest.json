@@ -321,6 +321,15 @@
       "file": "patch_claude-1.2.120.py",
       "date": "2026-06-24",
       "whatsNew": "**Everything new since the last stable \u2014 session fixes, a clearer Usage popover, and smarter auto-continue.**\n\n**Sessions**\n- **\"New Session\" actually starts a new session now.** The button (and the collapsed \"+\") could get stuck dumping you back on the chat you were already in \u2014 when \"open conversations in a new tab\" was on, it tried to open a separate editor tab that doesn't exist inside Orbit's single pane, so the click did nothing. It now always opens a fresh chat right here in the pane.\n- **Refresh button is back** in the sessions header (next to Search), plus a gentle auto-refresh so the list keeps itself current instead of letting stale rows linger.\n- **Running chats stop getting mislabeled \"dead.\"** If a rate-limit warning was floating around (a different account or a subagent hit a limit), a live chat could show as limit-blocked in the list. Now a streaming chat shows its real activity \u2014 busy wins.\n\n**Usage popover**\n- **Time-left shows minutes** and ticks down live \u2014 \"3h 59m left\" / \"21h 04m left\" instead of a vague \"3h.\"\n- **Clearer labels:** the bright bold line is the countdown (\"left\"), and the window length is a quiet footnote (\"5-hour window\" / \"7-day window\") that can't be misread as \"7 days 21 hours.\"\n- Roomier, then right-sized \u2014 spans the sidebar without squishing the rings or wasting space.\n\n**Auto-continue (opt-in \u2014 gear \u25b8 Auto-continue)**\n- **No more phantom \"keep going\" on a stale limit flag.** When Claude's \"you've hit your limit\" flag latches for the full weekly window even though *this* account has headroom, auto-continue now trusts your live usage meter and stays quiet. Real limits and real errors still pause and resume exactly as before.\n\n**Background tasks**\n- Background command results now render as a tidy, dim **\"\u2699 Background task\"** card instead of looking like a message you typed.\n\n**\"Show more\"** no longer flickers in and out on hover \u2014 it shows whenever a message is genuinely clipped, and is simply absent when it isn't."
+    },
+    {
+      "version": "1.2.121",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.190",
+      "file": "patch_claude-1.2.121.py",
+      "date": "2026-06-24",
+      "whatsNew": "**\"New Session\" no longer bounces you back to the old chat.**\n\n- Fixed a follow-on to last build's New Session fix: the button would open the fresh chat, then a couple seconds later snap you right back to the chat you came from.\n- Cause: a brand-new chat has no saved id yet, so the address the pane remembers (\"which chat is active\") still pointed at the old one \u2014 and the every-few-seconds session refresh kept restoring it. The button now clears that pointer when it opens a new chat, so the new one sticks. The moment you send your first message, the new chat gets its real id and everything tracks normally again."
     }
   ]
 }
