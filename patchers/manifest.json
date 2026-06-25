@@ -384,6 +384,15 @@
       "file": "patch_claude-1.2.127.py",
       "date": "2026-06-25",
       "whatsNew": "**YOLO mode is now per-chat \u2014 it can't leak into your other chats.**\n\n- The first YOLO build auto-approved across **every** open chat at once (it was a single global switch). Fixed: YOLO is now scoped to the one chat you turn it on in \u2014 exactly like the native Ask / Plan / Edit modes. Turning it on in one chat does nothing to the others.\n- Under the hood the auto-approve decision now happens per chat (keyed by that chat's channel) right in the approval handler, so there's no global flag left to leak.\n- Note: turn it on from inside a chat that's already going (one you've sent at least one message in). Making brand-new chats *start* on YOLO is coming with the Default settings popup in the next build."
+    },
+    {
+      "version": "1.2.128",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.128.py",
+      "date": "2026-06-25",
+      "whatsNew": "**The YOLO confirm pop-up is back \u2014 and there's a new \"Default\" panel.**\n\n- **YOLO confirm:** the \"you're enabling YOLO mode \u2014 sure?\" pop-up now appears **every** time you turn YOLO on (before, it only asked the first time, which is why it went quiet on you). YOLO was still working \u2014 it just stopped asking. Now it always asks.\n- **New: gear \u25b8 \"Default\"** (it replaces \"Switch model\") \u2014 an Orbit popup that sets what every **new** chat opens on:\n  - **Model** \u2014 pick a default from your available models (or \"Account default\").\n  - **Effort** \u2014 the same Auto \u2192 Ultracode slider, now lives here.\n  - **Start new chats on YOLO mode** \u2014 flip it on and every new chat begins auto-approving (you can still flip it off per chat).\n- New chats apply these as they open; chats already going keep their own model/effort/mode."
     }
   ]
 }

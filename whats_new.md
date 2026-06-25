@@ -1,5 +1,8 @@
-**YOLO mode is now per-chat — it can't leak into your other chats.**
+**The YOLO confirm pop-up is back — and there's a new "Default" panel.**
 
-- The first YOLO build auto-approved across **every** open chat at once (it was a single global switch). Fixed: YOLO is now scoped to the one chat you turn it on in — exactly like the native Ask / Plan / Edit modes. Turning it on in one chat does nothing to the others.
-- Under the hood the auto-approve decision now happens per chat (keyed by that chat's channel) right in the approval handler, so there's no global flag left to leak.
-- Note: turn it on from inside a chat that's already going (one you've sent at least one message in). Making brand-new chats *start* on YOLO is coming with the Default settings popup in the next build.
+- **YOLO confirm:** the "you're enabling YOLO mode — sure?" pop-up now appears **every** time you turn YOLO on (before, it only asked the first time, which is why it went quiet on you). YOLO was still working — it just stopped asking. Now it always asks.
+- **New: gear ▸ "Default"** (it replaces "Switch model") — an Orbit popup that sets what every **new** chat opens on:
+  - **Model** — pick a default from your available models (or "Account default").
+  - **Effort** — the same Auto → Ultracode slider, now lives here.
+  - **Start new chats on YOLO mode** — flip it on and every new chat begins auto-approving (you can still flip it off per chat).
+- New chats apply these as they open; chats already going keep their own model/effort/mode.
