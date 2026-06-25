@@ -348,6 +348,15 @@
       "file": "patch_claude-1.2.123.py",
       "date": "2026-06-25",
       "whatsNew": "**Removed \"YOLO mode\" \u2014 it never actually worked.**\n\n- \"YOLO mode\" in the composer's Modes menu was just Claude's native \"Bypass permissions\" mode with our label on it. We also force-added it to the menu and defaulted new chats into it.\n- The catch: that native mode is **broken in the VS Code extension** \u2014 Claude Code's own code still pops the approval prompt no matter which mode you pick (it's an open bug on Anthropic's side), so \"YOLO mode\" never actually skipped anything.\n- Rather than keep a button that pretends to work, we removed our YOLO label and the forcing entirely. The Modes menu is now exactly Claude's native set, behaving exactly as native Claude Code intends \u2014 nothing else changes."
+    },
+    {
+      "version": "1.2.124",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.124.py",
+      "date": "2026-06-25",
+      "whatsNew": "**A real YOLO mode \u2014 and this one actually works.**\n\n- Last build removed the old \"YOLO mode\" because it never did anything: it was Claude's native bypass mode, which is broken in the VS Code extension (the approval prompt fires no matter which mode you pick).\n- This adds a *real* one: **gear menu \u25b8 YOLO mode**. When it's on, Orbit auto-approves every permission prompt \u2014 file edits, terminal commands, MCP tools \u2014 before it can even appear. It works by intercepting the approval at the host layer, so it doesn't depend on the native mode that's broken. Unbreakable, because it just says yes.\n- **Off by default.** It asks you to confirm when you turn it on, and shows a red **\"YOLO MODE - auto-approving everything\"** badge the whole time it's running, so you can never forget it's on.\n- Heads up: this genuinely skips **all** safety prompts, including destructive commands. Use it only when you trust what's running \u2014 flip it off any time to bring the prompts back."
     }
   ]
 }
