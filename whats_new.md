@@ -1,4 +1,8 @@
-**"New Session" no longer bounces you back to the old chat.**
+**Auto-continue is now "Auto-resume" — stripped down to the two things that actually matter.**
 
-- Fixed a follow-on to last build's New Session fix: the button would open the fresh chat, then a couple seconds later snap you right back to the chat you came from.
-- Cause: a brand-new chat has no saved id yet, so the address the pane remembers ("which chat is active") still pointed at the old one — and the every-few-seconds session refresh kept restoring it. The button now clears that pointer when it opens a new chat, so the new one sticks. The moment you send your first message, the new chat gets its real id and everything tracks normally again.
+- The old Auto-continue had four overlapping switches and a lot of guesswork about *why* a chat stopped. It was confusing and it misfired. That's gone.
+- In its place, one clean **Auto-resume** menu (Settings gear) with just two switches:
+  - **When my usage limit resets** — waits out your 5-hour *and* weekly limits, then picks the chat back up on its own.
+  - **If the chat errors out** — retries after a server hiccup / rate-limit.
+- A cleanly-finished chat is never touched — it only ever steps in for a real usage-limit reset or a real error.
+- If you'd turned on any of the old usage-reset switches, it carries straight over to the new one — nothing to redo.
