@@ -375,6 +375,15 @@
       "file": "patch_claude-1.2.126.py",
       "date": "2026-06-25",
       "whatsNew": "**Dropped the YOLO corner badge.**\n\n- The red \"auto-approving everything\" tag in the bottom-right corner is gone. YOLO mode already shows as the active mode right in the composer (the \u26a1 Modes button), so the corner badge was redundant \u2014 the composer mode tag is your per-chat indicator now."
+    },
+    {
+      "version": "1.2.127",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.127.py",
+      "date": "2026-06-25",
+      "whatsNew": "**YOLO mode is now per-chat \u2014 it can't leak into your other chats.**\n\n- The first YOLO build auto-approved across **every** open chat at once (it was a single global switch). Fixed: YOLO is now scoped to the one chat you turn it on in \u2014 exactly like the native Ask / Plan / Edit modes. Turning it on in one chat does nothing to the others.\n- Under the hood the auto-approve decision now happens per chat (keyed by that chat's channel) right in the approval handler, so there's no global flag left to leak.\n- Note: turn it on from inside a chat that's already going (one you've sent at least one message in). Making brand-new chats *start* on YOLO is coming with the Default settings popup in the next build."
     }
   ]
 }
