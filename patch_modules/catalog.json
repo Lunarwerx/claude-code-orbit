@@ -79,9 +79,6 @@
     { "id": "usage-meter",           "title": "Account usage rings",    "tier": "composer", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["19c"], "verify": ["usage meter"], "status": "ok",
       "summary": "5hr/weekly usage rings in the composer footer, read off the native utilization signal." },
 
-    { "id": "yolo-mode",             "title": "YOLO mode",              "tier": "composer", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["16"], "verify": ["yolo helpers","yolo perm init"], "status": "ok",
-      "summary": "New sessions default to bypassPermissions when toggled on." },
-
     { "id": "fork-row",              "title": "Fork action row",        "tier": "chat", "required": false, "userFacing": true,  "dependsOn": [], "blocks": ["fork"], "verify": ["fork action row","fork row dividers"], "status": "ok",
       "summary": "Inline fork row in the message hover actions (fork is left on Claude's native handler)." },
 

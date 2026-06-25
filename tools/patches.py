@@ -6,7 +6,7 @@ exist — and answers the two questions the modular system is built around:
 
     python tools/patches.py list                 # what patches exist (by tier)
     python tools/patches.py list --user          # only the user-toggleable ones
-    python tools/patches.py resolve --enable usage-meter,yolo-mode
+    python tools/patches.py resolve --enable usage-meter,fork-row
     python tools/patches.py resolve --disable sidebar-panel
     python tools/patches.py check                 # validate the catalog graph
 
