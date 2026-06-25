@@ -2123,6 +2123,11 @@ function applyIdleState(state, info) {
       enableBtnIcon.innerHTML = ICON_REFRESH;
       disableBtn.title = "Uninstall Orbit and restore the original, unpatched Claude Code.";
       patchedTitle.textContent = "Claude Code update available";
+      // Show the channel (STABLE/BETA) of the patch "Install newest" would apply,
+      // so this card carries the same tag as the "Orbit is enabled" card — the tag
+      // no longer vanishes just because a newer Claude Code is also available.
+      patchedTitle.appendChild(document.createTextNode(" "));
+      patchedTitle.appendChild(ccChannelTag(channel));
       patchedSub.textContent = "Patched on Claude Code v" + claudeCodeVersion + " (patch #" + installedVersion
         + "). Claude Code v" + latestClaudeVersion + " is available — install the newest to update.";
       enableBtnLabel.textContent = "Install newest (v" + latestClaudeVersion + ")";
