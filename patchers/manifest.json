@@ -366,6 +366,15 @@
       "file": "patch_claude-1.2.125.py",
       "date": "2026-06-25",
       "whatsNew": "**YOLO mode is now a real Mode \u2014 right below Auto mode.**\n\n- Open the composer's **Modes** menu (the \u26a1 button) and you'll see **YOLO mode** sitting right under Auto mode, described as *\"Like Auto mode, but auto-approves every prompt.\"*\n- Pick it and every approval \u2014 file edits, terminal commands, MCP tools \u2014 is auto-approved at the host before the prompt can even appear. It's the real auto-approve engine from the last build, now wired straight into the Modes menu instead of a separate gear toggle.\n- The first time you pick it, it asks you to confirm (it skips **all** safety prompts, including destructive commands). After that it's instant. A red **\"YOLO MODE - auto-approving everything\"** badge stays up the whole time it's on, and picking any other mode turns it back off."
+    },
+    {
+      "version": "1.2.126",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.126.py",
+      "date": "2026-06-25",
+      "whatsNew": "**Dropped the YOLO corner badge.**\n\n- The red \"auto-approving everything\" tag in the bottom-right corner is gone. YOLO mode already shows as the active mode right in the composer (the \u26a1 Modes button), so the corner badge was redundant \u2014 the composer mode tag is your per-chat indicator now."
     }
   ]
 }
