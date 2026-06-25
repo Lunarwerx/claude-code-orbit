@@ -393,6 +393,15 @@
       "file": "patch_claude-1.2.128.py",
       "date": "2026-06-25",
       "whatsNew": "**The YOLO confirm pop-up is back \u2014 and there's a new \"Default\" panel.**\n\n- **YOLO confirm:** the \"you're enabling YOLO mode \u2014 sure?\" pop-up now appears **every** time you turn YOLO on (before, it only asked the first time, which is why it went quiet on you). YOLO was still working \u2014 it just stopped asking. Now it always asks.\n- **New: gear \u25b8 \"Default\"** (it replaces \"Switch model\") \u2014 an Orbit popup that sets what every **new** chat opens on:\n  - **Model** \u2014 pick a default from your available models (or \"Account default\").\n  - **Effort** \u2014 the same Auto \u2192 Ultracode slider, now lives here.\n  - **Start new chats on YOLO mode** \u2014 flip it on and every new chat begins auto-approving (you can still flip it off per chat).\n- New chats apply these as they open; chats already going keep their own model/effort/mode."
+    },
+    {
+      "version": "1.2.129",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.129.py",
+      "date": "2026-06-25",
+      "whatsNew": "**The \"Default\" panel got a proper redesign.**\n\n- It now opens as a **centered modal** in the middle of the screen (with a dim backdrop) instead of the cramped corner popup.\n- **The YOLO on/off toggle is gone \u2014 it's a \"Mode\" dropdown now.** Pick what every new chat opens on from the full list: Ask before edits, Edit automatically, Plan mode, Auto mode, or YOLO mode (or \"Leave default\").\n- The **Model** picker is now a clean custom dropdown instead of the ugly native one.\n- Effort stays as the slider. Every new chat opens on your chosen model + mode + effort; chats already going keep their own."
     }
   ]
 }

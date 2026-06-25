@@ -1,8 +1,6 @@
-**The YOLO confirm pop-up is back — and there's a new "Default" panel.**
+**The "Default" panel got a proper redesign.**
 
-- **YOLO confirm:** the "you're enabling YOLO mode — sure?" pop-up now appears **every** time you turn YOLO on (before, it only asked the first time, which is why it went quiet on you). YOLO was still working — it just stopped asking. Now it always asks.
-- **New: gear ▸ "Default"** (it replaces "Switch model") — an Orbit popup that sets what every **new** chat opens on:
-  - **Model** — pick a default from your available models (or "Account default").
-  - **Effort** — the same Auto → Ultracode slider, now lives here.
-  - **Start new chats on YOLO mode** — flip it on and every new chat begins auto-approving (you can still flip it off per chat).
-- New chats apply these as they open; chats already going keep their own model/effort/mode.
+- It now opens as a **centered modal** in the middle of the screen (with a dim backdrop) instead of the cramped corner popup.
+- **The YOLO on/off toggle is gone — it's a "Mode" dropdown now.** Pick what every new chat opens on from the full list: Ask before edits, Edit automatically, Plan mode, Auto mode, or YOLO mode (or "Leave default").
+- The **Model** picker is now a clean custom dropdown instead of the ugly native one.
+- Effort stays as the slider. Every new chat opens on your chosen model + mode + effort; chats already going keep their own.
