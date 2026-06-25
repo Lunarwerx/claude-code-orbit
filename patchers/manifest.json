@@ -420,6 +420,15 @@
       "file": "patch_claude-1.2.131.py",
       "date": "2026-06-25",
       "whatsNew": "**Default panel: Auto-resume is inline now, and Save governs everything.**\n\n- **Auto-resume is two checkboxes right on the panel** \u2014 *\"When my usage limit resets\"* and *\"If the chat errors out\"* \u2014 instead of opening a separate menu.\n- **Save now commits everything together** \u2014 Model, Mode, Effort, *and* the Auto-resume checkboxes \u2014 only when you hit Save (still grayed out until you change something). No more some-settings-save-and-some-don't.\n- **Copy diagnostics** sits on its own below a divider as the one *action* \u2014 it does something immediately (copies a report), so it's deliberately not part of Save."
+    },
+    {
+      "version": "1.2.132",
+      "channel": "stable",
+      "build": 178,
+      "claude": "2.1.193",
+      "file": "patch_claude-1.2.132.py",
+      "date": "2026-06-25",
+      "whatsNew": "**What's new since the last stable update**\n\n**A real YOLO mode.** Open the composer's Modes menu (\u26a1) and pick **YOLO mode** \u2014 right under Auto mode \u2014 and that chat auto-approves every prompt: file edits, terminal commands, MCP tools. Claude never stops to ask. It's **per-chat**, so turning it on in one chat leaves your others alone. (The old \"YOLO\" was just a relabel of a mode the editor quietly ignores; this one actually works, because Orbit answers the approval itself.)\n\n**A new \"Default\" panel.** The gear menu's \"Switch model\" is now **Default** \u2014 one panel where you set what every *new* chat opens on: default **model**, default **mode** (including YOLO), **effort**, and your **Auto-resume** preferences. Change what you like, hit **Save**, and new chats follow it; chats already going keep their own.\n\n**Auto-resume, simplified.** It's now just two switches \u2014 resume a chat when your usage limit resets (5-hour or weekly), and resume if a chat errors out.\n\n**\"New Session\" no longer bounces you back** to the chat you came from a moment after you open a fresh one.\n\nPlus a round of polish: a cleaner composer bottom bar, clearer status and usage display, and a tidier settings menu."
     }
   ]
 }
