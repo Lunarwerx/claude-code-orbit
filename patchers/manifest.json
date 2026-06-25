@@ -402,6 +402,15 @@
       "file": "patch_claude-1.2.129.py",
       "date": "2026-06-25",
       "whatsNew": "**The \"Default\" panel got a proper redesign.**\n\n- It now opens as a **centered modal** in the middle of the screen (with a dim backdrop) instead of the cramped corner popup.\n- **The YOLO on/off toggle is gone \u2014 it's a \"Mode\" dropdown now.** Pick what every new chat opens on from the full list: Ask before edits, Edit automatically, Plan mode, Auto mode, or YOLO mode (or \"Leave default\").\n- The **Model** picker is now a clean custom dropdown instead of the ugly native one.\n- Effort stays as the slider. Every new chat opens on your chosen model + mode + effort; chats already going keep their own."
+    },
+    {
+      "version": "1.2.130",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.130.py",
+      "date": "2026-06-25",
+      "whatsNew": "**Default panel: a Save button, a YOLO confirm, and a tidy-up.**\n\n- **Save button** \u2014 Model / Mode / Effort now *stage* your changes and only apply when you hit **Save** (grayed out until you actually change something), so nothing changes by accident.\n- **YOLO confirm** \u2014 picking **Mode \u2192 YOLO mode** in the panel now asks \"are you sure?\" first (cancel reverts it).\n- **The always-visible effort slider is gone from the composer** \u2014 effort lives in this panel for new chats, and you can still set it for the *current* chat from the Modes (\u26a1) popup.\n- **Auto-resume and Copy diagnostics moved in here** too \u2014 they're rarely touched, so they're tucked into the Default panel instead of cluttering the gear menu."
     }
   ]
 }
