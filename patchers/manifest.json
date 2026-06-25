@@ -357,6 +357,15 @@
       "file": "patch_claude-1.2.124.py",
       "date": "2026-06-25",
       "whatsNew": "**A real YOLO mode \u2014 and this one actually works.**\n\n- Last build removed the old \"YOLO mode\" because it never did anything: it was Claude's native bypass mode, which is broken in the VS Code extension (the approval prompt fires no matter which mode you pick).\n- This adds a *real* one: **gear menu \u25b8 YOLO mode**. When it's on, Orbit auto-approves every permission prompt \u2014 file edits, terminal commands, MCP tools \u2014 before it can even appear. It works by intercepting the approval at the host layer, so it doesn't depend on the native mode that's broken. Unbreakable, because it just says yes.\n- **Off by default.** It asks you to confirm when you turn it on, and shows a red **\"YOLO MODE - auto-approving everything\"** badge the whole time it's running, so you can never forget it's on.\n- Heads up: this genuinely skips **all** safety prompts, including destructive commands. Use it only when you trust what's running \u2014 flip it off any time to bring the prompts back."
+    },
+    {
+      "version": "1.2.125",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.125.py",
+      "date": "2026-06-25",
+      "whatsNew": "**YOLO mode is now a real Mode \u2014 right below Auto mode.**\n\n- Open the composer's **Modes** menu (the \u26a1 button) and you'll see **YOLO mode** sitting right under Auto mode, described as *\"Like Auto mode, but auto-approves every prompt.\"*\n- Pick it and every approval \u2014 file edits, terminal commands, MCP tools \u2014 is auto-approved at the host before the prompt can even appear. It's the real auto-approve engine from the last build, now wired straight into the Modes menu instead of a separate gear toggle.\n- The first time you pick it, it asks you to confirm (it skips **all** safety prompts, including destructive commands). After that it's instant. A red **\"YOLO MODE - auto-approving everything\"** badge stays up the whole time it's on, and picking any other mode turns it back off."
     }
   ]
 }

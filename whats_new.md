@@ -1,6 +1,5 @@
-**A real YOLO mode — and this one actually works.**
+**YOLO mode is now a real Mode — right below Auto mode.**
 
-- Last build removed the old "YOLO mode" because it never did anything: it was Claude's native bypass mode, which is broken in the VS Code extension (the approval prompt fires no matter which mode you pick).
-- This adds a *real* one: **gear menu ▸ YOLO mode**. When it's on, Orbit auto-approves every permission prompt — file edits, terminal commands, MCP tools — before it can even appear. It works by intercepting the approval at the host layer, so it doesn't depend on the native mode that's broken. Unbreakable, because it just says yes.
-- **Off by default.** It asks you to confirm when you turn it on, and shows a red **"YOLO MODE - auto-approving everything"** badge the whole time it's running, so you can never forget it's on.
-- Heads up: this genuinely skips **all** safety prompts, including destructive commands. Use it only when you trust what's running — flip it off any time to bring the prompts back.
+- Open the composer's **Modes** menu (the ⚡ button) and you'll see **YOLO mode** sitting right under Auto mode, described as *"Like Auto mode, but auto-approves every prompt."*
+- Pick it and every approval — file edits, terminal commands, MCP tools — is auto-approved at the host before the prompt can even appear. It's the real auto-approve engine from the last build, now wired straight into the Modes menu instead of a separate gear toggle.
+- The first time you pick it, it asks you to confirm (it skips **all** safety prompts, including destructive commands). After that it's instant. A red **"YOLO MODE - auto-approving everything"** badge stays up the whole time it's on, and picking any other mode turns it back off.
