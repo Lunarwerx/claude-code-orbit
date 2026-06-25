@@ -411,6 +411,15 @@
       "file": "patch_claude-1.2.130.py",
       "date": "2026-06-25",
       "whatsNew": "**Default panel: a Save button, a YOLO confirm, and a tidy-up.**\n\n- **Save button** \u2014 Model / Mode / Effort now *stage* your changes and only apply when you hit **Save** (grayed out until you actually change something), so nothing changes by accident.\n- **YOLO confirm** \u2014 picking **Mode \u2192 YOLO mode** in the panel now asks \"are you sure?\" first (cancel reverts it).\n- **The always-visible effort slider is gone from the composer** \u2014 effort lives in this panel for new chats, and you can still set it for the *current* chat from the Modes (\u26a1) popup.\n- **Auto-resume and Copy diagnostics moved in here** too \u2014 they're rarely touched, so they're tucked into the Default panel instead of cluttering the gear menu."
+    },
+    {
+      "version": "1.2.131",
+      "channel": "experimental",
+      "build": 178,
+      "claude": "2.1.191",
+      "file": "patch_claude-1.2.131.py",
+      "date": "2026-06-25",
+      "whatsNew": "**Default panel: Auto-resume is inline now, and Save governs everything.**\n\n- **Auto-resume is two checkboxes right on the panel** \u2014 *\"When my usage limit resets\"* and *\"If the chat errors out\"* \u2014 instead of opening a separate menu.\n- **Save now commits everything together** \u2014 Model, Mode, Effort, *and* the Auto-resume checkboxes \u2014 only when you hit Save (still grayed out until you change something). No more some-settings-save-and-some-don't.\n- **Copy diagnostics** sits on its own below a divider as the one *action* \u2014 it does something immediately (copies a report), so it's deliberately not part of Save."
     }
   ]
 }

@@ -1,6 +1,5 @@
-**Default panel: a Save button, a YOLO confirm, and a tidy-up.**
+**Default panel: Auto-resume is inline now, and Save governs everything.**
 
-- **Save button** — Model / Mode / Effort now *stage* your changes and only apply when you hit **Save** (grayed out until you actually change something), so nothing changes by accident.
-- **YOLO confirm** — picking **Mode → YOLO mode** in the panel now asks "are you sure?" first (cancel reverts it).
-- **The always-visible effort slider is gone from the composer** — effort lives in this panel for new chats, and you can still set it for the *current* chat from the Modes (⚡) popup.
-- **Auto-resume and Copy diagnostics moved in here** too — they're rarely touched, so they're tucked into the Default panel instead of cluttering the gear menu.
+- **Auto-resume is two checkboxes right on the panel** — *"When my usage limit resets"* and *"If the chat errors out"* — instead of opening a separate menu.
+- **Save now commits everything together** — Model, Mode, Effort, *and* the Auto-resume checkboxes — only when you hit Save (still grayed out until you change something). No more some-settings-save-and-some-don't.
+- **Copy diagnostics** sits on its own below a divider as the one *action* — it does something immediately (copies a report), so it's deliberately not part of Save.
