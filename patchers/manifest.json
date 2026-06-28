@@ -447,6 +447,15 @@
       "file": "patch_claude-1.2.134.py",
       "date": "2026-06-25",
       "whatsNew": "**The effort slider is back in the composer.**\n\nA couple builds ago it was removed from the composer bottom bar by mistake \u2014 it was only meant to move out of the gear menu (into the new **Default** panel), not disappear from the composer itself. It's restored: the draggable effort slider is back next to the model name for changing the *current* chat's effort on the fly, and the **Default** panel keeps its own for new-chat defaults."
+    },
+    {
+      "version": "1.2.135",
+      "channel": "experimental",
+      "build": 179,
+      "claude": "2.1.195",
+      "file": "patch_claude-1.2.135.py",
+      "date": "2026-06-28",
+      "whatsNew": "**YOLO mode actually auto-approves again.**\n\nYOLO mode had quietly stopped working \u2014 you'd switch it on, but Claude would still stop and ask permission on the very next thing it did. The cause: YOLO was being remembered against an internal ID that Claude throws away and regenerates after *every single turn*, so the setting was effectively forgotten the moment a turn ended (and it saved nothing at all if you flipped it on while the chat was sitting idle).\n\nNow YOLO is pinned to the chat itself. Turn it on once and it stays on for that whole chat \u2014 every file edit, terminal command and tool runs without asking \u2014 while every other chat keeps asking like normal. Pick it from the mode menu next to the model name (the one-time \"are you sure?\" still applies)."
     }
   ]
 }
