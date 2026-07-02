@@ -1,16 +1,10 @@
-Everything new since the last stable — YOLO mode made reliable, the sidebar made honest, and a performance pass.
+**Multi-account switcher — switch logins like Google accounts.**
 
-**YOLO mode now works the way it should.**
-- **It stays on.** Turn YOLO on for a chat and it stays on for that whole chat — every file edit, terminal command, and tool runs without asking — while every other chat keeps prompting like normal. (It used to quietly forget the setting after each turn.)
-- **It never silently slips.** Every permission request in a YOLO chat is now matched to your chat at the source the instant a turn starts, so a prompt can't sneak through anymore.
-- **It still lets the AI ask you questions.** YOLO waves through every real action — edits, commands, deletes — but when the AI needs you to *decide* something (a "which approach?" question or a plan to approve), that now surfaces so you can answer it. Actions: automatic. Questions: still yours.
+"Switch account" (in the gear menu) now opens a wider dropdown listing every account you've signed into, each showing its name, email, and live **5-hour** and **weekly** usage bars — so you can see at a glance which account has room left. Click one to switch to it.
 
-**The sidebar no longer calls a working chat "dead."**
-- A chat streaming in the background — or even the one on screen — could show as idle/finished while it was clearly still working. Status now reads from Claude's own per-session signal that knows every chat's real state, so running chats show running (with live activity), waiting chats show waiting, and nothing is marked done until it actually is. Works across as many concurrent chats as you've got going.
-
-**Performance pass — long chats and idle churn.**
-- **Faster long chats.** The copy-button scanner only looks at new messages now instead of rescanning the whole conversation every 1.5 seconds, so big chats stop getting slower as they grow.
-- **Less background churn.** The session list refreshes less aggressively and checks your cloud sessions half as often — fewer network calls and re-renders while you work.
-- **Smoother idle** and a **lighter background cleanup** process that stays out of the way when nothing's running.
+- **One-click switch, no re-login.** Switching swaps your saved login for that account in place; your next message or new chat is on the new account. No signing back in.
+- **Your current login is auto-saved** the first time, and again before every switch, so you never lose an account.
+- **"Add account"** signs you out so you can sign in with another account — it gets saved automatically and joins the dropdown.
+- **Stored only on your PC.** Nothing is uploaded; account tokens stay on your machine and are never exposed to the interface.
 
 Certified against Claude Code 2.1.198.
