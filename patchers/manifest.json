@@ -510,6 +510,15 @@
       "file": "patch_claude-1.2.141.py",
       "date": "2026-07-02",
       "whatsNew": "**Multi-account switcher \u2014 switch logins like Google accounts.**\n\n\"Switch account\" (in the gear menu) now opens a wider dropdown listing every account you've signed into, each showing its name, email, and live **5-hour** and **weekly** usage bars \u2014 so you can see at a glance which account has room left. Click one to switch to it.\n\n- **One-click switch, no re-login.** Switching swaps your saved login for that account in place; your next message or new chat is on the new account. No signing back in.\n- **Your current login is auto-saved** the first time, and again before every switch, so you never lose an account.\n- **\"Add account\"** signs you out so you can sign in with another account \u2014 it gets saved automatically and joins the dropdown.\n- **Stored only on your PC.** Nothing is uploaded; account tokens stay on your machine and are never exposed to the interface.\n\nCertified against Claude Code 2.1.198."
+    },
+    {
+      "version": "1.2.142",
+      "channel": "experimental",
+      "build": 179,
+      "claude": "2.1.198",
+      "file": "patch_claude-1.2.142.py",
+      "date": "2026-07-02",
+      "whatsNew": "**Account switcher fixes \u2014 no more duplicate accounts.**\n\nThe switcher could show the same account twice (once active, once as a removable copy). The cause: an account was partly identified by its login token, which changes each time it refreshes \u2014 so a refresh spawned a second copy of the same account.\n\n- **Stable identity.** Accounts are now identified by their account ID, which never changes, so the same account can't duplicate itself.\n- **Auto-cleanup.** Any duplicates from before are automatically merged the next time you open the switcher \u2014 the extra copy disappears on its own.\n- **Clearer remove button.** The \"\u00d7\" to forget an account is now always visible on the accounts you're not using.\n\nCertified against Claude Code 2.1.198."
     }
   ]
 }
