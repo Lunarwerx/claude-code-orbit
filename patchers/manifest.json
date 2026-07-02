@@ -483,6 +483,15 @@
       "file": "patch_claude-1.2.138.py",
       "date": "2026-07-02",
       "whatsNew": "**Sidebar no longer calls a working chat \"dead.\"**\n\nIf you had a chat streaming in the background (or even the one on screen) the sidebar could show it as idle/finished while it was clearly still working \u2014 so you couldn't trust the running dots when juggling more than one chat.\n\nThe status now reads from Claude's own per-session broadcast \u2014 the same signal that knows every chat's real state whether or not it's the one you're looking at \u2014 instead of a stale local flag that only tracked the attached chat. Running chats show as running (with their live activity text), waiting chats show as waiting, and a chat isn't marked done until it's actually done. Works across as many concurrent chats as you've got going."
+    },
+    {
+      "version": "1.2.139",
+      "channel": "experimental",
+      "build": 179,
+      "claude": "2.1.198",
+      "file": "patch_claude-1.2.139.py",
+      "date": "2026-07-02",
+      "whatsNew": "**YOLO mode still lets the AI ask you questions.**\n\nYOLO auto-approves actions \u2014 but a genuine question (\"should we build it this way or that way?\", a plan to approve) was getting auto-answered too, so the AI would see a meaningless \"yes\" and lose the ability to actually consult you.\n\nNow YOLO tells the difference. It still waves through every real action \u2014 edits, terminal commands, deletes, the whole point of the mode \u2014 but when the AI asks you to *decide* something (an AskUserQuestion prompt or a plan to approve), that question now surfaces so you can answer it, even with YOLO on. Actions: automatic. Questions: still yours."
     }
   ]
 }

@@ -1,5 +1,5 @@
-**Sidebar no longer calls a working chat "dead."**
+**YOLO mode still lets the AI ask you questions.**
 
-If you had a chat streaming in the background (or even the one on screen) the sidebar could show it as idle/finished while it was clearly still working — so you couldn't trust the running dots when juggling more than one chat.
+YOLO auto-approves actions — but a genuine question ("should we build it this way or that way?", a plan to approve) was getting auto-answered too, so the AI would see a meaningless "yes" and lose the ability to actually consult you.
 
-The status now reads from Claude's own per-session broadcast — the same signal that knows every chat's real state whether or not it's the one you're looking at — instead of a stale local flag that only tracked the attached chat. Running chats show as running (with their live activity text), waiting chats show as waiting, and a chat isn't marked done until it's actually done. Works across as many concurrent chats as you've got going.
+Now YOLO tells the difference. It still waves through every real action — edits, terminal commands, deletes, the whole point of the mode — but when the AI asks you to *decide* something (an AskUserQuestion prompt or a plan to approve), that question now surfaces so you can answer it, even with YOLO on. Actions: automatic. Questions: still yours.
