@@ -1,5 +1,7 @@
-**YOLO mode actually auto-approves again.**
+Performance pass — long chats and idle churn:
 
-YOLO mode had quietly stopped working — you'd switch it on, but Claude would still stop and ask permission on the very next thing it did. The cause: YOLO was being remembered against an internal ID that Claude throws away and regenerates after *every single turn*, so the setting was effectively forgotten the moment a turn ended (and it saved nothing at all if you flipped it on while the chat was sitting idle).
-
-Now YOLO is pinned to the chat itself. Turn it on once and it stays on for that whole chat — every file edit, terminal command and tool runs without asking — while every other chat keeps asking like normal. Pick it from the mode menu next to the model name (the one-time "are you sure?" still applies).
+- **Faster long chats.** The copy-button scanner no longer rescans every message in the chat every 1.5 seconds — it now only looks at new messages, with a light self-heal pass every 30 seconds. Big conversations stop getting slower as they grow.
+- **Less background churn.** The session list now refreshes every 25 seconds instead of every 7, and checks your cloud sessions half as often — fewer network calls and fewer sidebar re-renders while you're just working.
+- **Smoother idle.** Auto-resume's error checks no longer force the page to re-measure its layout every few seconds while a chat sits idle.
+- **Lighter zombie reaper.** When no Claude processes are running, the reaper now exits instantly instead of doing a full system process scan every 3 minutes.
+- Certified against Claude Code 2.1.198.
