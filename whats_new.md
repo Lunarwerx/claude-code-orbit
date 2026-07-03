@@ -1,4 +1,4 @@
-**Chat list fix — no more duplicate sessions.**
+**Chat list fix — no more duplicate sessions.** *(Hotfix over the 1.2.143 beta, which had a typo that could blank the sidebar — this build fixes both.)*
 
 Sometimes the sidebar showed the same chat stacked several times over — and it grew every time you sent a message. Clicking one copy would make a *different* one start working, or make the one you clicked go dead, and a few couldn't be clicked at all. A window reload cleared it, but only for a while.
 

@@ -528,6 +528,15 @@
       "file": "patch_claude-1.2.143.py",
       "date": "2026-07-03",
       "whatsNew": "**Chat list fix \u2014 no more duplicate sessions.**\n\nSometimes the sidebar showed the same chat stacked several times over \u2014 and it grew every time you sent a message. Clicking one copy would make a *different* one start working, or make the one you clicked go dead, and a few couldn't be clicked at all. A window reload cleared it, but only for a while.\n\nThe cause was in our sidebar, not your chats. Claude briefly keeps more than one in-memory copy of the chat you're actively working in, and we were drawing every copy as its own row. **Your chats were never actually duplicated and nothing was lost** \u2014 every conversation is still a single, intact file.\n\n- **Each chat now shows exactly once.** We collapse duplicate copies by the chat's stable ID before drawing the list. A genuinely different chat can never be merged in \u2014 two different conversations never share an ID.\n- **The right copy stays.** When duplicates exist we keep the one you're attached to (or the one that's actively streaming), so a live chat never vanishes or loses its highlight.\n- **Clicking is reliable again.** Rows are now tracked by stable ID instead of list position, so when the list re-sorts (busy chats jumping to the top) a click can't land on the wrong chat.\n\nCertified against Claude Code 2.1.199."
+    },
+    {
+      "version": "1.2.144",
+      "channel": "experimental",
+      "build": 179,
+      "claude": "2.1.199",
+      "file": "patch_claude-1.2.144.py",
+      "date": "2026-07-03",
+      "whatsNew": "**Chat list fix \u2014 no more duplicate sessions.** *(Hotfix over the 1.2.143 beta, which had a typo that could blank the sidebar \u2014 this build fixes both.)*\n\nSometimes the sidebar showed the same chat stacked several times over \u2014 and it grew every time you sent a message. Clicking one copy would make a *different* one start working, or make the one you clicked go dead, and a few couldn't be clicked at all. A window reload cleared it, but only for a while.\n\nThe cause was in our sidebar, not your chats. Claude briefly keeps more than one in-memory copy of the chat you're actively working in, and we were drawing every copy as its own row. **Your chats were never actually duplicated and nothing was lost** \u2014 every conversation is still a single, intact file.\n\n- **Each chat now shows exactly once.** We collapse duplicate copies by the chat's stable ID before drawing the list. A genuinely different chat can never be merged in \u2014 two different conversations never share an ID.\n- **The right copy stays.** When duplicates exist we keep the one you're attached to (or the one that's actively streaming), so a live chat never vanishes or loses its highlight.\n- **Clicking is reliable again.** Rows are now tracked by stable ID instead of list position, so when the list re-sorts (busy chats jumping to the top) a click can't land on the wrong chat.\n\nCertified against Claude Code 2.1.199."
     }
   ]
 }
