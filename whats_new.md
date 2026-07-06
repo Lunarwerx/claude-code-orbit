@@ -1,10 +1,8 @@
-**Account switching fix — no more "switched… and then logged out".**
+**Two rings in the composer bar — context + plan usage, side by side.**
 
-Switching accounts used to say "Switched" and then, about 20 seconds later, Claude could log you out entirely. The cause: an account that sits saved while you use another one goes stale — its access token quietly expires after a few hours. Switching swapped that expired token in as-is, and Claude's next authentication check killed the session.
+The little circle at the bottom of the composer used to be just your context window (how full this chat is). Now there are **two** rings next to each other:
 
-- **Switching now refreshes the account first.** If the saved sign-in has gone stale, we renew it (the same way Claude itself renews tokens) *before* swapping it in — so the account you switch to always arrives with a live sign-in. No extra clicks, no reload.
-- **The renewed sign-in is saved back**, so every account in your list stays healthy no matter how long it sits unused. Opening the account list also quietly revives stale accounts in the background (which fixes their usage bars too).
-- **If an account truly can't be renewed** (its sign-in was revoked), the switch no longer half-happens and logs you out — it stays on your current account and tells you plainly to remove that entry and re-add the account.
-- Also fixed: signing out via "Add account" could save a broken, empty entry over a good one. That can't happen anymore, and any such entry heals itself automatically.
+- **Context window** — the native ring, how much of this chat's context is used.
+- **Plan usage** — a new ring showing your limits at a glance (5-hour + weekly), color-coded green → yellow → red as you get closer. Click it for the full breakdown with reset times.
 
-Certified against Claude Code 2.1.200.
+No more digging for your plan usage — it's right there in the bar.
