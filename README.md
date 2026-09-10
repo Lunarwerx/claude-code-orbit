@@ -4,6 +4,8 @@
 
 **A patch companion for Anthropic's Claude Code VS Code extension.**
 
+[![Discord](https://img.shields.io/badge/Discord-join_the_community-5865F2?logo=discord&logoColor=white)](https://discord.gg/PsWpeNUzhk)
+
 Better session management, status indicators, search, filters, and a one-click YOLO mode — applied on top of the official extension, not as a fork.
 
 <img src="https://res.cloudinary.com/dicsgc72e/image/upload/f_auto,q_auto:best,w_960,r_12/v1779639822/Seasions_f1joam.png" alt="Claude Code Orbit — patched sessions panel" />
