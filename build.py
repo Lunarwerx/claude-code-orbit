@@ -107,7 +107,6 @@ INCLUDED_PATHS = [
     Path("package.json"),
     Path("extension.js"),
     Path("media/claude-code-orbit.png"),
-    Path("media/rec-saydeploy.png"),
     Path("media/rec-codex-orbit.png"),
     Path("media/rec-copilot-suite.png"),
     Path("media/rec-paramount.png"),

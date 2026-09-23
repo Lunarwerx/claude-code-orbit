@@ -1,4 +1,3 @@
-# SayDeploy-managed .gitignore — keeps secrets and build artifacts out of git
 .env
 .env.*
 *.env

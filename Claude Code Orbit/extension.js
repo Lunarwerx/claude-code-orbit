@@ -1432,7 +1432,6 @@ class SidebarProvider {
       vscode.Uri.joinPath(this.context.extensionUri, "media", file)
     );
     const recs = [
-      { id: "lunarwerx.saydeploy",     name: "SayDeploy",                 tag: "Ship from VS Code by telling Copilot what to do.",       icon: recIcon("rec-saydeploy.png") },
       { id: "lunarwerx.codex-orbit",   name: "Codex Orbit",               tag: "The companion Orbit patcher for OpenAI Codex.",         icon: recIcon("rec-codex-orbit.png") },
       { id: "lunarwerx.claude-code-orbit", name: "Claude Code Orbit",     tag: "The Orbit patcher for Claude Code.",                     icon: recIcon("claude-code-orbit.png") },
       { id: "lunarwerx.copilot-suite", name: "Copilot AI Productivity Suite", tag: "Turn your snippets into Copilot superpowers.",        icon: recIcon("rec-copilot-suite.png") },
