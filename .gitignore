@@ -52,3 +52,7 @@ ORBIT_KIT.md
 CLAUDE.md
 docs/CODEX_LAUNCHER_PROMPT.md
 .vscode/paramount.json
+/logs
+# Local-only tools, kept on disk and out of the public repo.
+orbit-desktop/
+tools/system-health-monitor/
